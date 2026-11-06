@@ -1,0 +1,28 @@
+name: Daily posts
+on:
+  schedule:
+    # KST 09:05 / 13:05 / 18:05 = UTC 00:05 / 04:05 / 09:05 — 하루 3편
+    - cron: "5 0 * * *"
+    - cron: "5 4 * * *"
+    - cron: "5 9 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Generate post (1 per run, 3 per day)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          H=$(TZ=Asia/Seoul date +%H); D=$(TZ=Asia/Seoul date +%F)
+          if [ "$H" -lt 12 ]; then N=1; elif [ "$H" -lt 17 ]; then N=2; else N=3; fi
+          node tools/make_posts.mjs --count $N --date $D
+      - name: Commit
+        run: |
+          git config user.name "changupguide-bot"; git config user.email "bot@changupguide.co.kr"
+          git add content/posts && (git commit -m "post: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M') 자동 발행" && git push) || echo "no new post"

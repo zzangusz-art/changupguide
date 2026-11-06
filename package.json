@@ -1,0 +1,17 @@
+{
+  "name": "changupguide-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "창업가이드(구 창업미디어) 공식 홈페이지 — 정적 빌더 + 관리자 + API 서버",
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:pages": "cross-env-free node build.mjs",
+    "preview": "node server.mjs --static",
+    "serve": "node server.mjs",
+    "import": "node tools/import_legacy.mjs",
+    "post": "node tools/make_posts.mjs"
+  },
+  "license": "UNLICENSED"
+}
