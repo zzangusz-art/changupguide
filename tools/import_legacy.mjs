@@ -55,6 +55,8 @@ const listings = raw.listings.map(l => {
   return item;
 }).sort((a, b) => Number(b.id) - Number(a.id));
 
+// 기존 사이트에서 같은 매물이 다른 번호로 재등록된 중복 → 첫 번호를 대표로 표시 (페이지는 유지, 목록·검색에서는 대표만)
+{ const seen = new Map(); for (const l of [...listings].sort((a, b) => Number(a.id) - Number(b.id))) { const k = [l.agentPhone, l.titleRaw, l.sales, l.profit, l.premium, l.gugun].join('|'); if (seen.has(k)) l.duplicateOf = seen.get(k); else seen.set(k, l.id); } console.log('duplicates', listings.filter(l => l.duplicateOf).length); }
 fs.writeFileSync(path.join(outDir, 'listings.json'), JSON.stringify(listings, null, 1));
 fs.writeFileSync(path.join(outDir, 'agents.json'), JSON.stringify(agents, null, 1));
 const brandStat = {}; for (const l of listings) if (l.brand) brandStat[l.brand] = (brandStat[l.brand] || 0) + 1;

@@ -16,7 +16,10 @@ const DIST = path.resolve('dist');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf-8'));
 const listingsAll = read('src/data/listings.json');
 const agents = read('src/data/agents.json');
-const listings = listingsAll.filter(l => l.status === 'active');
+const listingsActive = listingsAll.filter(l => l.status === 'active');
+for (const l of listingsActive) if (l.duplicateOf) l.canonicalId = l.duplicateOf;
+const listings = listingsActive.filter(l => !l.canonicalId); // 목록·허브·검색은 대표 매물만
+const duplicates = listingsActive.length - listings.length;
 const posts = loadPosts();
 
 // ---- 파생 데이터 ----
@@ -33,7 +36,7 @@ const ctx = {
   byAgent: by(listings, l => l.agentId),
   brandNames: Object.fromEntries(listings.filter(l => l.brandSlug).map(l => [l.brandSlug, l.brand])),
   stats: {
-    total: listings.length,
+    total: listingsActive.length, unique: listings.length,
     brands: new Set(listings.filter(l => l.brandSlug).map(l => l.brandSlug)).size,
     regions: new Set(listings.map(l => l.sido + l.gugun)).size,
     agents: agents.filter(a => a.active).length,
@@ -42,8 +45,6 @@ const ctx = {
   },
   today: isoDate(),
 };
-// 기존 사이트에서 같은 매물이 다른 번호로 중복 등록된 경우 → 첫 번호를 대표(canonical)로
-{ const seen = new Map(); for (const l of [...listings].sort((a, b) => Number(a.id) - Number(b.id))) { const k = [l.agentPhone, l.titleRaw, l.sales, l.profit, l.premium, l.gugun].join('|'); if (seen.has(k)) l.canonicalId = seen.get(k); else seen.set(k, l.id); } ctx.duplicates = listings.filter(l => l.canonicalId).length; }
 ctx.brandsSorted = Object.entries(ctx.byBrand).map(([slug, arr]) => ({ slug, name: ctx.brandNames[slug], n: arr.length })).sort((a, b) => b.n - a.n);
 
 // ---- 출력 ----
@@ -52,7 +53,7 @@ const pages = []; // {path, html, lastmod, priority, changefreq}
 function emit(p, html, meta = {}) { pages.push({ path: p, html, ...meta }); }
 
 emit('/', homePage(ctx), { priority: 1.0, changefreq: 'daily' });
-for (const l of listings) emit(`/listing/${l.id}/`, listingPage(l, ctx), { priority: 0.8, changefreq: 'weekly', lastmod: l.updatedAt, noindex: !!l.canonicalId });
+for (const l of listingsActive) emit(`/listing/${l.id}/`, listingPage(l, ctx), { priority: 0.8, changefreq: 'weekly', lastmod: l.updatedAt, noindex: !!l.canonicalId });
 for (const p of hubPages(ctx)) emit(p.path, p.html, p);
 for (const p of miscPages(ctx)) emit(p.path, p.html, p);
 for (const p of blogPages(ctx)) emit(p.path, p.html, p);
@@ -118,4 +119,4 @@ fs.writeFileSync(path.join(DIST, 'feed.json'), JSON.stringify({ version: 'https:
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
 if (process.env.CNAME) fs.writeFileSync(path.join(DIST, 'CNAME'), process.env.CNAME);
 
-console.log(`built ${pages.length} pages (${listings.length} listings, ${ctx.duplicates} duplicate→canonical, ${posts.length} posts) → dist/ in ${((Date.now() - t0) / 1000).toFixed(1)}s  base=${SITE.base || '/'} url=${SITE.url} noindex=${SITE.noindex}`);
+console.log(`built ${pages.length} pages (${listingsActive.length} listings, ${duplicates} duplicate→canonical, ${posts.length} posts) → dist/ in ${((Date.now() - t0) / 1000).toFixed(1)}s  base=${SITE.base || '/'} url=${SITE.url} noindex=${SITE.noindex}`);
