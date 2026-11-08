@@ -163,7 +163,7 @@ export function makeTitle(l) {
 }
 export function makeSeoTitle(l) {
   const t = makeTitle(l);
-  return `${t} | 창업가이드 양도양수 매물 No.${l.id}`;
+  return `${t} | 창업미디어 양도양수 매물 No.${l.id}`;
 }
 export function makeDesc(l) {
   const loc = [l.sido, l.gugun].filter(Boolean).join(' ');

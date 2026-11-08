@@ -90,7 +90,7 @@ function run() {
   if (state.page < pages) btns.push(`<button type="button" data-p="${state.page + 1}">›</button>`);
   pager.innerHTML = pages > 1 ? btns.join('') : '';
   $$('button', pager).forEach(b => b.addEventListener('click', () => { state.page = Number(b.dataset.p); run(); $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
-  document.title = `${state.q ? state.q + ' 창업 매물 ' : ''}매물 검색 (${total.toLocaleString()}건) | 창업가이드`;
+  document.title = `${state.q ? state.q + ' 창업 매물 ' : ''}매물 검색 (${total.toLocaleString()}건) | 창업미디어`;
 }
 
 async function init() {

@@ -1,4 +1,4 @@
-// 창업가이드 공통 인터랙션: 히어로 롤링, 드로어, 모달, 토스트, 갤러리 라이트박스, 통화 연결 알림, 문자 상담 폼, 검색 추천
+// 창업미디어 공통 인터랙션: 히어로 롤링, 드로어, 모달, 토스트, 갤러리 라이트박스, 통화 연결 알림, 문자 상담 폼, 검색 추천
 const CU = window.CU || { base: '', api: '' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -57,20 +57,35 @@ function initModals() {
 
 // ---------- 히어로 롤링 ----------
 function initHero() {
-  const hero = $('.hero'); if (!hero) return;
-  const track = $('.hero__track', hero); const slides = $$('.slide', track); if (slides.length < 2) return;
+  const hero = $('.hero2') || $('.hero'); if (!hero) return;
+  const track = $('.hero2__track, .hero__track', hero); const slides = $$('.hslide, .slide', track); if (slides.length < 2) return;
   let i = 0, timer, startX = null;
-  const dots = $('.hero__dots', hero); const counter = $('.hero__counter', hero);
-  slides.forEach((_, k) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `${k + 1}번 배너`); b.addEventListener('click', () => go(k, true)); dots.appendChild(b); });
+  const dots = $('[data-hero-pager], .hero__dots', hero); const counter = $('.hero__counter', hero); const numbered = !!$('[data-hero-pager]', hero);
+  slides.forEach((_, k) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `${k + 1}번 배너`); if (numbered) b.textContent = k + 1; b.addEventListener('click', () => go(k, true)); dots.appendChild(b); });
   function go(k, user) { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; $$('button', dots).forEach((b, n) => n === i ? b.setAttribute('aria-current', 'true') : b.removeAttribute('aria-current')); if (counter) counter.textContent = `${i + 1} / ${slides.length}`; if (user) restart(); }
-  function restart() { clearInterval(timer); timer = setInterval(() => go(i + 1), 5200); }
-  $('.hero__arrow--prev', hero)?.addEventListener('click', () => go(i - 1, true));
-  $('.hero__arrow--next', hero)?.addEventListener('click', () => go(i + 1, true));
+  function restart() { clearInterval(timer); timer = setInterval(() => go(i + 1), 5600); }
+  $('.hero2__arrow--prev, .hero__arrow--prev', hero)?.addEventListener('click', () => go(i - 1, true));
+  $('.hero2__arrow--next, .hero__arrow--next', hero)?.addEventListener('click', () => go(i + 1, true));
   hero.addEventListener('pointerdown', e => { startX = e.clientX; });
   hero.addEventListener('pointerup', e => { if (startX == null) return; const dx = e.clientX - startX; startX = null; if (Math.abs(dx) > 50) go(dx < 0 ? i + 1 : i - 1, true); });
   hero.addEventListener('mouseenter', () => clearInterval(timer)); hero.addEventListener('mouseleave', restart);
   document.addEventListener('visibilitychange', () => document.hidden ? clearInterval(timer) : restart());
   go(0); restart();
+}
+
+// ---------- 탭 (스켈레톤 전환) ----------
+function initTabs() {
+  $$('[data-tabs]').forEach(t => {
+    const tabs = $$(':scope > .tabs__nav > [role=tab]', t); const panels = $$(':scope > .tabs__panels > .tabs__panel', t); const sk = $(':scope > .tabs__panels > .tabs__skeleton', t); let busy = false;
+    tabs.forEach((tab, k) => tab.addEventListener('click', () => {
+      if (busy || tab.getAttribute('aria-selected') === 'true') return; busy = true;
+      tabs.forEach(x => x.setAttribute('aria-selected', 'false')); tab.setAttribute('aria-selected', 'true');
+      panels.forEach(p => p.hidden = true);
+      const show = () => { if (sk) sk.hidden = true; if (panels[k]) panels[k].hidden = false; $$('.reveal', panels[k] || t).forEach(el => el.classList.add('is-in')); busy = false; };
+      if (sk) { sk.hidden = false; setTimeout(show, 260); } else show();
+    }));
+    t.addEventListener('keydown', e => { const idx = tabs.indexOf(document.activeElement); if (idx < 0) return; let n = null; if (e.key === 'ArrowRight') n = (idx + 1) % tabs.length; if (e.key === 'ArrowLeft') n = (idx - 1 + tabs.length) % tabs.length; if (n != null) { tabs[n].focus(); tabs[n].click(); } });
+  });
 }
 
 // ---------- 스크롤 리빌·카운터·바 ----------
@@ -201,4 +216,4 @@ function initMisc() {
   if ($('.sticky-bar') && matchMedia('(max-width:860px)').matches) { const f = $('#floatCta'); if (f) f.style.display = 'none'; }
 }
 
-initDrawer(); initModals(); initHero(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();
+initDrawer(); initModals(); initHero(); initTabs(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();

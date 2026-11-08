@@ -1,4 +1,4 @@
-// 창업가이드 관리자 — 단일 파일 SPA (해시 라우터). 서버(API) 또는 데모(브라우저 저장) 모드 자동 전환.
+// 창업미디어 관리자 — 단일 파일 SPA (해시 라우터). 서버(API) 또는 데모(브라우저 저장) 모드 자동 전환.
 import { createApi } from './api.js';
 import { CATEGORIES, THEMES, BUDGETS, SIDO_ORDER } from '../js/data.mjs';
 import { GUGUN, BRAND_LIST, makeTitle, fmtWon, fmtMan, fmtNum, parseWon, brandByName, extractTags, fmtDate, cleanRawTitle } from '../js/lib/text.mjs';

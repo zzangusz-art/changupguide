@@ -1,4 +1,4 @@
-// 창업가이드 서버 — 의존성 0 (node:http + node:sqlite). 정적 사이트(dist) 서빙 + 관리자 API + 통화 알림 문자 + 자동 재빌드
+// 창업미디어 서버 — 의존성 0 (node:http + node:sqlite). 정적 사이트(dist) 서빙 + 관리자 API + 통화 알림 문자 + 자동 재빌드
 // 실행: node server.mjs            (API + dist 서빙, DB: data/app.db)
 //      node server.mjs --static   (dist만 서빙 — 미리보기용)
 // env: PORT, SITE_URL, SITE_BASE, DATA_DIR(기본 ./data), ADMIN_PASSWORD(최초 admin 비밀번호), SMS_PROVIDER(none|aligo|solapi), 제공자별 키
@@ -90,7 +90,7 @@ async function sendSms(to, text) {
   if (!digits) return { ok: false, detail: 'no number' };
   try {
     if (cfg.provider === 'aligo') {
-      const body = new URLSearchParams({ key: cfg.aligoKey, user_id: cfg.aligoUser, sender: cfg.sender, receiver: digits, msg: text, msg_type: text.length > 45 ? 'LMS' : 'SMS', title: '창업가이드 통화 알림' });
+      const body = new URLSearchParams({ key: cfg.aligoKey, user_id: cfg.aligoUser, sender: cfg.sender, receiver: digits, msg: text, msg_type: text.length > 45 ? 'LMS' : 'SMS', title: '창업미디어 통화 알림' });
       const r = await fetch('https://apis.aligo.in/send/', { method: 'POST', body }); const j = await r.json();
       return { ok: String(j.result_code) === '1', detail: JSON.stringify(j).slice(0, 300) };
     }
@@ -125,7 +125,7 @@ async function api(req, res, url) {
     const agent = q1('SELECT * FROM agents WHERE id=?', body.agentId || (ld && ld.agentId) || '') || (ld ? q1('SELECT * FROM agents WHERE mobile=?', ld.agentPhone) : null);
     const id = uid('c'); const t = now();
     const site = (process.env.SITE_URL || '').replace(/\/$/, '');
-    const text = ld ? `[창업가이드] 고객이 매물 No.${ld.id} (${ld.title})을 보고 전화 연결을 시도했습니다. ${site}${BASE}/listing/${ld.id}/ · ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })}` : `[창업가이드] 고객이 담당자 페이지에서 전화 연결을 시도했습니다. ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })}`;
+    const text = ld ? `[창업미디어] 고객이 매물 No.${ld.id} (${ld.title})을 보고 전화 연결을 시도했습니다. ${site}${BASE}/listing/${ld.id}/ · ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })}` : `[창업미디어] 고객이 담당자 페이지에서 전화 연결을 시도했습니다. ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })}`;
     const sms = agent ? await sendSms(agent.mobile, text) : { ok: false, detail: 'agent not found' };
     run('INSERT INTO calls(id,listingId,agentId,phone,title,url,ua,smsStatus,smsDetail,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?)', id, body.listingId || '', agent ? agent.id : '', agent ? agent.mobile : '', ld ? ld.title : (body.title || ''), body.url || '', (body.ua || '').slice(0, 200), sms.ok ? 'sent' : 'failed', sms.detail, t);
     return json(res, 200, { ok: true, sms: sms.ok });
@@ -137,8 +137,8 @@ async function api(req, res, url) {
     run('INSERT INTO inquiries(id,type,name,phone,message,listingId,agentId,data,status,note,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', id, body.type || 'sms', String(body.name || '').slice(0, 40), String(body.phone || '').slice(0, 20), String(body.message || '').slice(0, 1000), body.listingId || '', agentId, JSON.stringify(body).slice(0, 4000), 'new', '', t, t);
     const agent = agentId ? q1('SELECT * FROM agents WHERE id=?', agentId) : null;
     const site = (process.env.SITE_URL || '').replace(/\/$/, '');
-    if (agent) sendSms(agent.mobile, `[창업가이드] 새 ${body.type === 'buy' ? '창업 의뢰' : body.type === 'sell' ? '양도 의뢰' : '문자 상담'}: ${body.name} ${body.phone}${ld ? ` / No.${ld.id} ${ld.title}` : ''} / ${String(body.message || '').slice(0, 60)} → ${site}${BASE}/admin/`).then(r => run('UPDATE inquiries SET note=? WHERE id=?', r.ok ? '담당자 문자 발송됨' : '담당자 문자 미발송: ' + r.detail, id));
-    const admin = q1('SELECT * FROM agents WHERE isAdmin=1 AND id!=? LIMIT 1', agentId); if (admin && setting('notifyAdmin')) sendSms(admin.mobile, `[창업가이드] 새 문의 (${body.type}) ${body.name} ${body.phone}`);
+    if (agent) sendSms(agent.mobile, `[창업미디어] 새 ${body.type === 'buy' ? '창업 의뢰' : body.type === 'sell' ? '양도 의뢰' : '문자 상담'}: ${body.name} ${body.phone}${ld ? ` / No.${ld.id} ${ld.title}` : ''} / ${String(body.message || '').slice(0, 60)} → ${site}${BASE}/admin/`).then(r => run('UPDATE inquiries SET note=? WHERE id=?', r.ok ? '담당자 문자 발송됨' : '담당자 문자 미발송: ' + r.detail, id));
+    const admin = q1('SELECT * FROM agents WHERE isAdmin=1 AND id!=? LIMIT 1', agentId); if (admin && setting('notifyAdmin')) sendSms(admin.mobile, `[창업미디어] 새 문의 (${body.type}) ${body.name} ${body.phone}`);
     return json(res, 200, { ok: true, id });
   }
   if (p === '/auth/login' && m === 'POST') {
@@ -215,9 +215,9 @@ async function api(req, res, url) {
 
   // --- 메시지·공지 (양방향 소통) ---
   if (p === '/messages' && m === 'GET') { if (!need()) return; const rows = q('SELECT * FROM messages WHERE fromId=? OR toId=? OR (toId=\'*\') ORDER BY createdAt DESC LIMIT 500', me.id, me.id); run('UPDATE messages SET readAt=? WHERE toId=? AND readAt IS NULL', now(), me.id); return json(res, 200, { items: rows }); }
-  if (p === '/messages' && m === 'POST') { if (!need()) return; const to = String(body.toId || ''); if (!to) return json(res, 400, { error: '받는 사람' }); if (to === '*' && !me.isAdmin) return json(res, 403, { error: '전체 메시지는 관리자만' }); const id = uid('m'); run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', id, me.id, to, body.listingId || '', String(body.body || '').slice(0, 2000), null, now()); const ag = to !== '*' ? q1('SELECT * FROM agents WHERE id=?', to) : null; if (ag && body.sms) sendSms(ag.mobile, `[창업가이드 관리자] ${me.name}: ${String(body.body).slice(0, 70)}`); return json(res, 200, { ok: true, id }); }
+  if (p === '/messages' && m === 'POST') { if (!need()) return; const to = String(body.toId || ''); if (!to) return json(res, 400, { error: '받는 사람' }); if (to === '*' && !me.isAdmin) return json(res, 403, { error: '전체 메시지는 관리자만' }); const id = uid('m'); run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', id, me.id, to, body.listingId || '', String(body.body || '').slice(0, 2000), null, now()); const ag = to !== '*' ? q1('SELECT * FROM agents WHERE id=?', to) : null; if (ag && body.sms) sendSms(ag.mobile, `[창업미디어 관리자] ${me.name}: ${String(body.body).slice(0, 70)}`); return json(res, 200, { ok: true, id }); }
   if (p === '/notices' && m === 'GET') { if (!need()) return; const rows = q('SELECT n.*, (SELECT COUNT(*) FROM notice_reads r WHERE r.noticeId=n.id) reads, EXISTS(SELECT 1 FROM notice_reads r WHERE r.noticeId=n.id AND r.agentId=?) readByMe FROM notices n ORDER BY createdAt DESC LIMIT 100', me.id); return json(res, 200, { items: rows }); }
-  if (p === '/notices' && m === 'POST') { if (!needAdmin()) return; const id = uid('n'); run('INSERT INTO notices(id,title,body,authorId,createdAt) VALUES(?,?,?,?,?)', id, String(body.title || '').slice(0, 100), String(body.body || '').slice(0, 4000), me.id, now()); if (body.sms) for (const a of q('SELECT * FROM agents WHERE active=1 AND isAdmin=0')) sendSms(a.mobile, `[창업가이드 공지] ${body.title}`); return json(res, 200, { ok: true, id }); }
+  if (p === '/notices' && m === 'POST') { if (!needAdmin()) return; const id = uid('n'); run('INSERT INTO notices(id,title,body,authorId,createdAt) VALUES(?,?,?,?,?)', id, String(body.title || '').slice(0, 100), String(body.body || '').slice(0, 4000), me.id, now()); if (body.sms) for (const a of q('SELECT * FROM agents WHERE active=1 AND isAdmin=0')) sendSms(a.mobile, `[창업미디어 공지] ${body.title}`); return json(res, 200, { ok: true, id }); }
   if ((mm = p.match(/^\/notices\/([^/]+)\/read$/)) && m === 'POST') { if (!need()) return; run('INSERT OR IGNORE INTO notice_reads(noticeId,agentId,readAt) VALUES(?,?,?)', mm[1], me.id, now()); return json(res, 200, { ok: true }); }
 
   // --- 글 발행 ---
@@ -228,7 +228,7 @@ async function api(req, res, url) {
   // --- 설정·운영 ---
   if (p === '/settings' && m === 'GET') { if (!needAdmin()) return; const s = setting('sms') || {}; return json(res, 200, { sms: { ...s, aligoKey: s.aligoKey ? '••••' + String(s.aligoKey).slice(-4) : '', solapiSecret: s.solapiSecret ? '••••' : '' }, notifyAdmin: !!setting('notifyAdmin'), lastBuild: setting('lastBuild'), siteUrl: process.env.SITE_URL || '', base: BASE }); }
   if (p === '/settings' && m === 'PUT') { if (!needAdmin()) return; if (body.sms) { const cur = setting('sms') || {}; const s = { ...cur, ...body.sms }; if (String(body.sms.aligoKey || '').startsWith('••••')) s.aligoKey = cur.aligoKey; if (String(body.sms.solapiSecret || '').startsWith('••••')) s.solapiSecret = cur.solapiSecret; setSetting('sms', s); } if (body.notifyAdmin != null) setSetting('notifyAdmin', !!body.notifyAdmin); audit(me.id, 'settings', ''); return json(res, 200, { ok: true }); }
-  if (p === '/settings/test-sms' && m === 'POST') { if (!needAdmin()) return; const r = await sendSms(body.to || me.mobile, '[창업가이드] 문자 발송 테스트입니다.'); return json(res, 200, r); }
+  if (p === '/settings/test-sms' && m === 'POST') { if (!needAdmin()) return; const r = await sendSms(body.to || me.mobile, '[창업미디어] 문자 발송 테스트입니다.'); return json(res, 200, r); }
   if (p === '/rebuild' && m === 'POST') { if (!needAdmin()) return; scheduleRebuild(100); return json(res, 200, { ok: true }); }
   if (p === '/audit' && m === 'GET') { if (!needAdmin()) return; return json(res, 200, { items: q('SELECT * FROM audit ORDER BY id DESC LIMIT 300') }); }
   if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild') }); }
@@ -261,4 +261,4 @@ http.createServer(async (req, res) => {
     return;
   }
   serveStatic(req, res, url);
-}).listen(PORT, () => console.log(`창업가이드 ${STATIC_ONLY ? '정적 미리보기' : 'API+정적'} 서버: http://localhost:${PORT}${BASE}/  (dist: ${fs.existsSync(DIST) ? 'ok' : '없음 — node build.mjs 먼저'})`));
+}).listen(PORT, () => console.log(`창업미디어 ${STATIC_ONLY ? '정적 미리보기' : 'API+정적'} 서버: http://localhost:${PORT}${BASE}/  (dist: ${fs.existsSync(DIST) ? 'ok' : '없음 — node build.mjs 먼저'})`));

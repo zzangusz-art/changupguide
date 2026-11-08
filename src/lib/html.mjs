@@ -114,9 +114,9 @@ export function ctaBand({ title = '원하는 매물이 없다면 창업 의뢰�
 
 export function header(active = '') {
   const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/blog/', '창업 인사이트', 'blog'], ['/agents/', '담당 전문가', 'agents'], ['/about/', '회사 소개', 'about']];
-  return `<header class="hdr" id="top">
+  return `<header class="hdr glass" id="top">
   <div class="wrap hdr__in">
-    <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈"><span class="logo__mark" aria-hidden="true"><svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#FFCC00"/><path d="M12 33 24 13l12 20z" fill="#111"/><path d="M17 38h14" stroke="#111" stroke-width="4" stroke-linecap="round"/></svg></span><span class="logo__txt">창업<b>가이드</b></span><span class="logo__sub">구 창업미디어</span></a>
+    <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈"><img class="logo__img" src="${u('/img/legacy/logo_changupcenter_black.png')}" alt="창업전문포털사이트 No.1 창업미디어" width="172" height="80"></a>
     <nav class="hdr__nav" aria-label="주요 메뉴">${nav.map(([h, n, k]) => `<a href="${u(h)}" ${active === k ? 'aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>
     <div class="hdr__cta"><a class="btn btn--yellow" href="${u('/inquiry/')}">창업 문의</a><a class="btn btn--ink btn--icon" href="tel:${SITE.phoneTel}" aria-label="대표번호로 전화">${ICONS.phone}</a><button class="btn btn--white btn--icon" type="button" data-drawer-open="menu" aria-label="메뉴 열기">${ICONS.menu}</button></div>
   </div>
@@ -142,7 +142,7 @@ export function footer() {
   <div class="ftr__legal"><div class="wrap"><a href="${u('/terms/')}">이용약관</a><a href="${u('/privacy/')}">개인정보처리방침</a><a href="${u('/about/')}">회사 소개·오시는 길</a><a href="${u('/faq/')}">자주 묻는 질문</a></div></div>
   <div class="wrap">
     <div class="ftr__top">
-      <div class="ftr__brand"><span class="logo__txt">창업<b>가이드</b></span><p>${esc(SITE.slogan)}</p>
+      <div class="ftr__brand"><img class="ftr__logo" src="${u('/img/legacy/logo_changupcenter_black.png')}" alt="창업미디어" width="172" height="80"><p>${esc(SITE.slogan)}</p>
         <div class="ftr__contact"><a class="btn btn--yellow" href="tel:${SITE.phoneTel}">${ICONS.phone}창업상담 ${esc(SITE.phone)}</a><a class="btn btn--white" href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a></div>
         <p class="muted">팩스 ${esc(SITE.fax)} · ${esc(SITE.hours)}</p></div>
       <div class="ftr__cols">
@@ -152,8 +152,8 @@ export function footer() {
         <div><h4>회사</h4><a href="${u('/about/')}">회사 소개·오시는 길</a><a href="${u('/agents/')}">담당 창업전문가</a><a href="${u('/inquiry/')}">창업 의뢰</a><a href="${u('/sell/')}">양도양수 의뢰</a><a href="${u('/blog/')}">창업 인사이트</a><a href="${u('/faq/')}">자주 묻는 질문</a><a href="${esc(SITE.blog)}" rel="noopener" target="_blank">네이버 블로그</a><a href="${u('/admin/')}">관리자</a></div>
       </div>
     </div>
-    <div class="ftr__notice"><h4>창업가이드에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
-    <div class="ftr__info"><p>${esc(SITE.name)} (구 ${esc(SITE.legacyName)}) · 회사명 ${esc(SITE.company)} · 사업자등록번호 ${esc(SITE.bizNo)} · ${esc(SITE.address)} (지번: ${esc(SITE.addressJibun)}) · 창업상담 ${esc(SITE.phone)} · 팩스 ${esc(SITE.fax)}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
+    <div class="ftr__notice"><h4>창업미디어에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+    <div class="ftr__info"><p>${esc(SITE.name)} · 회사명 ${esc(SITE.company)} · 사업자등록번호 ${esc(SITE.bizNo)} · ${esc(SITE.address)} (지번: ${esc(SITE.addressJibun)}) · 창업상담 ${esc(SITE.phone)} · 팩스 ${esc(SITE.fax)}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
   </div>
 </footer>
 <div class="float-cta" id="floatCta"><a class="btn btn--red btn--lg glass-red" href="${u('/inquiry/')}">${ICONS.bolt}<span>문의하기</span></a><a class="btn btn--yellow btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화</span></a><button type="button" class="btn btn--ink btn--icon" data-scroll-top aria-label="맨 위로">${ICONS.chevron}</button></div>
@@ -175,7 +175,7 @@ export function layout({ title, desc, path, body, active = '', ld = [], og, type
   const canonical = abs(canonicalPath || path);
   const ogImg = og || abs('/og.png');
   const ldAll = [
-    { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: [SITE.legacyName, SITE.company, '창업가이드 창업미디어'], legalName: SITE.company, url: abs('/'), logo: abs('/logo.png'), telephone: SITE.phoneTel, email: SITE.email, faxNumber: SITE.fax, address: { '@type': 'PostalAddress', streetAddress: '테헤란로 413 태양빌딩 8층', addressLocality: '강남구', addressRegion: '서울특별시', addressCountry: 'KR' }, sameAs: [SITE.blog], contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }], description: SITE.slogan, knowsAbout: SEO.keywords },
+    { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: [SITE.company, '창업미디어 창업포털', 'changupmedia'], legalName: SITE.company, url: abs('/'), logo: abs('/logo.png'), telephone: SITE.phoneTel, email: SITE.email, faxNumber: SITE.fax, address: { '@type': 'PostalAddress', streetAddress: '테헤란로 413 태양빌딩 8층', addressLocality: '강남구', addressRegion: '서울특별시', addressCountry: 'KR' }, sameAs: [SITE.blog], contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }], description: SITE.slogan, knowsAbout: SEO.keywords },
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': abs('/#website'), url: abs('/'), name: SITE.name, inLanguage: 'ko-KR', publisher: { '@id': abs('/#org') }, potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: abs('/listings/') + '?q={search_term_string}' }, 'query-input': 'required name=search_term_string' } },
     ...ld,
   ];
@@ -195,11 +195,12 @@ ${keywords.length ? `<meta name="keywords" content="${esc(keywords.join(', '))}"
 <meta name="theme-color" content="#FFCC00">
 ${SITE.naverVerification ? `<meta name="naver-site-verification" content="${esc(SITE.naverVerification)}">` : ''}
 ${SITE.googleVerification ? `<meta name="google-site-verification" content="${esc(SITE.googleVerification)}">` : ''}
-<link rel="icon" href="${u('/favicon.svg')}" type="image/svg+xml"><link rel="apple-touch-icon" href="${u('/logo.png')}">
+<link rel="icon" href="${u('/favicon.ico')}" sizes="any"><link rel="icon" href="${u('/img/legacy/mark.png')}" type="image/png"><link rel="apple-touch-icon" href="${u('/logo.png')}">
 <link rel="alternate" type="application/rss+xml" title="${esc(SITE.name)} 창업 인사이트" href="${u('/rss.xml')}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="${u('/css/site.css?v=' + BUILD_ID)}">
+<link rel="stylesheet" href="${u('/css/site-v3.css?v=' + BUILD_ID)}">
 <script>window.CU={base:${JSON.stringify(SITE.base)},api:${JSON.stringify(process.env.API_URL || '')},site:${JSON.stringify(SITE.url)}};</script>
 ${extraHead}
 ${ldAll.map(jsonld).join('\n')}
