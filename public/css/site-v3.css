@@ -63,8 +63,8 @@
 .tabs--sm .tabs__tab{padding:7px 13px;font-size:.84rem}
 .tabs__panel{animation:pop .3s}
 /* 테마 */
-.theme-row{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:stretch}
-.theme-banner{position:relative;display:flex;align-items:flex-end;min-height:420px;border-radius:var(--r);overflow:hidden;background:var(--ink) center/cover no-repeat;color:#fff}
+.theme-row{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
+.theme-banner{position:relative;display:flex;align-items:flex-end;min-height:420px;max-height:600px;height:100%;border-radius:var(--r);overflow:hidden;background:var(--ink) center/cover no-repeat;color:#fff}
 .theme-banner__shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.3) 55%,rgba(0,0,0,.05) 100%)}
 .theme-banner__txt{position:relative;padding:28px}
 .theme-banner__txt strong{display:block;margin:14px 0 4px;font-size:.95rem;color:rgba(255,255,255,.85);font-weight:500}
