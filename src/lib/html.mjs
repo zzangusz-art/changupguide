@@ -23,6 +23,9 @@ export const ICONS = {
   bolt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   kakao: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.5 3 2 6.5 2 10.8c0 2.7 1.8 5.1 4.5 6.5L5.5 21l4.3-2.8c.7.1 1.4.2 2.2.2 5.5 0 10-3.5 10-7.6S17.5 3 12 3z"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg>',
+  flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h12l-2 4 2 4H5"/></svg>',
   camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
 };
 
@@ -91,6 +94,22 @@ export function imgPath(p, variant) {
   if (p.startsWith('photos/')) return variant === 'thumb' ? p.replace('photos/', 'photos/thumb/') : p;
   return p;
 }
+// 브랜드 로고 (기존 창업미디어 인기 프랜차이즈 띠에서 추출, public/img/brands/{slug}.png)
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+const __pub = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
+const LOGO_CACHE = new Map();
+export function brandLogo(slug) {
+  if (!slug) return '';
+  if (!LOGO_CACHE.has(slug)) LOGO_CACHE.set(slug, existsSync(join(__pub, 'img', 'brands', `${slug}.png`)) ? u(`/img/brands/${slug}.png`) : '');
+  return LOGO_CACHE.get(slug);
+}
+export function brandLogoImg(slug, name, { h = 34, cls = 'brand-logo' } = {}) {
+  const src = brandLogo(slug); if (!src) return '';
+  return `<img class="${cls}" src="${src}" alt="${esc(name)} 로고" height="${h}" loading="lazy" decoding="async">`;
+}
+
 export function skeletonCards(n = 6) {
   return Array.from({ length: n }, () => `<div class="card card--skeleton" aria-hidden="true"><div class="sk sk--img"></div><div class="card__body"><div class="sk sk--line w40"></div><div class="sk sk--line"></div><div class="sk sk--line w80"></div><div class="sk sk--nums"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div></div>`).join('');
 }
@@ -122,11 +141,18 @@ export function header(active = '') {
   </div>
 </header>
 <aside class="quick" aria-label="빠른 상담">
-  <a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>창업상담</span><b>${esc(SITE.phone.replace('010-', ''))}</b></a>
+  <a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>창업상담</span><b class="is-num">${esc(SITE.phone.replace('010-', ''))}</b></a>
   <a href="${u('/inquiry/')}" class="is-yellow">${ICONS.bolt}<span>창업 의뢰</span><b>문의·접수</b></a>
   <a href="${u('/sell/')}">${ICONS.share}<span>내 매장</span><b>양도 의뢰</b></a>
   <a href="${u('/listings/')}">${ICONS.search}<span>매물</span><b>검색</b></a>
 </aside>
+<nav class="mbar glass" aria-label="모바일 빠른 메뉴">
+  <a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화상담</span></a>
+  <a href="${u('/inquiry/')}" class="is-yellow">${ICONS.bolt}<span>창업 문의</span></a>
+  <a href="${u('/sell/')}">${ICONS.share}<span>양도 의뢰</span></a>
+  <a href="${u('/listings/')}">${ICONS.search}<span>매물 검색</span></a>
+  <button type="button" data-drawer-open="menu">${ICONS.menu}<span>메뉴</span></button>
+</nav>
 <div class="drawer" id="drawer-menu" aria-hidden="true"><div class="drawer__panel">
   <div class="drawer__head"><strong>메뉴</strong><button type="button" data-drawer-close aria-label="닫기">${ICONS.close}</button></div>
   <form class="drawer__search" action="${u('/listings/')}" method="get"><input type="search" name="q" placeholder="지역 + 브랜드 (예: 인천 메가커피)" aria-label="검색" data-suggest autocomplete="off"><button type="submit" aria-label="검색">${ICONS.search}</button></form>
@@ -201,6 +227,7 @@ ${SITE.googleVerification ? `<meta name="google-site-verification" content="${es
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="${u('/css/site.css?v=' + BUILD_ID)}">
 <link rel="stylesheet" href="${u('/css/site-v3.css?v=' + BUILD_ID)}">
+<link rel="stylesheet" href="${u('/css/site-v4.css?v=' + BUILD_ID)}">
 <script>window.CU={base:${JSON.stringify(SITE.base)},api:${JSON.stringify(process.env.API_URL || '')},site:${JSON.stringify(SITE.url)}};</script>
 ${extraHead}
 ${ldAll.map(jsonld).join('\n')}

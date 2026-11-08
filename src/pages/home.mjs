@@ -1,6 +1,7 @@
 // 메인 — 기존 창업미디어 홈 구조(이미지 배너 롤링 → 업종별 베스트 → 테마별 → 카테고리별 인기상품 → 지역·예산 → 인기 프랜차이즈 → 고지)를 현대적으로 재구성
 import { SITE, SEO, CATEGORIES, THEMES, BUDGETS, HERO_SLIDES, POPULAR_BRANDS, FAQ, SIDO_ORDER } from '../data.mjs';
-import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath } from '../lib/html.mjs';
+import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath, brandLogoImg } from '../lib/html.mjs';
+import { koreaMap } from '../lib/map.mjs';
 import { agentCard } from '../lib/agents.mjs';
 import { brandByName, fmtMan, fmtWon } from '../lib/text.mjs';
 
@@ -18,8 +19,13 @@ export function homePage(ctx) {
     const minPrem = arr.filter(l => l.premium).length ? Math.min(...arr.filter(l => l.premium).map(l => l.premium)) : 0;
     const avgSales = arr.filter(l => l.sales).length ? Math.round(arr.filter(l => l.sales).reduce((x, l) => x + l.sales, 0) / arr.filter(l => l.sales).length) : 0;
     const href = b && arr.length ? u(`/brand/${b.slug}/`) : u(`/listings/?q=${encodeURIComponent(s.brand)}`);
-    const bgUrl = bg ? (/^https?:/.test(bg) ? bg : u('/' + bg)) : '';
-    return `<div class="hslide hslide--${s.theme}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${bgUrl ? `background-image:url('${esc(bgUrl)}')` : ''}">
+    // 고화질 배경: public/img/hero/{slug}.jpg (1920) + {slug}-m.jpg (모바일 960). 없으면 매장 사진으로 대체
+    const heroFile = s.img ? u(`/img/hero/${s.img}.jpg`) : '';
+    const heroFileM = s.img ? u(`/img/hero/${s.img}-m.jpg`) : '';
+    const bgUrl = heroFile || (bg ? (/^https?:/.test(bg) ? bg : u('/' + bg)) : '');
+    const bgStyle = bgUrl ? (i === 0 ? `--bg:url('${esc(bgUrl)}');--bg-m:url('${esc(heroFileM || bgUrl)}')` : '') : '';
+    const bgData = bgUrl && i > 0 ? ` data-bg="${esc(bgUrl)}" data-bg-m="${esc(heroFileM || bgUrl)}"` : '';
+    return `<div class="hslide hslide--${s.theme}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${bgStyle}"${bgData}>
       <div class="hslide__shade"></div>
       <div class="wrap hslide__in">
         <div class="hslide__box glass-dark">
@@ -95,7 +101,8 @@ export function homePage(ctx) {
   const seoulGu = Object.entries(byGugun).filter(([k]) => k.startsWith('서울/')).sort((a, b) => b[1].length - a[1].length).slice(0, 14);
   const gyeonggi = Object.entries(byGugun).filter(([k]) => k.startsWith('경기/') || k.startsWith('인천/')).sort((a, b) => b[1].length - a[1].length).slice(0, 14);
   const regionSec = `<section class="sec"><div class="wrap"><div class="region-budget">
-    <div class="panel-card"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">지역별 주요상권</span><h2 class="h2">지역으로 찾기</h2></div><a class="more" href="${u('/region/')}">전체 ${ICONS.arrow}</a></div>
+    <div class="panel-card panel-card--map"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">지역별 주요상권</span><h2 class="h2">지역으로 찾기</h2></div><a class="more" href="${u('/region/')}">전체 ${ICONS.arrow}</a></div>
+      <div class="home-map">${koreaMap(Object.fromEntries(Object.entries(bySido).map(([k, a]) => [k, a.length])), { compact: true, id: 'kmap-home' })}<p class="home-map__cap">${SIDO_ORDER.filter(sd => bySido[sd]).map(sd => `<a href="${u(`/region/${encodeURIComponent(sd)}/`)}">${esc(sd)} <b>${bySido[sd].length}</b></a>`).join('')}</p></div>
       <div class="tabs tabs--pills tabs--sm" data-tabs><div class="tabs__nav" role="tablist"><button class="tabs__tab" role="tab" aria-selected="true" aria-controls="rg-0" id="rg-tab-0" type="button">서울</button><button class="tabs__tab" role="tab" aria-selected="false" aria-controls="rg-1" id="rg-tab-1" type="button">경기·인천</button></div>
       <div class="tabs__panels"><div class="tabs__panel" role="tabpanel" id="rg-0"><div class="regions">${seoulGu.map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent('서울')}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.split('/')[1])}<small>${arr.length}</small></a>`).join('')}</div></div><div class="tabs__panel" role="tabpanel" id="rg-1" hidden><div class="regions">${gyeonggi.map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent(k.split('/')[0])}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.replace('/', ' '))}<small>${arr.length}</small></a>`).join('')}</div></div></div></div></div>
     <div class="panel-card"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">예산별 창업상품</span><h2 class="h2">권리금으로 찾기</h2></div><a class="more" href="${u('/budget/')}">전체 ${ICONS.arrow}</a></div>
@@ -105,7 +112,8 @@ export function homePage(ctx) {
 
   // ---------- 인기 프랜차이즈 ----------
   const brandSec = `<section class="sec sec--tight sec--paper sec--bordered"><div class="wrap"><div class="sec__head" style="margin-bottom:18px"><div><span class="eyebrow">인기 프랜차이즈</span><h2 class="h2">브랜드로 찾는 양도양수</h2></div><a class="more" href="${u('/brand/')}">브랜드 전체 ${ICONS.arrow}</a></div>
-    <div class="brand-wall">${brandsSorted.slice(0, 30).map(b => `<a class="brand-wall__item" href="${u(`/brand/${b.slug}/`)}"><strong>${esc(b.name)}</strong><small>${b.n}건</small></a>`).join('')}</div></div></section>`;
+    <div class="brand-wall brand-wall--logos">${POPULAR_BRANDS.map(name => { const b = brandByName(name); const slug = b ? b.slug : ''; const n = slug && ctx.byBrand[slug] ? ctx.byBrand[slug].length : 0; const href = n ? u(`/brand/${slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}`); const logo = brandLogoImg(slug, name, { h: 36 }); return `<a class="brand-wall__item ${n ? '' : 'is-empty'}" href="${href}" title="${esc(name)} 창업 매물${n ? ` ${n}건` : ''}">${logo || `<strong>${esc(name)}</strong>`}<small>${n ? `${n}건` : '등록 대기'}</small></a>`; }).join('')}</div>
+    <div class="brand-top"><p class="eyebrow" style="margin:26px 0 10px">매물 많은 브랜드 TOP 12</p><ul class="hbars hbars--inline">${brandsSorted.slice(0, 12).map((b, i) => `<li class="hbars__row reveal" style="--d:${i * 30}ms"><span class="hbars__label"><a href="${u(`/brand/${b.slug}/`)}">${esc(b.name)}</a></span><span class="hbars__track"><span class="hbars__bar" style="width:${Math.max(3, Math.round(b.n / brandsSorted[0].n * 100))}%"></span></span><span class="hbars__val">${b.n}건</span></li>`).join('')}</ul></div></div></section>`;
 
   // ---------- 숫자 · 절차 · 담당자 · 글 ----------
   const statsSec = `<section class="sec sec--tight"><div class="wrap"><div class="stats">
@@ -114,14 +122,29 @@ export function homePage(ctx) {
     <div class="stat"><strong data-count="${stats.regions}" data-suffix="곳">${stats.regions}곳</strong><span>시·구 단위 상권</span></div>
     <div class="stat"><strong data-count="${stats.agents}" data-suffix="명">${stats.agents}명</strong><span>담당 창업전문가 · 24시간 상담</span></div>
   </div></div></section>`;
-  const process = `<section class="sec sec--paper sec--bordered"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">진행 절차</span><h2 class="h2">상담부터 인수까지, 담당자가 함께합니다</h2></div></div>
-    <ol class="steps">
-      <li class="step reveal"><h3>매물 선택·전화 연결</h3><p>매물에서 담당자에게 바로 전화하거나 문자 상담을 남깁니다. 어떤 매물을 보셨는지 담당자에게 자동으로 전달됩니다.</p></li>
-      <li class="step reveal"><h3>자료 확인</h3><p>월매출·월지출 근거 자료, 임대 조건(보증금·월세), 시설 상태를 담당자가 설명합니다.</p></li>
-      <li class="step reveal"><h3>현장 답사</h3><p>양도인의 보안 요청에 따라 정확한 위치는 상담 후 안내하며, 담당자가 동행해 상권과 매장을 확인합니다.</p></li>
-      <li class="step reveal"><h3>조건 협의·계약</h3><p>권리금·인수 시점·본사 승인(프랜차이즈) 절차를 조율하고 계약을 진행합니다.</p></li>
-      <li class="step reveal"><h3>인수·오픈</h3><p>교육과 인수인계를 거쳐 영업을 이어갑니다. 인수 후에도 담당자가 운영 문의에 응대합니다.</p></li>
-    </ol></div></section>`;
+  // ---------- 진행 절차: 스크롤 시퀀스 (좌측 고정 단계 표시 + 우측 단계 카드가 스크롤에 따라 활성화) ----------
+  const SEQ = [
+    { t: '매물 선택 · 담당자 연결', who: '창업자 → 담당 창업전문가', d: '매물 페이지의 "담당자 전화 연결" 또는 문자 상담을 누르면 담당자에게 바로 연결됩니다. 어떤 매물을 보고 연락했는지 링크가 담당자 휴대폰으로 자동 전송되어 설명을 처음부터 반복하지 않습니다.', out: ['통화 즉시 연결', '열람 매물 링크 자동 문자', '상담 가능 시간 안내'], icon: 'phone', time: '당일' },
+    { t: '매출·임대 자료 확인', who: '담당자 → 창업자', d: '양도인이 제출한 월매출·월지출 근거(포스 자료, 카드 매출, 배달앱 정산), 임대차 조건(보증금·월세·잔여 기간), 시설·집기 상태를 담당자가 정리해 설명합니다. 점주 인건비 제외 기준도 함께 안내합니다.', out: ['월매출·월지출 근거 자료', '임대차 조건 요약', '총 창업비용 산출'], icon: 'chart', time: '1~3일' },
+    { t: '현장 답사 (담당자 동행)', who: '담당자 + 창업자', d: '양도인의 영업 보안을 위해 정확한 위치는 상담 후 안내하며, 담당자가 동행해 상권·유동 인구·경쟁 매장·매장 상태를 함께 확인합니다. 필요하면 시간대를 달리해 2차 답사를 진행합니다.', out: ['상권·경쟁 매장 체크', '시설 상태 점검', '영업시간대별 유동 확인'], icon: 'pin', time: '1~2주' },
+    { t: '조건 협의 · 계약', who: '양도인 ↔ 창업자 (담당자 조율)', d: '권리금·인수 시점·집기 포함 범위를 조율하고, 프랜차이즈는 본사 양수인 승인(교육 이수·계약 승계)을 함께 진행합니다. 임대인과의 임대차 승계 또는 신규 계약도 담당자가 일정에 맞춰 안내합니다.', out: ['권리금·인수 조건 합의', '본사 승인·교육 일정', '임대차 승계'], icon: 'doc', time: '2~4주' },
+    { t: '인수 · 오픈 후 지원', who: '담당자 → 창업자', d: '인수인계(레시피·거래처·직원·운영 노하우)를 거쳐 영업을 이어갑니다. 오픈 후에도 운영 문의, 추가 매장 확장, 향후 양도 의뢰까지 같은 담당자가 응대합니다.', out: ['인수인계 체크리스트', '오픈 후 운영 문의 응대', '확장·양도 재상담'], icon: 'flag', time: '인수일 이후' },
+  ];
+  const SEQ_ICON = { phone: ICONS.phone, chart: ICONS.chart || ICONS.bolt, pin: ICONS.pin || ICONS.search, doc: ICONS.doc || ICONS.share, flag: ICONS.flag || ICONS.arrow };
+  const process = `<section class="sec sec--paper sec--bordered seq-sec" id="process"><div class="wrap seq" data-seq>
+    <div class="seq__side"><div class="seq__sticky">
+      <span class="eyebrow">진행 절차</span><h2 class="h2">상담부터 인수까지,<br>담당자가 <span class="hl">5단계</span>로 함께합니다</h2>
+      <p class="seq__lead">모든 매물에는 담당 창업전문가가 정해져 있습니다. 전화 한 통으로 시작해 인수 후까지 같은 담당자가 이어서 응대합니다.</p>
+      <ol class="seq__nav"><span class="seq__line"><i data-seq-progress></i></span>${SEQ.map((s, i) => `<li><button type="button" data-seq-go="${i}" aria-current="${i === 0 ? 'step' : 'false'}"><b>0${i + 1}</b><span>${esc(s.t)}</span><small>${esc(s.time)}</small></button></li>`).join('')}</ol>
+      <div class="seq__cta"><a class="btn btn--yellow btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰 남기기</a><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)}</a></div>
+    </div></div>
+    <ol class="seq__steps">${SEQ.map((s, i) => `<li class="seq__step" data-seq-step="${i}" id="step-${i + 1}">
+      <div class="seq__card glass">
+        <div class="seq__num"><b>0${i + 1}</b><span>${esc(s.time)}</span></div>
+        <div class="seq__body"><span class="seq__icon">${SEQ_ICON[s.icon]}</span><p class="seq__who">${esc(s.who)}</p><h3>${esc(s.t)}</h3><p>${esc(s.d)}</p>
+          <ul class="seq__out">${s.out.map(o => `<li>${ICONS.check || '✓'}${esc(o)}</li>`).join('')}</ul></div>
+      </div></li>`).join('')}</ol>
+  </div></section>`;
   const agentSec = `<section class="sec"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">담당 창업전문가</span><h2 class="h2">매물마다 담당자가 정해져 있습니다</h2></div><a class="more" href="${u('/agents/')}">전체 보기 ${ICONS.arrow}</a></div>
     <div class="agents-grid">${agents.filter(a => a.active).slice(0, 4).map(a => agentCard(a, ctx)).join('')}</div></div></section>`;
   const blogSec = posts.length ? `<section class="sec sec--paper sec--bordered"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">창업 인사이트 · 매일 3편</span><h2 class="h2">지역·브랜드·예산으로 읽는 창업</h2></div><a class="more" href="${u('/blog/')}">전체 글 ${ICONS.arrow}</a></div>

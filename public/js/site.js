@@ -96,6 +96,7 @@ function initReveal() {
     $$('.bar__fill[data-w]', e.target).forEach(b => { b.style.width = b.dataset.w + '%'; });
   }), { threshold: .15 });
   $$('.reveal, .stat, .sales__box').forEach(el => io.observe(el));
+  setTimeout(() => $$('.reveal:not(.is-in)').forEach(el => { const r = el.getBoundingClientRect(); if (r.top < innerHeight && r.bottom > 0) el.classList.add('is-in'); }), 1200);
 }
 function countUp(el) {
   const target = Number(el.dataset.count); const suffix = el.dataset.suffix || ''; const t0 = performance.now(); const dur = 1200;
@@ -168,6 +169,49 @@ function initGallery() {
   show(0);
 }
 
+
+// ---------- 진행 절차 스크롤 시퀀스 ----------
+function initSeq() {
+  const root = $('[data-seq]'); if (!root) return;
+  const steps = $$('[data-seq-step]', root); const btns = $$('[data-seq-go]', root); const prog = $('[data-seq-progress]', root);
+  if (!steps.length) return;
+  let active = 0;
+  function setActive(i) {
+    active = i;
+    steps.forEach((s, k) => { s.classList.toggle('is-active', k === i); s.classList.toggle('is-past', k < i); });
+    btns.forEach((b, k) => { b.setAttribute('aria-current', k === i ? 'step' : 'false'); b.parentElement.classList.toggle('is-done', k < i); });
+    if (prog) prog.style.height = `${Math.round(i / Math.max(1, steps.length - 1) * 100)}%`;
+    const nav = btns[i] && btns[i].closest('.seq__nav'); if (nav && nav.scrollWidth > nav.clientWidth) btns[i].scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }
+  // 뷰포트 상단 40% 지점을 지나는 단계를 활성화 (IntersectionObserver: 배경 탭에서도 동작)
+  const pick = () => { const mid = innerHeight * 0.42; let best = 0, bd = Infinity; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs((r.top + Math.min(r.height, 320) / 2) - mid); if (d < bd) { bd = d; best = k; } }); if (best !== active) setActive(best); };
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(() => pick(), { rootMargin: '-30% 0px -50% 0px', threshold: [0, .25, .5, .75, 1] });
+    steps.forEach(s => io.observe(s));
+  }
+  addEventListener('scroll', pick, { passive: true }); addEventListener('resize', pick);
+  btns.forEach((b, k) => b.addEventListener('click', () => { steps[k].scrollIntoView({ behavior: 'smooth', block: 'start' }); setActive(k); }));
+  setActive(0); pick();
+}
+
+// ---------- 히어로 2~9번 배경은 첫 화면 이후 지연 적용 ----------
+function initHeroBg() {
+  const apply = () => $$('.hslide[data-bg]').forEach(s => { s.style.setProperty('--bg', `url('${s.dataset.bg}')`); s.style.setProperty('--bg-m', `url('${s.dataset.bgM || s.dataset.bg}')`); s.removeAttribute('data-bg'); });
+  if (document.readyState === 'complete') setTimeout(apply, 300); else addEventListener('load', () => setTimeout(apply, 300));
+}
+
+// ---------- 지역별 지도 ↔ 시도 탭 동기화 ----------
+function initRegionMap() {
+  const root = $('[data-region-map]'); if (!root) return;
+  const tabs = $$('[data-sido-tab]', root); const chips = $$('.chips--sido .chip', root); const paths = $$('.kmap__sido', root);
+  const go = sido => { const t = tabs.find(x => x.dataset.sidoTab === sido); if (t && t.getAttribute('aria-selected') !== 'true') t.click(); chips.forEach(c => c.classList.toggle('is-on', c.dataset.sido === sido)); paths.forEach(p => p.classList.toggle('is-hover', p.dataset.sido === sido)); };
+  paths.forEach(p => { if (!p.classList.contains('is-has')) return; p.addEventListener('mouseenter', () => go(p.dataset.sido)); p.addEventListener('focus', () => go(p.dataset.sido)); p.closest('a')?.addEventListener('focus', () => go(p.dataset.sido)); });
+  chips.forEach(c => { if (!c.dataset.sido || c.classList.contains('is-dim')) return; c.addEventListener('mouseenter', () => go(c.dataset.sido)); c.addEventListener('focus', () => go(c.dataset.sido)); });
+  // 터치 기기: 첫 탭은 선택, 두 번째 탭은 이동
+  let last = '';
+  root.addEventListener('click', e => { const a = e.target.closest('.kmap a, .chips--sido .chip[data-sido]'); if (!a || !matchMedia('(hover:none)').matches) return; const sido = (a.dataset.sido ?? $('.kmap__sido', a)?.dataset.sido) || ''; if (!sido) return; if (last !== sido) { e.preventDefault(); last = sido; go(sido); } });
+}
+
 // ---------- 최근 본 매물 ----------
 function trackRecent() {
   const d = document.body.dataset; if (!d.listingId) return;
@@ -213,7 +257,7 @@ function initMisc() {
   // 헤더 그림자
   const hdr = $('.hdr'); window.addEventListener('scroll', () => hdr && hdr.classList.toggle('is-scrolled', window.scrollY > 10), { passive: true });
   // 플로팅 CTA 는 상세 스티키바가 있으면 모바일에서 숨김
-  if ($('.sticky-bar') && matchMedia('(max-width:860px)').matches) { const f = $('#floatCta'); if (f) f.style.display = 'none'; }
+  if ($('.sticky-bar')) { document.body.classList.add('has-sticky'); if (matchMedia('(max-width:860px)').matches) { const f = $('#floatCta'); if (f) f.style.display = 'none'; } }
 }
 
-initDrawer(); initModals(); initHero(); initTabs(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();
+initDrawer(); initModals(); initHero(); initHeroBg(); initTabs(); initSeq(); initRegionMap(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();
