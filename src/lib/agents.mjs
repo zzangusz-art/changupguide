@@ -22,7 +22,8 @@ export function agentProfile(a, ctx) {
   const items = (ctx.byAgent && ctx.byAgent[a.id]) || [];
   const brands = top(items, l => l.brand);
   const kinds = top(items, l => l.kind2 ? l.kind2.split('/')[0] : l.kind1);
-  const regions = top(items, l => l.gugun ? l.gugun.replace(/(구|시|군)$/, '') : l.sido, 4);
+  const short = g => { const x = g.replace(/(구|시|군)$/, ''); return x.length >= 2 ? x : g; };
+  const regions = top(items.filter(l => l.gugun), l => short(l.gugun), 4);
   const sidos = top(items, l => l.sido, 3);
   const withProfit = items.filter(l => l.profit);
   const avgProfit = withProfit.length ? Math.round(withProfit.reduce((s, l) => s + l.profit, 0) / withProfit.length) : 0;
