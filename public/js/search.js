@@ -22,7 +22,7 @@ const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.8 2.1z"/></svg>';
 const tones = ['yellow', 'red', 'blue'], rots = [-6, 5, -3];
 function card(e) {
-  const img = e.img ? `<img src="${CU.base}/${e.img.replace('photos/', 'photos/thumb/')}" alt="${esc(e.t)} 매장 사진" loading="lazy" decoding="async" class="card__img" width="480" height="360">` : '<div class="img-empty" aria-hidden="true"></div>';
+  const img = e.img ? `<img src="${CU.base}/${e.img.includes('/thumb/') ? e.img : e.img.replace('photos/', 'photos/thumb/')}" alt="${esc(e.t)} 매장 사진" loading="lazy" decoding="async" class="card__img" width="480" height="360">` : '<div class="img-empty" aria-hidden="true"></div>';
   return `<article class="card" data-id="${e.id}"><a class="card__media" href="${CU.base}/listing/${e.id}/">${img}${e.tags.length ? `<div class="card__stickers">${e.tags.slice(0, 3).map((t, i) => `<span class="sticker sticker--${tones[i % 3]} sm" style="--rot:${rots[i % 3]}deg">${esc(t)}</span>`).join('')}</div>` : ''}${e.b ? `<span class="card__brand">${esc(e.b)}</span>` : ''}</a>
   <div class="card__body"><div class="card__loc">${ICON_PIN}<span>${esc([e.s, e.g].filter(Boolean).join(' '))}</span><span class="dot">·</span><span>${esc(e.k2 || e.k1)}</span></div>
   <h3 class="card__title"><a href="${CU.base}/listing/${e.id}/">${esc(e.t)}</a></h3>
