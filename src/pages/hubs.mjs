@@ -1,5 +1,6 @@
 // 허브 페이지: 매물 검색, 브랜드/지역/테마/예산/업종/키워드 허브, 담당 전문가
 import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, SIDO_FULL, KEYWORD_PAGES, FAQ } from '../data.mjs';
+import { BUILD_ID } from '../lib/html.mjs';
 import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, sticker, starburst, badge, listingCard, skeletonCards, breadcrumb, faqBlock, ctaBand, img, imgPath, jsonld } from '../lib/html.mjs';
 import { fmtWon, fmtMan, fmtNum, phoneTel, GUGUN } from '../lib/text.mjs';
 import { agentCard, agentProfile } from '../lib/agents.mjs';
@@ -110,7 +111,7 @@ export function hubPages(ctx) {
       <div class="grid grid--4" id="results">${skeletonCards(8)}</div><nav class="pager" id="pager" aria-label="페이지"></nav>
       <noscript><div class="grid grid--4">${listings.slice(0, 24).map(l => listingCard(l)).join('')}</div></noscript></section></div>
       <button type="button" class="btn btn--ink filter-fab">${ICONS.menu}필터</button></div>
-      <script type="module" src="${u('/js/search.js')}"></script>`,
+      <script type="module" src="${u('/js/search.js?v=' + BUILD_ID)}"></script>`,
     ld: [ldList('창업 매물 검색', listings, '/listings/')] }) });
 
   // ---- 브랜드 허브 ----
