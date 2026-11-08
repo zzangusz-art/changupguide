@@ -51,7 +51,7 @@ export function sticker(text, { tone = 'yellow', rot = -4, size = '' } = {}) {
   return `<span class="sticker sticker--${tone} ${size}" style="--rot:${rot}deg">${esc(text)}</span>`;
 }
 export function badge(text, tone = 'ink') { return `<span class="badge badge--${tone}">${esc(text)}</span>`; }
-export function starburst(text, tone = 'red', rot = 8) { return `<span class="burst burst--${tone}" style="--rot:${rot}deg"><span>${esc(text)}</span></span>`; }
+export function starburst() { return ''; }
 
 export function img(src, alt, { w, h, cls = '', lazy = true } = {}) {
   if (!src) return `<div class="img-empty ${cls}" aria-hidden="true">${ILLO.shop}</div>`;
@@ -62,7 +62,7 @@ export function img(src, alt, { w, h, cls = '', lazy = true } = {}) {
 // 매물 카드
 export function listingCard(l, { eager = false, size = '' } = {}) {
   const img0 = l.images && l.images[0] ? imgPath(l.images[0], 'thumb') : '';
-  const tags = (l.tags || []).slice(0, 3);
+  const tags = (l.tags || []).slice(0, 2);
   const premium = l.premium ? fmtWon(l.premium) : '협의';
   return `<article class="card ${size}" data-id="${l.id}">
   <a class="card__media" href="${u(`/listing/${l.id}/`)}" aria-label="${esc(l.title)}">
@@ -106,34 +106,40 @@ export function faqBlock(items, { title = '자주 묻는 질문', id = 'faq' } =
 }
 
 export function ctaBand({ title = '원하는 매물이 없다면 창업 의뢰를 남기세요', sub = '지역·업종·예산을 알려주시면 담당 창업전문가가 조건에 맞는 매장을 찾아 연락드립니다.' } = {}) {
-  return `<section class="cta-band pattern-check"><div class="wrap cta-band__in">
+  return `<section class="cta-band"><div class="wrap cta-band__in">
     <div class="cta-band__txt"><p class="eyebrow">24시간 창업상담</p><h2 class="h2">${esc(title)}</h2><p>${esc(sub)}</p></div>
     <div class="cta-band__btns"><a class="btn btn--red btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰하기</a><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)}</a><a class="btn btn--white btn--lg" href="${u('/sell/')}">${ICONS.share}내 매장 양도 의뢰</a></div>
-  </div>${starburst('상담 무료', 'red', -10)}${sticker('무료주차', { tone: 'blue', rot: 6 })}</section>`;
+  </div></section>`;
 }
 
 export function header(active = '') {
-  const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/blog/', '창업 인사이트', 'blog'], ['/agents/', '담당 전문가', 'agents']];
-  return `<header class="hdr glass" id="top">
+  const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/blog/', '창업 인사이트', 'blog'], ['/agents/', '담당 전문가', 'agents'], ['/about/', '회사 소개', 'about']];
+  return `<header class="hdr" id="top">
   <div class="wrap hdr__in">
-    <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈"><span class="logo__mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M6 32 24 8l18 24z" fill="#FFCC00" stroke="#14121F" stroke-width="4" stroke-linejoin="round"/><path d="M14 40h20" stroke="#FF3D2E" stroke-width="6" stroke-linecap="round"/><circle cx="24" cy="26" r="5" fill="#2D4CFF" stroke="#14121F" stroke-width="3"/></svg></span><span class="logo__txt">창업<b>가이드</b></span><span class="logo__sub">구 창업미디어</span></a>
-    <form class="hdr__search" action="${u('/listings/')}" method="get" role="search"><input type="search" name="q" placeholder="예) 인천 메가커피, 강남 카페 1억 이하" aria-label="매물 검색" autocomplete="off" data-suggest><button type="submit" aria-label="검색">${ICONS.search}</button></form>
+    <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈"><span class="logo__mark" aria-hidden="true"><svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#FFCC00"/><path d="M12 33 24 13l12 20z" fill="#111"/><path d="M17 38h14" stroke="#111" stroke-width="4" stroke-linecap="round"/></svg></span><span class="logo__txt">창업<b>가이드</b></span><span class="logo__sub">구 창업미디어</span></a>
     <nav class="hdr__nav" aria-label="주요 메뉴">${nav.map(([h, n, k]) => `<a href="${u(h)}" ${active === k ? 'aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>
-    <div class="hdr__cta"><a class="btn btn--red" href="${u('/inquiry/')}">${ICONS.bolt}문의하기</a><a class="btn btn--ink btn--icon" href="tel:${SITE.phoneTel}" aria-label="대표번호로 전화">${ICONS.phone}</a><button class="btn btn--white btn--icon" type="button" data-drawer-open="menu" aria-label="메뉴 열기">${ICONS.menu}</button></div>
+    <div class="hdr__cta"><a class="btn btn--yellow" href="${u('/inquiry/')}">창업 문의</a><a class="btn btn--ink btn--icon" href="tel:${SITE.phoneTel}" aria-label="대표번호로 전화">${ICONS.phone}</a><button class="btn btn--white btn--icon" type="button" data-drawer-open="menu" aria-label="메뉴 열기">${ICONS.menu}</button></div>
   </div>
 </header>
-<div class="drawer" id="drawer-menu" aria-hidden="true"><div class="drawer__panel glass">
+<aside class="quick" aria-label="빠른 상담">
+  <a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>창업상담</span><b>${esc(SITE.phone.replace('010-', ''))}</b></a>
+  <a href="${u('/inquiry/')}" class="is-yellow">${ICONS.bolt}<span>창업 의뢰</span><b>문의·접수</b></a>
+  <a href="${u('/sell/')}">${ICONS.share}<span>내 매장</span><b>양도 의뢰</b></a>
+  <a href="${u('/listings/')}">${ICONS.search}<span>매물</span><b>검색</b></a>
+</aside>
+<div class="drawer" id="drawer-menu" aria-hidden="true"><div class="drawer__panel">
   <div class="drawer__head"><strong>메뉴</strong><button type="button" data-drawer-close aria-label="닫기">${ICONS.close}</button></div>
-  <form class="drawer__search" action="${u('/listings/')}" method="get"><input type="search" name="q" placeholder="지역 + 브랜드 (예: 인천 메가커피)" aria-label="검색"><button type="submit">${ICONS.search}</button></form>
-  <nav class="drawer__nav">${nav.map(([h, n]) => `<a href="${u(h)}">${esc(n)}${ICONS.arrow}</a>`).join('')}<a href="${u('/inquiry/')}">창업 의뢰${ICONS.arrow}</a><a href="${u('/sell/')}">양도양수 의뢰${ICONS.arrow}</a><a href="${u('/about/')}">회사 소개${ICONS.arrow}</a><a href="${u('/faq/')}">자주 묻는 질문${ICONS.arrow}</a></nav>
+  <form class="drawer__search" action="${u('/listings/')}" method="get"><input type="search" name="q" placeholder="지역 + 브랜드 (예: 인천 메가커피)" aria-label="검색" data-suggest autocomplete="off"><button type="submit" aria-label="검색">${ICONS.search}</button></form>
+  <nav class="drawer__nav">${nav.map(([h, n]) => `<a href="${u(h)}">${esc(n)}${ICONS.arrow}</a>`).join('')}<a href="${u('/inquiry/')}">창업 의뢰${ICONS.arrow}</a><a href="${u('/sell/')}">양도양수 의뢰${ICONS.arrow}</a><a href="${u('/faq/')}">자주 묻는 질문${ICONS.arrow}</a></nav>
   <div class="drawer__cats"><p class="eyebrow">업종별</p>${CATEGORIES.map(c => `<a class="chip" href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a>`).join('')}</div>
   <div class="drawer__cats"><p class="eyebrow">테마별</p>${THEMES.map(t => `<a class="chip" href="${u(`/theme/${t.slug}/`)}">${esc(t.name)}</a>`).join('')}</div>
-  <a class="btn btn--red btn--lg btn--block" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a>
+  <a class="btn btn--yellow btn--lg btn--block" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a>
 </div><button class="drawer__backdrop" type="button" data-drawer-close aria-label="메뉴 닫기"></button></div>`;
 }
 
 export function footer() {
   return `<footer class="ftr">
+  <div class="ftr__legal"><div class="wrap"><a href="${u('/terms/')}">이용약관</a><a href="${u('/privacy/')}">개인정보처리방침</a><a href="${u('/about/')}">회사 소개·오시는 길</a><a href="${u('/faq/')}">자주 묻는 질문</a></div></div>
   <div class="wrap">
     <div class="ftr__top">
       <div class="ftr__brand"><span class="logo__txt">창업<b>가이드</b></span><p>${esc(SITE.slogan)}</p>

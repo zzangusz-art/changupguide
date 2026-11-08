@@ -2,6 +2,7 @@
 import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, SIDO_FULL, KEYWORD_PAGES, FAQ } from '../data.mjs';
 import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, sticker, starburst, badge, listingCard, skeletonCards, breadcrumb, faqBlock, ctaBand, img, imgPath, jsonld } from '../lib/html.mjs';
 import { fmtWon, fmtMan, fmtNum, phoneTel, GUGUN } from '../lib/text.mjs';
+import { agentCard, agentProfile } from '../lib/agents.mjs';
 
 const avg = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Math.round(v.reduce((s, l) => s + l[k], 0) / v.length) : 0; };
 const min = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Math.min(...v.map(l => l[k])) : 0; };
@@ -178,18 +179,32 @@ export function hubPages(ctx) {
 
   // ---- 담당 전문가 ----
   const act = agents.filter(a => a.active);
-  out.push({ path: '/agents/', priority: 0.6, html: layout({ title: `담당 창업전문가 ${act.length}명 | 매물별 담당자 직통 상담 — 창업가이드`, desc: `창업가이드의 담당 창업전문가 ${act.length}명. 매물마다 담당자가 정해져 있어 통화·문자로 바로 상담할 수 있습니다.`, path: '/agents/', active: 'agents',
-    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '담당 전문가', href: '/agents/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">EXPERTS</p><h1 class="h1">담당 <span class="hl">창업전문가</span></h1><p style="font-weight:700;margin:12px 0 20px">매물마다 담당자가 정해져 있습니다. 매물 페이지의 전화 버튼을 누르면 담당자에게 바로 연결되고, 어떤 매물을 보셨는지 담당자에게 자동으로 전달됩니다.</p>
-      <div class="agents-grid">${act.map(a => `<div class="agent-card">${sticker(`매물 ${(byAgent[a.id] || []).length}건`, { tone: 'yellow', rot: 6, size: 'sm' })}<div class="agent-card__pic">${img(imgPath(a.photo), `${a.name} 창업전문가`, { w: 96, h: 96 })}</div><h3><a href="${u(`/agents/${a.id}/`)}">${esc(a.name)}</a></h3><p>${esc(a.role)}${a.kakao ? ` · 카톡 ${esc(a.kakao)}` : ''}</p><a class="btn btn--call btn--sm" href="tel:${esc(phoneTel(a.mobile))}" data-call="" data-agent="${esc(a.id)}" data-phone="${esc(a.mobile)}">${ICONS.phone}${esc(a.mobile)}</a> <button class="btn btn--white btn--sm" type="button" data-sms="" data-agent="${esc(a.id)}" data-agent-name="${esc(a.name)}">${ICONS.sms}문자</button></div>`).join('')}</div></section></div>${ctaBand()}`,
-    ld: [{ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: act.map((a, i) => ({ '@type': 'ListItem', position: i + 1, item: { '@type': 'Person', name: a.name, jobTitle: a.role, telephone: phoneTel(a.mobile), worksFor: { '@id': abs('/#org') }, url: abs(`/agents/${a.id}/`) } })) }] }) });
+  out.push({ path: '/agents/', priority: 0.6, html: layout({ title: `담당 창업전문가 ${act.length}명 | 브랜드·지역별 전문 분야, 매물별 담당자 직통 상담 — 창업가이드`, desc: `창업가이드의 담당 창업전문가 ${act.length}명. 전문 분야(카페·스크린골프·치킨 등)와 담당 지역, 실적을 공개하며 매물마다 담당자가 정해져 있어 통화·문자로 바로 상담할 수 있습니다.`, path: '/agents/', active: 'agents',
+    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '담당 전문가', href: '/agents/' }])}<section class="sec sec--tight" style="padding-top:6px"><span class="eyebrow">담당 창업전문가</span><h1 class="h1">매물마다 <span class="hl">담당 전문가</span>가 정해져 있습니다</h1><p style="font-size:1.02rem;color:var(--ink-2);margin:14px 0 30px;max-width:64ch">전문 분야와 담당 지역은 각 전문가가 실제로 담당하는 매물 데이터로 계산한 것입니다. 매물 페이지의 전화 버튼을 누르면 담당자에게 바로 연결되고, 어떤 매물을 보셨는지 담당자에게 자동으로 전달됩니다.</p>
+      <div class="agents-grid">${act.map(a => agentCard(a, ctx)).join('')}</div></section></div>${ctaBand()}`,
+    ld: [{ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: act.map((a, i) => ({ '@type': 'ListItem', position: i + 1, item: { '@type': 'Person', name: a.name, jobTitle: a.role, telephone: phoneTel(a.mobile), worksFor: { '@id': abs('/#org') }, url: abs(`/agents/${a.id}/`), knowsAbout: agentProfile(a, ctx).specialties } })) }] }) });
   for (const a of act) {
-    const items = (byAgent[a.id] || []);
-    out.push({ path: `/agents/${a.id}/`, priority: 0.5, changefreq: 'weekly', html: layout({ title: `${a.name} 창업전문가 | 담당 매물 ${items.length}건 — 창업가이드`, desc: `창업가이드 ${a.name} ${a.role}. 담당 양도양수 매물 ${items.length}건. 직통 ${a.mobile}${a.kakao ? `, 카카오톡 ${a.kakao}` : ''}.`, path: `/agents/${a.id}/`, active: 'agents',
-      ld: [{ '@context': 'https://schema.org', '@type': 'Person', name: a.name, jobTitle: a.role, telephone: phoneTel(a.mobile), email: a.email || undefined, image: a.photo ? abs('/' + imgPath(a.photo)) : undefined, worksFor: { '@id': abs('/#org') }, url: abs(`/agents/${a.id}/`) }],
+    const p = agentProfile(a, ctx); const items = p.items;
+    const faq = [
+      { q: `${a.name} 창업전문가는 어떤 매물을 주로 담당하나요?`, a: `${p.specialties.length ? p.specialties.join(', ') + ' 등 ' : ''}${items.length}건의 양도양수 매물을 담당하며, ${p.regions.length ? p.regions.map(r => r.k).join('·') + ' 등 ' : ''}${p.sidos.map(s => s.k).join('·')} 지역이 중심입니다.` },
+      { q: '상담은 어떻게 신청하나요?', a: `직통 ${a.mobile}로 전화하시거나, 매물 페이지의 문자 상담 신청을 이용하세요. 대표번호 ${SITE.phone}로도 24시간 접수됩니다.` },
+      { q: '담당자와 현장 답사가 가능한가요?', a: '네. 매출 자료와 임대 조건을 확인한 뒤 담당자가 현장에 동행합니다. 양도인의 영업 보안을 위해 정확한 위치는 상담 후 안내합니다.' },
+    ];
+    out.push({ path: `/agents/${a.id}/`, priority: 0.5, changefreq: 'weekly', html: layout({ title: `${a.name} ${a.role} | ${p.specialties.slice(0, 3).join('·') || '양도양수'} 전문 창업전문가, 담당 매물 ${items.length}건 — 창업가이드`, desc: `창업가이드 ${a.name} ${a.role}. ${p.summary} 직통 ${a.mobile}.`, path: `/agents/${a.id}/`, active: 'agents',
+      ld: [{ '@context': 'https://schema.org', '@type': 'Person', name: a.name, jobTitle: a.role, telephone: phoneTel(a.mobile), email: a.email || undefined, image: a.photo ? abs('/' + imgPath(a.photo)) : undefined, worksFor: { '@id': abs('/#org') }, url: abs(`/agents/${a.id}/`), knowsAbout: p.specialties, areaServed: p.regions.map(r => r.k), description: p.summary }],
       body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '담당 전문가', href: '/agents/' }, { name: a.name, href: `/agents/${a.id}/` }])}
-        <section class="sec sec--tight" style="padding-top:6px"><div class="agent-box" style="max-width:720px">${starburst('직통 상담', 'red', 10)}<div class="agent-box__pic">${img(imgPath(a.photo), `${a.name} 창업전문가`, { w: 72, h: 72 })}</div><div><h1 class="agent-box__name" style="font-size:1.5rem">${esc(a.name)}<small>${esc(a.role)}</small></h1><p class="muted" style="margin:0">담당 매물 ${items.length}건 · ${esc(a.tel || SITE.phone)}${a.kakao ? ` · 카카오톡 ${esc(a.kakao)}` : ''}${a.email ? ` · ${esc(a.email)}` : ''}</p></div><div class="agent-box__btns"><a class="btn btn--red btn--lg" href="tel:${esc(phoneTel(a.mobile))}" data-call="" data-agent="${esc(a.id)}" data-phone="${esc(a.mobile)}">${ICONS.phone}${esc(a.mobile)}</a><button class="btn btn--yellow btn--lg" type="button" data-sms="" data-agent="${esc(a.id)}" data-agent-name="${esc(a.name)}">${ICONS.sms}문자 상담 신청</button></div></div>
-        ${a.intro ? `<div class="prose" style="margin-top:20px;max-width:720px">${a.intro.split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
-        <div class="sec__head" style="margin-top:30px"><h2 class="h2">${esc(a.name)} 담당 매물 ${items.length}건</h2></div><div class="grid grid--4">${items.map(l => listingCard(l)).join('')}</div></section></div>${ctaBand()}` }) });
+        <section class="sec sec--tight" style="padding-top:6px">
+          <div class="agent-hero"><div class="agent-hero__pic">${img(imgPath(a.photo), `${a.name} 창업전문가`, { w: 140, h: 140, lazy: false })}</div>
+            <div><span class="eyebrow">담당 창업전문가</span><h1>${esc(a.name)}<small>${esc(a.role)}${p.career ? ` · ${esc(p.career)}` : ''}</small></h1>
+              <p style="color:var(--ink-2);max-width:62ch;margin:10px 0 0">${esc(p.summary)}</p>
+              <dl class="facts"><div><dt>전문 분야</dt><dd>${esc(p.specialties.join(' · ') || '양도양수 전반')}</dd></div><div><dt>담당 지역</dt><dd>${esc(p.regions.map(r => r.k).join(' · ') || p.sidos.map(s => s.k).join(' · '))}</dd></div><div><dt>담당 매물</dt><dd>${items.length}건${p.avgProfit ? ` · 평균 월수익 ${esc(fmtMan(p.avgProfit))}` : ''}</dd></div></dl>
+              <div class="btns"><a class="btn btn--yellow btn--lg" href="tel:${esc(phoneTel(a.mobile))}" data-call="" data-agent="${esc(a.id)}" data-phone="${esc(a.mobile)}">${ICONS.phone}${esc(a.mobile)}</a><button class="btn btn--lg" type="button" data-sms="" data-agent="${esc(a.id)}" data-agent-name="${esc(a.name)}">${ICONS.sms}문자 상담 신청</button>${a.kakao ? `<button class="btn btn--lg" type="button" data-copy="${esc(a.kakao)}" data-copy-label="카카오톡 ID">${ICONS.kakao}카카오톡 ${esc(a.kakao)}</button>` : ''}</div>
+              <p class="muted" style="font-size:.84rem;margin:12px 0 0">사무실 ${esc(a.tel || SITE.phone)}${a.email ? ` · ${esc(a.email)}` : ''} · ${esc(SITE.address)}</p></div></div>
+          ${p.brands.length || p.regions.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:20px">${p.brands.length ? `<div class="sales__box"><h3>담당 브랜드</h3><div class="chips">${p.brands.map(b => `<a class="chip" href="${u(`/listings/?brandSlug=${encodeURIComponent((items.find(l => l.brand === b.k) || {}).brandSlug || '')}`)}">${esc(b.k)}<small>${b.v}</small></a>`).join('')}</div></div>` : ''}${p.regions.length ? `<div class="sales__box"><h3>담당 지역</h3><div class="chips">${p.regions.map(r => `<span class="chip">${esc(r.k)}<small>${r.v}</small></span>`).join('')}</div></div>` : ''}${p.kinds.length ? `<div class="sales__box"><h3>담당 업종</h3><div class="chips">${p.kinds.map(k => `<span class="chip">${esc(k.k)}<small>${k.v}</small></span>`).join('')}</div></div>` : ''}</div>` : ''}
+          ${p.intro ? `<div class="prose" style="margin-top:20px"><h3>담당자 인사말</h3>${p.intro.split(/\n{2,}/).map(x => `<p>${esc(x).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
+          <div class="sec__head" style="margin-top:44px"><h2 class="h2">${esc(a.name)} 담당 매물 ${items.length}건</h2></div><div class="grid grid--4">${items.map(l => listingCard(l)).join('')}</div>
+          <div style="margin-top:44px">${faqBlock(faq, { title: `${a.name} 전문가에게 자주 묻는 질문` })}</div>
+        </section></div>${ctaBand()}` }) });
   }
   return out;
 }

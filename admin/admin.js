@@ -12,7 +12,7 @@ const TAGS = ['풀오토', '오토운영', '급매', '특급', '역세권', '배
 const STATUS = { active: ['공개', 'g'], held: ['보류', 'y'], done: ['거래완료', 'b'], archived: ['삭제', 'c'] };
 const INQ_STATUS = { new: ['새 문의', 'r'], contacted: ['연락 중', 'y'], done: ['완료', 'g'], spam: ['스팸', 'c'] };
 const photoSrc = p => !p ? '' : p.startsWith('data:') || /^https?:/.test(p) ? p : p.startsWith('upload/') ? 'https://www.changupmedia.com/' + p : `../${p}`;
-const thumbSrc = p => !p ? '' : p.startsWith('data:') || /^https?:/.test(p) ? p : p.startsWith('upload/') ? 'https://www.changupmedia.com/' + p : `../${p.replace('photos/', 'photos/thumb/')}`;
+const thumbSrc = p => !p ? '' : p.startsWith('data:') || /^https?:/.test(p) ? p : p.startsWith('upload/') ? 'https://www.changupmedia.com/' + p : p.includes('/thumb/') ? `../${p}` : `../${p.replace('photos/', 'photos/thumb/')}`;
 
 export function toast(msg, kind = '', ms = 3200) { const el = document.createElement('div'); el.className = `toast ${kind}`; el.textContent = msg; $('#toasts').appendChild(el); setTimeout(() => el.remove(), ms); }
 const fail = e => { console.error(e); toast(e.message || String(e), 'err', 4500); };

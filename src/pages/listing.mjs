@@ -1,6 +1,7 @@
 import { SITE, PRICE_NOTICE, CATEGORIES, THEMES } from '../data.mjs';
 import { layout, esc, u, abs, ICONS, ILLO, sticker, starburst, badge, listingCard, breadcrumb, faqBlock, img, imgPath, jsonld } from '../lib/html.mjs';
 import { fmtWon, fmtMan, fmtNum, phoneTel, makeSeoTitle, makeDesc, fmtDate, budgetOf, themeByName } from '../lib/text.mjs';
+import { agentProfile } from '../lib/agents.mjs';
 
 const catSlug = code => (CATEGORIES.find(c => c.code === code) || {}).slug;
 const SALES_BASIS = { 1: '매출 자료 확인(POS·카드매출 등)', 2: '양도인 진술 기준', 3: '담당자 현장 확인' };
@@ -64,7 +65,7 @@ export function listingPage(l, ctx) {
 
   const agentBox = `<div class="agent-box">${starburst('담당자 직통', 'red', 10)}
     <div class="agent-box__pic">${img(imgPath(agent.photo), `${agent.name} 창업전문가`, { w: 72, h: 72 })}</div>
-    <div><div class="agent-box__name">${esc(agent.name)}<small>${esc(agent.role || '창업전문가')}</small></div><p class="muted" style="margin:0;font-size:.88rem">담당 매물 ${(ctx.byAgent[agent.id] || []).length}건 · 24시간 상담 · 대표번호 ${esc(SITE.phone)}</p></div>
+    <div><div class="agent-box__name">${esc(agent.name)}<small>${esc(agent.role || '창업전문가')}</small></div><p class="muted" style="margin:0">${(() => { const p = agentProfile(agent, ctx); return `${p.specialties.length ? esc(p.specialties.slice(0, 3).join('·')) + ' 전문 · ' : ''}담당 매물 ${p.items.length}건 · <a href="${u(`/agents/${agent.id}/`)}" style="text-decoration:underline">프로필</a>`; })()}</p></div>
     <div class="agent-box__btns">
       <a class="btn btn--red btn--lg" href="tel:${esc(phoneTel(agent.mobile))}" data-call="${esc(l.id)}" data-agent="${esc(agent.id || '')}" data-phone="${esc(agent.mobile)}" data-title="${esc(l.title)}">${ICONS.phone}담당자 전화 연결</a>
       <button class="btn btn--yellow btn--lg" type="button" data-sms="${esc(l.id)}" data-agent="${esc(agent.id || '')}" data-title="${esc(l.title)}">${ICONS.sms}문자 상담 신청</button>
