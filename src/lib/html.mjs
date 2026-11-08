@@ -1,6 +1,6 @@
 // HTML 레이아웃·컴포넌트·SEO 헤더 — 모든 페이지가 이 파일의 layout()을 거칩니다.
 import { SITE, SEO, CATEGORIES, THEMES, BUDGETS, FAQ, SIDO_ORDER, POPULAR_BRANDS } from '../data.mjs';
-import { fmtWon, fmtMan, phoneTel, slugify } from './text.mjs';
+import { fmtWon, fmtMan, phoneTel, slugify, paybackMonths } from './text.mjs';
 
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 export const u = p => (SITE.base + p).replace(/\/{2,}/g, '/');          // 사이트 내부 경로(미리보기 하위 경로 지원)
@@ -72,6 +72,7 @@ export function listingCard(l, { eager = false, size = '' } = {}) {
     ${img(img0, `${esc(l.title)} 매장 사진`, { lazy: !eager, w: 480, h: 360, cls: 'card__img' })}
     ${tags.length ? `<div class="card__stickers">${tags.map((t, i) => sticker(t, { tone: ['yellow', 'red', 'blue'][i % 3], rot: [-6, 5, -3][i % 3], size: 'sm' })).join('')}</div>` : ''}
     ${l.brand ? `<span class="card__brand">${esc(l.brand)}</span>` : ''}
+    ${(m => m != null && m <= 18 ? `<span class="card__payback" title="권리금 ÷ 월수익(세전) 단순 계산, 점주 인건비 제외">회수 약 ${Math.max(1, Math.round(m))}개월</span>` : '')(paybackMonths(l))}
   </a>
   <div class="card__body">
     <div class="card__loc">${ICONS.pin}<span>${esc([l.sido, l.gugun].filter(Boolean).join(' '))}</span><span class="dot">·</span><span>${esc(l.kind2 || l.kind1 || '')}</span></div>
@@ -102,12 +103,17 @@ const __pub = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public'
 const LOGO_CACHE = new Map();
 export function brandLogo(slug) {
   if (!slug) return '';
-  if (!LOGO_CACHE.has(slug)) LOGO_CACHE.set(slug, existsSync(join(__pub, 'img', 'brands', `${slug}.png`)) ? u(`/img/brands/${slug}.png`) : '');
+  if (!LOGO_CACHE.has(slug)) { const ext = ['png', 'svg', 'webp'].find(e => existsSync(join(__pub, 'img', 'brands', `${slug}.${e}`))); LOGO_CACHE.set(slug, ext ? u(`/img/brands/${slug}.${ext}`) : ''); }
   return LOGO_CACHE.get(slug);
 }
 export function brandLogoImg(slug, name, { h = 34, cls = 'brand-logo' } = {}) {
   const src = brandLogo(slug); if (!src) return '';
   return `<img class="${cls}" src="${src}" alt="${esc(name)} 로고" height="${h}" loading="lazy" decoding="async">`;
+}
+
+// 한 줄 롤링 카드 (스와이프 + 자동 이동)
+export function rail(cards, { cols = 4, auto = 5200, cls = '' } = {}) {
+  return `<div class="rail rail--${cols} ${cls}" data-rail ${auto ? `data-auto="${auto}"` : ''}><div class="rail__track" tabindex="0">${cards.map(c => `<div class="rail__item">${c}</div>`).join('')}</div><div class="rail__ctrl"><button type="button" data-rail-prev aria-label="이전">‹</button><span class="rail__bar"><i></i></span><button type="button" data-rail-next aria-label="다음">›</button></div></div>`;
 }
 
 export function skeletonCards(n = 6) {
@@ -132,7 +138,7 @@ export function ctaBand({ title = '원하는 매물이 없다면 창업 의뢰�
 }
 
 export function header(active = '') {
-  const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/blog/', '창업 인사이트', 'blog'], ['/agents/', '담당 전문가', 'agents'], ['/about/', '회사 소개', 'about']];
+  const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/pick/', '성향별', 'pick'], ['/blog/', '창업 인사이트', 'blog'], ['/agents/', '담당 전문가', 'agents'], ['/about/', '회사 소개', 'about']];
   return `<header class="hdr glass" id="top">
   <div class="wrap hdr__in">
     <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈"><img class="logo__img" src="${u('/img/legacy/logo_changupcenter_black.png')}" alt="창업전문포털사이트 No.1 창업미디어" width="172" height="80"></a>
@@ -228,6 +234,7 @@ ${SITE.googleVerification ? `<meta name="google-site-verification" content="${es
 <link rel="stylesheet" href="${u('/css/site.css?v=' + BUILD_ID)}">
 <link rel="stylesheet" href="${u('/css/site-v3.css?v=' + BUILD_ID)}">
 <link rel="stylesheet" href="${u('/css/site-v4.css?v=' + BUILD_ID)}">
+<link rel="stylesheet" href="${u('/css/site-v5.css?v=' + BUILD_ID)}">
 <script>window.CU={base:${JSON.stringify(SITE.base)},api:${JSON.stringify(process.env.API_URL || '')},site:${JSON.stringify(SITE.url)}};</script>
 ${extraHead}
 ${ldAll.map(jsonld).join('\n')}

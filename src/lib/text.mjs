@@ -232,7 +232,7 @@ export function indexEntry(l) {
   return {
     id: l.id, t: l.title, r: l.titleRaw ? cleanRawTitle(l.titleRaw) : '', s: l.sido || '', g: l.gugun || '', b: l.brand || '', bs: l.brandSlug || '',
     k1: l.kind1 || '', k2: l.kind2 || '', th: l.theme || '', sales: l.sales ?? null, profit: l.profit ?? null, premium: l.premium ?? null, cost: l.monthlyCost ?? null,
-    area: l.areaM2 ?? null, img: l.images && l.images[0] ? l.images[0] : '', tags: l.tags || [], a: l.agentName || '', ai: l.agentId || '', ap: l.agentPhone || '', d: l.updatedAt || l.createdAt || '',
+    area: l.areaM2 ?? null, img: l.images && l.images[0] ? l.images[0] : '', ph: l.noPhoto ? 0 : 1, tags: l.tags || [], a: l.agentName || '', ai: l.agentId || '', ap: l.agentPhone || '', d: l.updatedAt || l.createdAt || '',
     x: canon([l.sido, l.gugun, l.brand, l.kind1, l.kind2, l.title, l.titleRaw, l.theme, (l.tags || []).join(' '), l.agentName].join(' ')),
   };
 }
@@ -269,8 +269,10 @@ export function searchIndex(index, q, opts = {}) {
   else if (sort === 'sales') out.sort((a, b) => (b.sales || 0) - (a.sales || 0));
   else if (sort === 'premium-asc') out.sort((a, b) => (a.premium ?? 1e12) - (b.premium ?? 1e12));
   else if (sort === 'premium-desc') out.sort((a, b) => (b.premium || 0) - (a.premium || 0));
-  return { parsed: p, results: out };
+  return { parsed: p, results: [...out.filter(e => e.ph !== 0), ...out.filter(e => e.ph === 0)] };
 }
+
+export function paybackMonths(l) { return l.premium > 0 && l.profit > 0 ? l.premium / l.profit : null; }
 
 export function themeBySlug(slug) { return THEMES.find(t => t.slug === slug); }
 export function themeByName(name) { return THEMES.find(t => t.name === name || t.name.replace('창업', '') === String(name || '').replace('창업', '')); }

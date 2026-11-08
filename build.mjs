@@ -6,6 +6,7 @@ import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, KEYWORD_PAGES } from './
 import { indexEntry, canon, BRAND_LIST, isoDate } from './src/lib/text.mjs';
 import { abs, u } from './src/lib/html.mjs';
 import { homePage } from './src/pages/home.mjs';
+import { photoFirst } from './src/lib/picks.mjs';
 import { listingPage } from './src/pages/listing.mjs';
 import { hubPages } from './src/pages/hubs.mjs';
 import { miscPages } from './src/pages/misc.mjs';
@@ -18,7 +19,10 @@ const listingsAll = read('src/data/listings.json');
 const agents = read('src/data/agents.json');
 const listingsActive = listingsAll.filter(l => l.status === 'active');
 for (const l of listingsActive) if (l.duplicateOf) l.canonicalId = l.duplicateOf;
-const listings = listingsActive.filter(l => !l.canonicalId); // 목록·허브·검색은 대표 매물만
+// 광고·로고·증명사진 이미지는 뒤로 보내고, 실사가 있는 매물을 먼저 노출
+const GRAPHICS = new Set(JSON.parse(fs.readFileSync(new URL('./src/data/photo-graphics.json', import.meta.url), 'utf-8')));
+for (const l of listingsActive) { const im = l.images || []; const real = im.filter(x => !GRAPHICS.has(x)); l.images = [...real, ...im.filter(x => GRAPHICS.has(x))]; l.noPhoto = !real.length; }
+const listings = photoFirst(listingsActive.filter(l => !l.canonicalId)); // 목록·허브·검색은 대표 매물만
 const duplicates = listingsActive.length - listings.length;
 const posts = loadPosts();
 

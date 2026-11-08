@@ -4,9 +4,35 @@ import { BUILD_ID } from '../lib/html.mjs';
 import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, sticker, starburst, badge, listingCard, skeletonCards, breadcrumb, faqBlock, ctaBand, img, imgPath, jsonld } from '../lib/html.mjs';
 import { fmtWon, fmtMan, fmtNum, phoneTel, GUGUN } from '../lib/text.mjs';
 import { agentCard, agentProfile } from '../lib/agents.mjs';
-import { vizPanel, hBars, vBars, donut, rangeBars, premiumHistogram, profitHistogram, dataTable, summaryRows, SUMMARY_COLS, groupBy, avgOf } from '../lib/charts.mjs';
+import { vizPanel, hBars, vBars, donut, rangeBars, premiumHistogram, profitHistogram, dataTable, summaryRows, SUMMARY_COLS, groupBy, avgOf, budgetShort } from '../lib/charts.mjs';
 import { koreaMap } from '../lib/map.mjs';
-import { brandLogoImg } from '../lib/html.mjs';
+import { brandLogoImg, rail } from '../lib/html.mjs';
+import { readFileSync } from 'node:fs';
+import { PICKS, pickItems, themeItems as themeItemsOf, photoFirst, THEME_DETAIL } from '../lib/picks.mjs';
+import { leadForm } from '../lib/lead.mjs';
+import { paybackMonths } from '../lib/text.mjs';
+
+const WIDE = new Set(JSON.parse(readFileSync(new URL('../data/photo-wide.json', import.meta.url), 'utf-8')));
+const coverSeen = new Set(); const coverCache = {};
+function coverFor(key, items) {
+  if (coverCache[key] !== undefined) return coverCache[key];
+  let found = '';
+  for (const l of items) { for (const f of l.images || []) if (WIDE.has(f) && !coverSeen.has(l.brand || f)) { found = f; coverSeen.add(l.brand || f); break; } if (found) break; }
+  if (!found) for (const l of items) { for (const f of l.images || []) if (WIDE.has(f)) { found = f; break; } if (found) break; }
+  if (!found) { const any = items.find(l => !l.noPhoto && l.images && l.images[0]); found = any ? any.images[0] : ''; }
+  return (coverCache[key] = found);
+}
+const topKinds = (items, n = 3) => groupBy(items, l => l.kind2 || l.kind1).slice(0, n).map(([k]) => k);
+const avgPayback = items => { const v = items.map(paybackMonths).filter(m => m != null && m > 0); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0; };
+function richCard({ href, img, alt, name, items, sub, note }) {
+  return `<a class="rcard reveal" href="${href}"><div class="rcard__img">${img ? `<img src="${u('/' + img)}" alt="${esc(alt)}" loading="lazy" decoding="async">` : ''}<h2 class="rcard__name">${esc(name)}</h2><span class="rcard__count">${items.length.toLocaleString('ko-KR')}건</span></div><div class="rcard__body">${sub ? `<p class="rcard__h">${esc(sub)}</p>` : ''}<dl class="rcard__nums"><div><dt>평균 월매출</dt><dd>${avg(items, 'sales') ? esc(fmtMan(avg(items, 'sales'))) : '-'}</dd></div><div><dt>평균 월수익</dt><dd class="hot">${avg(items, 'profit') ? esc(fmtMan(avg(items, 'profit'))) : '-'}</dd></div><div><dt>최저 권리금</dt><dd class="cool">${min(items, 'premium') ? esc(fmtWon(min(items, 'premium'))) : '협의'}</dd></div></dl>${note ? `<p class="rcard__note">${esc(note)}</p>` : ''}<div class="rcard__chips">${topKinds(items).map(k => `<span>${esc(k)}</span>`).join('')}</div><span class="rcard__cta">매물 보기 ${ICONS.arrow}</span></div></a>`;
+}
+function detailBanner(img, kicker, text, fit, check) {
+  return `<div class="tbanner" ${img ? `style="background-image:url('${esc(u('/' + img))}')"` : ''}><div class="tbanner__in"><span>${esc(kicker)}</span><p>${esc(text)}</p></div></div>${fit ? `<div class="tdetail"><div><h3>이런 분께 맞습니다</h3><ul>${fit.map(x => `<li>${ICONS.check}${esc(x)}</li>`).join('')}</ul></div><div><h3>계약 전 꼭 확인할 것</h3><ul>${check.map(x => `<li>${ICONS.check}${esc(x)}</li>`).join('')}</ul></div></div>` : ''}`;
+}
+function railTabs(prefix, tabs, { auto = 0 } = {}) {
+  return `<div class="tabs tabs--pills" data-tabs ${auto ? `data-auto="${auto}"` : ''}><div class="tabs__nav" role="tablist">${tabs.map((t, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="${prefix}-${i}" id="${prefix}-tab-${i}" type="button">${esc(t.name)}<small>${t.count}</small></button>`).join('')}</div><div class="tabs__panels">${tabs.map((t, i) => `<div class="tabs__panel" role="tabpanel" id="${prefix}-${i}" aria-labelledby="${prefix}-tab-${i}" ${i ? 'hidden' : ''}>${t.line ? `<p class="pick-line"><b>${esc(t.line)}</b>${t.rule ? `<span>${esc(t.rule)}</span>` : ''}</p>` : ''}${rail(t.items.slice(0, 10).map(l => listingCard(l)))}</div>`).join('')}</div></div>`;
+}
 
 // ---- 허브별 시각 자료 (표·차트) ----
 const kindOf = l => l.kind2 || l.kind1;
@@ -29,7 +55,7 @@ function regionViz(items, { sido, gugun, bySido, byGugun }) {
   const gus = gugun ? [] : Object.entries(byGugun).filter(([k]) => k.startsWith(sido + '/')).sort((a, b) => b[1].length - a[1].length).map(([k, a]) => [k.split('/')[1], a]);
   const counts = Object.fromEntries(Object.entries(bySido).map(([k, a]) => [k, a.length]));
   return `<div class="viz-grid">
-    ${vizPanel(gugun ? `${sido} ${gugun} 위치` : `${sido} 매물 분포`, `<div class="viz-map">${koreaMap(counts, { active: sido, compact: true, id: `kmap-${encodeURIComponent(sido)}` })}<div>${gugun ? `<p class="viz__lead"><b>${esc(sido)} 전체 ${(bySido[sido] || []).length}건</b> 중 ${esc(gugun)} ${items.length}건</p>` : `<p class="viz__lead"><b>${esc(sido)} ${items.length}건</b> · 전국 ${Object.values(counts).reduce((a, b) => a + b, 0)}건 중 ${Math.round(items.length / Math.max(1, Object.values(counts).reduce((a, b) => a + b, 0)) * 100)}%</p>`}${hBars(gus.length ? gus.slice(0, 8).map(([g, a]) => ({ label: g, value: a.length, href: u(`/region/${encodeURIComponent(sido)}/${encodeURIComponent(g)}/`) })) : brands.slice(0, 8).map(([k, a]) => ({ label: k, value: a.length, href: u(`/listings/?q=${encodeURIComponent((gugun || sido) + ' ' + k)}`) })), { top: 8, labelW: 96 })}</div></div>`, { wide: true, note: vizNote(items) })}
+    ${vizPanel(gugun ? `${sido} ${gugun} 위치` : `${sido} 매물 분포`, `<div class="viz-map">${koreaMap(counts, { active: sido, compact: true, focus: ['서울', '경기', '인천'].includes(sido) ? 'capital' : '', id: `kmap-${encodeURIComponent(sido)}` })}<div>${gugun ? `<p class="viz__lead"><b>${esc(sido)} 전체 ${(bySido[sido] || []).length}건</b> 중 ${esc(gugun)} ${items.length}건</p>` : `<p class="viz__lead"><b>${esc(sido)} ${items.length}건</b> · 전국 ${Object.values(counts).reduce((a, b) => a + b, 0)}건 중 ${Math.round(items.length / Math.max(1, Object.values(counts).reduce((a, b) => a + b, 0)) * 100)}%</p>`}${hBars(gus.length ? gus.slice(0, 8).map(([g, a]) => ({ label: g, value: a.length, href: u(`/region/${encodeURIComponent(sido)}/${encodeURIComponent(g)}/`) })) : brands.slice(0, 8).map(([k, a]) => ({ label: k, value: a.length, href: u(`/listings/?q=${encodeURIComponent((gugun || sido) + ' ' + k)}`) })), { top: 8, labelW: 96 })}</div></div>`, { wide: true, note: vizNote(items) })}
     ${vizPanel('월매출·월수익·권리금 범위', rangeBars(items), { wide: true })}
     ${gus.length ? vizPanel('구·시별 평균 월매출·월수익', dataTable(SUMMARY_COLS, summaryRows(gus.slice(0, 12), g => u(`/region/${encodeURIComponent(sido)}/${encodeURIComponent(g)}/`))), { wide: true, note: '매물 수 많은 순 12곳' }) : ''}
     ${vizPanel('브랜드 TOP 10', hBars(brands.slice(0, 10).map(([k, a]) => ({ label: k, value: a.length, href: u(`/listings/?q=${encodeURIComponent((gugun ? `${sido} ${gugun}` : sido) + ' ' + k)}`) })), { color: '#282864' }))}
@@ -77,7 +103,7 @@ const min = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Mat
 const max = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Math.max(...v.map(l => l[k])) : 0; };
 
 // 허브 공통: 통계 + 직답 문단 + 카드 그리드 + FAQ + CTA
-function hubBody({ h1, lead, bullets, items, crumbs, filterLink, faq, sideChips = '', eyebrow = '', extra = '' }) {
+function hubBody({ h1, lead, bullets, items, crumbs, filterLink, faq, sideChips = '', eyebrow = '', extra = '', banner = '', leadBox = '' }) {
   const stat = items.length ? `<div class="stats" style="margin:18px 0 26px">
     <div class="stat"><strong>${items.length}건</strong><span>등록 매물</span></div>
     <div class="stat"><strong>${avg(items, 'sales') ? esc(fmtMan(avg(items, 'sales'))) : '-'}</strong><span>평균 월매출</span></div>
@@ -85,11 +111,12 @@ function hubBody({ h1, lead, bullets, items, crumbs, filterLink, faq, sideChips 
     <div class="stat"><strong>${min(items, 'premium') ? esc(fmtWon(min(items, 'premium'))) : '-'}<span style="font-size:1rem;color:var(--ink)">부터</span></strong><span>권리금 (보증금 별도)</span></div>
   </div>` : '';
   return `<div class="wrap">${breadcrumb(crumbs)}
-    <section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="h1">${h1}</h1>
+    <section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="h1">${h1}</h1>${banner}
       <div class="summary-box" style="margin-top:16px"><p style="font-weight:700;margin:0 0 8px">${esc(lead)}</p><ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>
       ${sideChips}${stat}${extra}
       <div class="sec__head"><h2 class="h2">매물 ${items.length}건</h2><a class="more" href="${filterLink}">검색에서 조건 추가 ${ICONS.arrow}</a></div>
       ${items.length ? `<div class="grid grid--4">${items.slice(0, 48).map((l, i) => listingCard(l, { eager: i < 4 })).join('')}</div>${items.length > 48 ? `<p style="text-align:center;margin-top:20px"><a class="btn btn--ink btn--lg" href="${filterLink}">나머지 ${items.length - 48}건 검색에서 보기 ${ICONS.arrow}</a></p>` : ''}` : `<div class="results__empty"><h3 class="h3">현재 등록된 매물이 없습니다</h3><p class="muted">창업 의뢰를 남기시면 조건에 맞는 매물이 등록될 때 담당자가 연락드립니다.</p><a class="btn btn--red btn--lg" href="${u('/inquiry/')}">창업 의뢰 남기기</a></div>`}
+      ${leadBox ? `<div class="hub-lead">${leadBox}</div>` : ''}
     </section>
     ${faq ? `<section class="sec sec--tight">${faqBlock(faq)}</section>` : ''}
   </div>${ctaBand()}`;
@@ -119,10 +146,10 @@ export function hubPages(ctx) {
     body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '브랜드별', href: '/brand/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">BRANDS</p><h1 class="h1">브랜드별 <span class="hl">창업 매물</span></h1><p style="font-weight:700;margin:12px 0 20px">운영 중인 가맹점을 권리금으로 인수하는 양도양수 매물을 브랜드별로 모았습니다. 브랜드를 선택하면 평균 월매출·월수익과 권리금 범위, 지역 분포를 바로 확인할 수 있습니다.</p>
       <div class="viz-grid">
         ${vizPanel('매물 많은 브랜드 TOP 20', hBars(brandsSorted.slice(0, 20).map(b => ({ label: b.name, value: b.n, href: u(`/brand/${b.slug}/`) })), { top: 20, labelW: 120 }), { wide: true, note: `${brandsSorted.length}개 브랜드 · 등록 매물 기준` })}
-        ${vizPanel('브랜드별 평균 월매출·월수익·최저 권리금 (TOP 20)', dataTable([{ key: 'logo', label: '', fmt: (v, r) => brandLogoImg(r.slug, r.name, { h: 22, cls: 'brand-logo brand-logo--tbl' }) }, ...SUMMARY_COLS], summaryRows(brandsSorted.slice(0, 20).map(b => [b.name, byBrand[b.slug]]), nme => { const b = brandsSorted.find(x => x.name === nme); return b ? u(`/brand/${b.slug}/`) : ''; }).map(r => ({ ...r, slug: (brandsSorted.find(x => x.name === r.name) || {}).slug }))), { wide: true, note: '수익률 = 평균 월수익 ÷ 평균 월매출' })}
+        ${vizPanel('브랜드별 평균 월매출·월수익·최저 권리금 (TOP 20)', dataTable([{ key: 'logo', label: '', fmt: (v, r) => brandLogoImg(r.slug, r.name, { h: 22, cls: 'brand-logo brand-logo--tbl' }) || '&nbsp;' }, ...SUMMARY_COLS], summaryRows(brandsSorted.slice(0, 20).map(b => [b.name, byBrand[b.slug]]), nme => { const b = brandsSorted.find(x => x.name === nme); return b ? u(`/brand/${b.slug}/`) : ''; }).map(r => ({ ...r, slug: (brandsSorted.find(x => x.name === r.name) || {}).slug }))), { wide: true, note: '수익률 = 평균 월수익 ÷ 평균 월매출' })}
       </div>
       <div class="sec__head" style="margin-top:34px"><h2 class="h2">전체 브랜드 ${brandsSorted.length}개</h2><a class="more" href="${u('/listings/')}">매물 검색 ${ICONS.arrow}</a></div>
-      <div class="grid grid--4 brand-cards">${brandsSorted.map(b => { const arr = byBrand[b.slug]; const logo = brandLogoImg(b.slug, b.name, { h: 30 }); return `<a class="card reveal brand-card" href="${u(`/brand/${b.slug}/`)}"><div class="card__body"><div class="brand-card__head">${logo || `<span class="brand-card__initial">${esc(b.name.slice(0, 1))}</span>`}${badge(`${b.n}건`, 'yellow')}</div><h3 class="card__title" style="min-height:auto;font-size:1.15rem">${esc(b.name)} 창업</h3><dl class="card__nums"><div><dt>평균 월매출</dt><dd>${avg(arr, 'sales') ? esc(fmtMan(avg(arr, 'sales'))) : '-'}</dd></div><div><dt>평균 월수익</dt><dd class="hot">${avg(arr, 'profit') ? esc(fmtMan(avg(arr, 'profit'))) : '-'}</dd></div><div><dt>권리금</dt><dd class="cool">${min(arr, 'premium') ? esc(fmtWon(min(arr, 'premium'))) + '~' : '협의'}</dd></div></dl></div></a>`; }).join('')}</div></section></div>${ctaBand()}` }) });
+      <div class="grid grid--4 brand-cards">${brandsSorted.map(b => { const arr = byBrand[b.slug]; const logo = brandLogoImg(b.slug, b.name, { h: 30 }); return `<a class="card reveal brand-card" href="${u(`/brand/${b.slug}/`)}"><div class="card__body"><div class="brand-card__head">${logo || `<span class="brand-card__initial">${esc(b.name.slice(0, 1))}</span>`}${badge(`${b.n}건`, 'yellow')}</div><h3 class="card__title" style="min-height:auto;font-size:1.15rem">${esc(b.name)} 창업</h3><dl class="card__nums"><div><dt>평균 월매출</dt><dd>${avg(arr, 'sales') ? esc(fmtMan(avg(arr, 'sales'))) : '-'}</dd></div><div><dt>평균 월수익</dt><dd class="hot">${avg(arr, 'profit') ? esc(fmtMan(avg(arr, 'profit'))) : '-'}</dd></div><div><dt>권리금</dt><dd class="cool">${min(arr, 'premium') ? esc(fmtWon(min(arr, 'premium'))) + '~' : '협의'}</dd></div></dl></div></a>`; }).join('')}</div><div class="hub-lead">${leadForm({ title: '찾는 브랜드가 없다면 담당자가 찾아드립니다' })}</div></section></div>${ctaBand()}` }) });
   for (const b of brandsSorted) {
     const arr = byBrand[b.slug]; const regions = Object.entries(arr.reduce((m, l) => { const k = [l.sido, l.gugun].filter(Boolean).join(' '); if (k) m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, c) => c[1] - a[1]);
     const name = b.name;
@@ -137,7 +164,7 @@ export function hubPages(ctx) {
         lead: `${name} 창업은 신규 가맹보다 운영 중인 매장을 권리금으로 인수하는 양도양수가 매출을 검증한 뒤 시작할 수 있어 안전합니다. 창업미디어에 등록된 ${name} 매물 ${arr.length}건의 핵심 숫자입니다.`,
         bullets: [`권리금 범위: ${min(arr, 'premium') ? `${fmtWon(min(arr, 'premium'))} ~ ${fmtWon(max(arr, 'premium'))}` : '담당자 협의'} (임대보증금 별도)`, `월매출: 평균 ${avg(arr, 'sales') ? fmtMan(avg(arr, 'sales')) : '-'} · 월수익(세전): 평균 ${avg(arr, 'profit') ? fmtMan(avg(arr, 'profit')) : '-'}`, `지역: ${regions.slice(0, 8).map(([k, n]) => `${k} ${n}건`).join(', ')}`, `담당: ${[...new Set(arr.map(l => l.agentName))].filter(Boolean).slice(0, 6).join(', ')} 창업전문가`],
         sideChips: `${brandLogoImg(b.slug, name, { h: 44, cls: 'brand-logo brand-logo--hero' })}<div class="chips" style="margin:14px 0">${regions.slice(0, 12).map(([k, n]) => `<a class="chip" href="${u(`/listings/?q=${encodeURIComponent(k.split(' ')[0] + ' ' + name)}`)}">${esc(k)} ${esc(name)}<small>${n}</small></a>`).join('')}</div>`,
-        extra: brandViz(arr, b) }) }) });
+        extra: brandViz(arr, b), leadBox: leadForm({ preset: { brand: name }, title: `${name} 매장, 조건에 맞춰 찾아드립니다` }) }) }) });
   }
 
   // ---- 지역 허브 ----
@@ -163,11 +190,11 @@ export function hubPages(ctx) {
       <div class="viz-grid" style="margin-top:28px">
         ${vizPanel('시도별 평균 월매출·월수익·최저 권리금', dataTable(SUMMARY_COLS, summaryRows(sidosWith.map(sd => [sd, bySido[sd]]), sd => u(`/region/${encodeURIComponent(sd)}/`))), { wide: true, note: vizNote(listings) })}
         ${vizPanel('매물 많은 구·시 TOP 15', hBars(Object.entries(byGugun).sort((a, b) => b[1].length - a[1].length).slice(0, 15).map(([k, a]) => ({ label: k.replace('/', ' '), value: a.length, href: u(`/region/${encodeURIComponent(k.split('/')[0])}/${encodeURIComponent(k.split('/')[1])}/`) })), { top: 15, labelW: 120 }), { wide: true })}
-        ${vizPanel('시도별 권리금 구간 분포', dataTable([{ key: 'name', label: '지역', fmt: (v, r) => `<a href="${r.href}">${esc(v)}</a>` }, ...BUDGETS.map(b => ({ key: b.slug, label: b.name.replace(' 이상 ~ ', '~').replace(' 미만', ''), align: 'right', fmt: v => v ? `${v}건` : '-' }))], sidosWith.map(sd => ({ name: sd, href: u(`/region/${encodeURIComponent(sd)}/`), ...Object.fromEntries(BUDGETS.map(b => [b.slug, bySido[sd].filter(l => l.premium && l.premium >= b.min && l.premium < b.max).length])) }))), { wide: true, note: '권리금(임대보증금 제외) 구간별 매물 수' })}
+        ${vizPanel('시도별 권리금 구간 분포', dataTable([{ key: 'name', label: '지역', fmt: (v, r) => `<a href="${r.href}">${esc(v)}</a>` }, ...BUDGETS.map(b => ({ key: b.slug, label: budgetShort(b), align: 'right', fmt: v => v ? `${v}건` : '-' }))], sidosWith.map(sd => ({ name: sd, href: u(`/region/${encodeURIComponent(sd)}/`), ...Object.fromEntries(BUDGETS.map(b => [b.slug, bySido[sd].filter(l => l.premium && l.premium >= b.min && l.premium < b.max).length])) }))), { wide: true, note: '권리금(임대보증금 제외) 구간별 매물 수' })}
       </div>
       <div class="sec__head" style="margin-top:34px"><h2 class="h2">지역별 최신 매물</h2><a class="more" href="${u('/listings/')}">전체 매물 ${ICONS.arrow}</a></div>
       <div class="grid grid--4">${listings.slice(0, 8).map((l, i) => listingCard(l, { eager: i < 4 })).join('')}</div>
-    </section></div>${ctaBand()}` }) });
+    <div class="hub-lead">${leadForm({ title: '원하는 상권을 알려주시면 매물을 찾아드립니다' })}</div></section></div>${ctaBand()}` }) });
   for (const s of SIDO_ORDER.filter(s => bySido[s])) {
     const arr = bySido[s]; const gus = Object.entries(byGugun).filter(([k]) => k.startsWith(s + '/')).sort((a, b) => b[1].length - a[1].length);
     const brands = Object.entries(arr.reduce((m, l) => { if (l.brand) m[l.brand] = (m[l.brand] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]);
@@ -185,34 +212,25 @@ export function hubPages(ctx) {
           lead: `${name}에서 운영 중인 매장을 권리금으로 인수하는 양도양수 창업 매물입니다. 월매출·월수익·권리금을 숫자로 비교하고 담당자와 바로 통화하세요.`,
           bullets: [`권리금 범위: ${min(items, 'premium') ? `${fmtWon(min(items, 'premium'))} ~ ${fmtWon(max(items, 'premium'))}` : '담당자 협의'} (임대보증금 별도)`, `평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'} · 평균 월수익(세전) ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`, `브랜드: ${bl.slice(0, 8).map(([k, n]) => `${k} ${n}건`).join(', ') || '-'}`, `업종: ${kinds.slice(0, 6).map(([k, n]) => `${k} ${n}건`).join(', ')}`],
           sideChips: isGu ? `<div class="chips" style="margin:14px 0">${bl.slice(0, 10).map(([k, n]) => `<a class="chip" href="${u(`/listings/?q=${encodeURIComponent(name.split(' ').pop() + ' ' + k)}`)}">${esc(name.split(' ').pop())} ${esc(k)}<small>${n}</small></a>`).join('')}</div>` : `<div class="regions" style="margin:14px 0">${gus.map(([k, a2]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent(s)}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.split('/')[1])}<small>${a2.length}</small></a>`).join('')}</div>`,
-          extra: regionViz(items, { sido: s, gugun: isGu ? name.split(' ').pop() : '', bySido, byGugun }) }) }) };
+          extra: regionViz(items, { sido: s, gugun: isGu ? name.split(' ').pop() : '', bySido, byGugun }), leadBox: leadForm({ preset: { sido: ['서울', '경기', '인천'].includes(s) ? s : '기타', gugun: isGu ? name.split(' ').pop() : '' }, title: `${name} 매물을 조건별로 찾아드립니다` }) }) }) };
     };
     out.push(mk(full, `/region/${encodeURIComponent(s)}/`, arr, [{ name: '홈', href: '/' }, { name: '지역별', href: '/region/' }, { name: full, href: `/region/${encodeURIComponent(s)}/` }], false));
     for (const [k, items] of gus) { const g = k.split('/')[1]; out.push(mk(`${s} ${g}`, `/region/${encodeURIComponent(s)}/${encodeURIComponent(g)}/`, items, [{ name: '홈', href: '/' }, { name: '지역별', href: '/region/' }, { name: full, href: `/region/${encodeURIComponent(s)}/` }, { name: g, href: `/region/${encodeURIComponent(s)}/${encodeURIComponent(g)}/` }], true)); }
   }
 
   // ---- 테마 허브 ----
-  const themeItems = t => { let items = byTheme[t.name] || [];
-    if (t.slug === 'profit') items = [...new Set([...items, ...listings.filter(l => l.tags.includes('풀오토') || l.tags.includes('오토운영') || l.tags.includes('투잡'))])];
-    if (t.slug === 'low-capital') items = [...new Set([...items, ...listings.filter(l => l.premium && l.premium < 10000)])];
-    if (t.slug === 'new-town') items = [...new Set([...items, ...listings.filter(l => l.newTown)])];
-    if (t.slug === 'franchise') items = [...new Set([...items, ...listings.filter(l => l.brand)])];
-    if (t.slug === 'high-profit') items = [...new Set([...items, ...listings.filter(l => l.profit && l.profit >= 1500)])];
-    return items; };
+  const themeItems = t => themeItemsOf(t, ctx);
   out.push({ path: '/theme/', priority: 0.7, html: layout({ title: '테마별 창업 | 초보창업·소자본창업·여성창업·시니어창업·고수익·프랜차이즈 매물 — 창업미디어', desc: '창업 방식과 상황에 맞춘 테마별 양도양수 매물. 초보창업, 소자본창업, 여성창업, 시니어창업, 고수익창업, 프랜차이즈창업, 수익형(투자) 창업.', path: '/theme/', active: 'theme',
-    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '테마별', href: '/theme/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">THEMES</p><h1 class="h1">테마별 <span class="hl">창업</span></h1><div class="themes" style="margin-top:20px">${THEMES.map((t, i) => `<a class="theme-card theme-card--${['yellow', 'red', 'blue', 'pink', 'white', 'ink', 'yellow', 'red'][i]}" href="${u(`/theme/${t.slug}/`)}">${sticker(`${(byTheme[t.name] || []).length}건`, { tone: 'white', rot: 6, size: 'sm' })}<h3>${esc(t.name)}</h3><p>${esc(t.h1)}</p></a>`).join('')}</div>
+    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '테마별', href: '/theme/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">THEMES</p><h1 class="h1">테마별 <span class="hl">창업</span></h1><p style="font-weight:700;margin:12px 0 0">창업 상황에 맞춰 매물을 묶었습니다. 테마마다 평균 수익과 많이 나오는 업종, 맞는 사람을 함께 정리했습니다.</p>
+      <div class="rcards">${THEMES.map(t => { const items = themeItems(t); return richCard({ href: u(`/theme/${t.slug}/`), img: coverFor('t-' + t.slug, items), alt: `${t.name} 대표 매장 사진`, name: t.name, items, sub: t.h1, note: `이런 분께: ${THEME_DETAIL[t.slug].fit[0]}` }); }).join('')}</div>
       <div class="viz-grid" style="margin-top:30px">
         ${vizPanel('테마별 비교: 매물 수·평균 월매출·월수익·최저 권리금', dataTable(SUMMARY_COLS, summaryRows(THEMES.map(t => [t.name, themeItems(t)]), nme => { const t = THEMES.find(x => x.name === nme); return t ? u(`/theme/${t.slug}/`) : ''; })), { wide: true, note: vizNote(listings) })}
         ${vizPanel('테마별 매물 수', vBars(THEMES.map(t => ({ label: t.name.replace('창업', ''), value: themeItems(t).length, href: u(`/theme/${t.slug}/`) })), { height: 170 }))}
         ${vizPanel('테마별 평균 월수익', vBars(THEMES.map(t => ({ label: t.name.replace('창업', ''), value: avg(themeItems(t), 'profit') })), { unit: '만', color: '#E0282E', height: 170 }))}
-      </div></section></div>${ctaBand()}` }) });
+      </div>
+      <div class="hub-lead">${leadForm({ title: '어떤 테마가 맞는지 모르겠다면 담당자가 골라드립니다' })}</div></section></div>${ctaBand()}` }) });
   for (const t of THEMES) {
-    let items = byTheme[t.name] || [];
-    if (t.slug === 'profit') items = [...new Set([...items, ...listings.filter(l => l.tags.includes('풀오토') || l.tags.includes('오토운영') || l.tags.includes('투잡'))])];
-    if (t.slug === 'low-capital') items = [...new Set([...items, ...listings.filter(l => l.premium && l.premium < 10000)])];
-    if (t.slug === 'new-town') items = [...new Set([...items, ...listings.filter(l => l.newTown)])];
-    if (t.slug === 'franchise') items = [...new Set([...items, ...listings.filter(l => l.brand)])];
-    if (t.slug === 'high-profit') items = [...new Set([...items, ...listings.filter(l => l.profit && l.profit >= 1500)])].sort((a, b) => (b.profit || 0) - (a.profit || 0));
+    const items = themeItems(t);
     const faq = [
       { q: `${t.kw}에 맞는 업종은 무엇인가요?`, a: `창업미디어 ${t.name} 매물 ${items.length}건 중 ${Object.entries(items.reduce((m, l) => { const k = l.kind2 || l.kind1; if (k) m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, n]) => `${k}(${n}건)`).join(', ')} 순으로 많습니다. ${t.desc}` },
       { q: `${t.kw} 예산은 얼마나 필요한가요?`, a: `등록 매물 기준 권리금은 ${min(items, 'premium') ? `${fmtWon(min(items, 'premium'))}부터` : '협의'}이며 임대보증금이 별도로 필요합니다. 평균 월수익(세전)은 ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '매물별 상이'}입니다.` },
@@ -220,19 +238,25 @@ export function hubPages(ctx) {
     ];
     out.push({ path: `/theme/${t.slug}/`, priority: 0.8, changefreq: 'daily', ld: [ldList(t.name, items, `/theme/${t.slug}/`)], html: layout({ title: `${t.kw} 매물 ${items.length}건 | ${t.h1} — 창업미디어`, desc: `${t.desc} 현재 ${items.length}건, 권리금 ${min(items, 'premium') ? fmtWon(min(items, 'premium')) + '부터' : '협의'}, 평균 월수익 ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}.`, path: `/theme/${t.slug}/`, active: 'theme', keywords: [t.kw, t.name, `${t.kw} 매물`, `${t.kw} 추천`],
       body: hubBody({ eyebrow: t.name, h1: esc(t.h1), crumbs: [{ name: '홈', href: '/' }, { name: '테마별', href: '/theme/' }, { name: t.name, href: `/theme/${t.slug}/` }], filterLink: u(`/listings/?theme=${encodeURIComponent(t.name)}`), items, faq,
-        lead: t.desc, bullets: [`현재 ${t.name} 매물 ${items.length}건`, `권리금 ${min(items, 'premium') ? `${fmtWon(min(items, 'premium'))} ~ ${fmtWon(max(items, 'premium'))}` : '협의'} (임대보증금 별도)`, `평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'} · 평균 월수익(세전) ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`], extra: themeViz(items) }) }) });
+        lead: t.desc, bullets: [`현재 ${t.name} 매물 ${items.length}건`, `권리금 ${min(items, 'premium') ? `${fmtWon(min(items, 'premium'))} ~ ${fmtWon(max(items, 'premium'))}` : '협의'} (임대보증금 별도)`, `평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'} · 평균 월수익(세전) ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`], extra: themeViz(items), banner: detailBanner(coverFor('t-' + t.slug, items), '선정 기준', THEME_DETAIL[t.slug].rule, THEME_DETAIL[t.slug].fit, THEME_DETAIL[t.slug].check), leadBox: leadForm({ preset: { style: t.slug === 'profit' ? '오토·투잡' : '' }, title: `${t.name}, 조건에 맞는 매장을 찾아드립니다` }) }) }) });
   }
 
   // ---- 예산 허브 ----
   out.push({ path: '/budget/', priority: 0.7, html: layout({ title: '예산별 창업 매물 | 권리금 1억 미만부터 6억 이상까지 — 창업미디어', desc: '창업 예산(권리금)별 양도양수 매물. 1억 미만 소자본 창업부터 6억 이상 대형 매장까지 구간별로 월매출·월수익을 비교하세요. 임대보증금 별도.', path: '/budget/', active: 'budget',
-    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '예산별', href: '/budget/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">BUDGET</p><h1 class="h1">예산별 <span class="hl">창업 매물</span></h1><p style="font-weight:700;margin:12px 0">표시 금액은 임대보증금을 제외한 권리금입니다. 총 창업비용은 담당자가 매물별로 안내합니다.</p><div class="themes" style="margin-top:20px">${BUDGETS.map((b, i) => `<a class="theme-card theme-card--${['white', 'yellow', 'red', 'blue', 'pink', 'ink'][i]}" href="${u(`/budget/${b.slug}/`)}">${sticker(`${(byBudget[b.slug] || []).length}건`, { tone: 'white', rot: 6, size: 'sm' })}<h3>권리금 ${esc(b.name)}</h3><p>평균 월수익 ${avg(byBudget[b.slug] || [], 'profit') ? esc(fmtMan(avg(byBudget[b.slug], 'profit'))) : '-'}</p></a>`).join('')}</div>
+    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '예산별', href: '/budget/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">BUDGET</p><h1 class="h1">예산별 <span class="hl">창업 매물</span></h1><p style="font-weight:700;margin:12px 0 0">표시 금액은 임대보증금을 제외한 권리금입니다. 총 창업비용은 담당자가 매물별로 안내합니다.</p>
+      <div class="rcards rcards--3">${BUDGETS.map(b => { const items = photoFirst(byBudget[b.slug] || []); const m = avgPayback(items); return richCard({ href: u(`/budget/${b.slug}/`), img: coverFor('b-' + b.slug, items), alt: `권리금 ${b.name} 대표 매장 사진`, name: budgetShort(b), items, note: m ? `평균 회수 약 ${m}개월 (권리금 ÷ 월수익 단순 계산)` : '' }); }).join('')}</div>
+      <div class="sec__head block-head"><div><span class="eyebrow">예산별 추천</span><h2 class="h2">예산 안에서 <span class="hl">회수가 빠른 매물</span></h2></div></div>
+      ${railTabs('bg', BUDGETS.map(b => { const items = byBudget[b.slug] || []; const sorted = photoFirst(items.filter(l => paybackMonths(l) != null && l.premium >= 500).sort((x, y) => paybackMonths(x) - paybackMonths(y))); return { name: budgetShort(b), count: items.length, line: `권리금 ${b.name} 매물 중 회수 기간이 짧은 순`, rule: '권리금 ÷ 월수익(세전) 단순 계산, 점주 인건비 제외', items: sorted }; }))}
+      <div class="sec__head block-head"><div><span class="eyebrow">성향별 추천</span><h2 class="h2">나에게 맞는 기준으로 <span class="hl">고르기</span></h2></div><a class="more" href="${u('/pick/')}">성향별 전체 ${ICONS.arrow}</a></div>
+      ${railTabs('bp', PICKS.map(p => { const items = pickItems(p, listings); return { name: p.name, count: items.length, line: p.hook, rule: p.rule, items }; }).filter(t => t.items.length))}
+      <div class="hub-lead">${leadForm({ title: '예산만 알려주시면 맞는 매물을 추려드립니다' })}</div>
       <div class="viz-grid" style="margin-top:30px">
         ${vizPanel('권리금 구간별 매물 수', premiumHistogram(listings), { note: vizNote(listings) })}
-        ${vizPanel('구간별 평균 월수익', vBars(BUDGETS.map(b => ({ label: b.name.replace(' 이상 ~ ', '~').replace(' 미만', ''), value: avg(byBudget[b.slug] || [], 'profit'), href: u(`/budget/${b.slug}/`) })), { unit: '만', color: '#E0282E' }))}
+        ${vizPanel('구간별 평균 월수익', vBars(BUDGETS.map(b => ({ label: budgetShort(b), value: avg(byBudget[b.slug] || [], 'profit'), href: u(`/budget/${b.slug}/`) })), { unit: '만', color: '#E0282E' }))}
         ${vizPanel('예산 구간별 비교표', dataTable([...SUMMARY_COLS.slice(0, 5), { key: 'kinds', label: '많은 업종', fmt: v => esc(v) }], summaryRows(BUDGETS.map(b => [b.name, byBudget[b.slug] || []]), nme => { const b = BUDGETS.find(x => x.name === nme); return b ? u(`/budget/${b.slug}/`) : ''; }).map(r => ({ ...r, kinds: groupBy(byBudget[(BUDGETS.find(x => x.name === r.name) || {}).slug] || [], kindOf).slice(0, 3).map(([k, a]) => `${k} ${a.length}`).join(' · ') }))), { wide: true, note: '권리금(임대보증금 제외) 기준' })}
       </div></section></div>${ctaBand()}` }) });
   for (const b of BUDGETS) {
-    const items = (byBudget[b.slug] || []).slice().sort((a, c) => (c.profit || 0) - (a.profit || 0));
+    const items = photoFirst((byBudget[b.slug] || []).slice().sort((a, c) => (c.profit || 0) - (a.profit || 0)));
     const faq = [
       { q: `권리금 ${b.name} 창업 매물은 어떤 업종이 많나요?`, a: `${Object.entries(items.reduce((m, l) => { const k = l.kind2 || l.kind1; if (k) m[k] = (m[k] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k, n]) => `${k}(${n}건)`).join(', ') || '등록 대기'} 순입니다.` },
       { q: '권리금 외에 추가로 드는 비용은?', a: '임대보증금, 첫 달 월세, 프랜차이즈 본사 승인 관련 비용(교육비·양수 수수료 등), 필요 시 시설 보수비가 추가됩니다. 담당자가 매물별 총 창업비용을 정리해 드립니다.' },
@@ -240,7 +264,25 @@ export function hubPages(ctx) {
     ];
     out.push({ path: `/budget/${b.slug}/`, priority: 0.7, changefreq: 'daily', ld: [ldList(`권리금 ${b.name} 창업 매물`, items, `/budget/${b.slug}/`)], html: layout({ title: `권리금 ${b.name} 창업 매물 ${items.length}건 | 예산별 양도양수 — 창업미디어`, desc: `창업 예산 권리금 ${b.name} 구간의 양도양수 매물 ${items.length}건. 평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'}, 평균 월수익 ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}. 임대보증금 별도.`, path: `/budget/${b.slug}/`, active: 'budget', keywords: [`${b.name} 창업`, '소자본 창업', '창업 비용', '권리금'],
       body: hubBody({ eyebrow: '예산별 창업', h1: `권리금 ${esc(b.name)} <span class="hl">창업 매물</span>`, crumbs: [{ name: '홈', href: '/' }, { name: '예산별', href: '/budget/' }, { name: b.name, href: `/budget/${b.slug}/` }], filterLink: u(`/listings/?budget=${b.slug}`), items, faq,
-        lead: `권리금 ${b.name} 예산으로 시작할 수 있는 양도양수 창업 매물입니다. 월수익이 높은 순으로 정렬했습니다. 임대보증금은 별도입니다.`, bullets: [`매물 ${items.length}건 · 평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'} · 평균 월수익(세전) ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`, `브랜드: ${Object.entries(items.reduce((m, l) => { if (l.brand) m[l.brand] = (m[l.brand] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([k, n]) => `${k} ${n}건`).join(', ') || '-'}`], extra: budgetViz(items, b.slug) }) }) });
+        lead: `권리금 ${b.name} 예산으로 시작할 수 있는 양도양수 창업 매물입니다. 월수익이 높은 순으로 정렬했습니다. 임대보증금은 별도입니다.`, bullets: [`매물 ${items.length}건 · 평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'} · 평균 월수익(세전) ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`, `브랜드: ${Object.entries(items.reduce((m, l) => { if (l.brand) m[l.brand] = (m[l.brand] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([k, n]) => `${k} ${n}건`).join(', ') || '-'}`], extra: budgetViz(items, b.slug), banner: detailBanner(coverFor('b-' + b.slug, items), '예산 기준', `권리금 ${b.name} · 임대보증금 별도 · 평균 회수 약 ${avgPayback(items)}개월(권리금 ÷ 월수익 단순 계산)`), leadBox: leadForm({ preset: { budget: b.slug }, title: `권리금 ${b.name}으로 찾는 매장, 담당자가 추려드립니다` }) }) }) });
+  }
+
+  // ---- 성향별 추천 ----
+  const pickData = PICKS.map(p => ({ ...p, items: pickItems(p, listings) })).filter(p => p.items.length);
+  out.push({ path: '/pick/', priority: 0.8, changefreq: 'daily', html: layout({ title: `성향별 창업 매물 | 빠른 회수·소액 고수익·오토·브랜드 안정형 추천 — 창업미디어`, desc: `창업 성향에 맞춘 양도양수 매물. ${pickData.slice(0, 4).map(p => `${p.name} ${p.items.length}건`).join(', ')}. 월수익·권리금 숫자 기준으로 골랐습니다.`, path: '/pick/', active: 'pick', keywords: ['창업 추천', '소자본 고수익 창업', '오토 창업', '투잡 창업', '양도양수 추천'],
+    body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '성향별', href: '/pick/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">BY STYLE</p><h1 class="h1">성향별 <span class="hl">추천 매물</span></h1><p style="font-weight:700;margin:12px 0 0">회수 기간, 수익 규모, 운영 방식처럼 무엇을 먼저 보느냐에 따라 맞는 매장이 달라집니다. 모든 기준은 등록 매물의 숫자로 계산했습니다.</p>
+      <div class="rcards">${pickData.map(p => richCard({ href: u(`/pick/${p.slug}/`), img: coverFor('p-' + p.slug, p.items), alt: `${p.name} 대표 매장 사진`, name: p.name, items: p.items, sub: p.hook, note: `기준: ${p.rule}` })).join('')}</div>
+      <div class="viz-grid" style="margin-top:30px">${vizPanel('성향별 비교: 매물 수·평균 월매출·월수익·최저 권리금', dataTable(SUMMARY_COLS, summaryRows(pickData.map(p => [p.name, p.items]), nme => { const p = pickData.find(x => x.name === nme); return p ? u(`/pick/${p.slug}/`) : ''; })), { wide: true, note: vizNote(listings) })}</div>
+      <div class="hub-lead">${leadForm({ title: '내 성향에 맞는 매장을 담당자가 골라드립니다' })}</div></section></div>${ctaBand()}` }) });
+  for (const p of pickData) {
+    const items = p.items; const path = `/pick/${p.slug}/`;
+    const faq = [
+      { q: `${p.name} 매물은 어떤 기준으로 골랐나요?`, a: `${p.rule}인 매물만 모았습니다. 현재 ${items.length}건이 해당합니다.` },
+      { q: '회수 기간과 월수익은 어떻게 계산하나요?', a: '회수 기간은 권리금을 월수익(세전)으로 나눈 단순 계산이며, 월수익에는 점주 인건비가 포함되어 있지 않습니다. 임대보증금과 세금, 실제 인수 후 매출 변동은 반영되지 않으므로 담당자와 자료를 확인한 뒤 판단하세요.' },
+      { q: `${p.name} 매장은 바로 인수할 수 있나요?`, a: '양도인 일정과 임대차 승계, 프랜차이즈는 본사 승인 절차에 따라 달라집니다. 담당 창업전문가가 매물별 일정을 안내합니다.' },
+    ];
+    out.push({ path, priority: 0.8, changefreq: 'daily', ld: [ldList(`${p.name} 창업 매물`, items, path)], html: layout({ title: `${p.name} 창업 매물 ${items.length}건 | ${p.hook} — 창업미디어`, desc: `${p.desc} ${p.rule} 매물 ${items.length}건, 평균 월수익 ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}.`, path, active: 'pick', keywords: [`${p.name} 창업`, p.hook, '양도양수 추천'],
+      body: hubBody({ eyebrow: '성향별 추천', h1: `${esc(p.name)} <span class="hl">${items.length}건</span>`, crumbs: [{ name: '홈', href: '/' }, { name: '성향별', href: '/pick/' }, { name: p.name, href: path }], filterLink: u('/listings/'), items, faq, lead: p.desc, bullets: [`기준: ${p.rule}`, `평균 월매출 ${avg(items, 'sales') ? fmtMan(avg(items, 'sales')) : '-'} · 평균 월수익(세전) ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`, `권리금 ${min(items, 'premium') ? `${fmtWon(min(items, 'premium'))} ~ ${fmtWon(max(items, 'premium'))}` : '협의'} (임대보증금 별도)`], banner: detailBanner(coverFor('p-' + p.slug, items), p.name, p.hook), extra: themeViz(items), leadBox: leadForm({ title: `${p.name} 매장을 조건에 맞춰 찾아드립니다` }) }) }) });
   }
 
   // ---- 업종 허브 ----
@@ -254,12 +296,12 @@ export function hubPages(ctx) {
     out.push({ path: `/category/${c.slug}/`, priority: 0.8, changefreq: 'daily', ld: [ldList(`${c.name} 창업 매물`, items, `/category/${c.slug}/`)], html: layout({ title: `${c.name} 창업 매물 ${items.length}건 | ${kinds.slice(0, 4).map(k => k[0][1]).join('·')} 양도양수 — 창업미디어`, desc: `${c.name} 업종 양도양수 창업 매물 ${items.length}건. ${kinds.slice(0, 6).map(k => k[0][1]).join(', ')}. 권리금 ${min(items, 'premium') ? fmtWon(min(items, 'premium')) + '부터' : '협의'}, 평균 월수익 ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}.`, path: `/category/${c.slug}/`, active: 'listings', keywords: [`${c.name} 창업`, ...kinds.slice(0, 5).map(k => `${k[0][1]} 창업`)],
       body: hubBody({ eyebrow: '업종별 창업', h1: `${esc(c.name)} <span class="hl">창업 매물</span>`, crumbs: [{ name: '홈', href: '/' }, { name: '매물 검색', href: '/listings/' }, { name: c.name, href: `/category/${c.slug}/` }], filterLink: u(`/listings/?code=${c.code}`), items, faq,
         lead: `${c.name} 업종의 운영 중인 매장을 권리금으로 인수하는 양도양수 매물입니다.`, bullets: [`세부 업종: ${kinds.map(([k, a]) => `${k[1]} ${a.length}건`).join(', ')}`, `권리금 ${min(items, 'premium') ? `${fmtWon(min(items, 'premium'))} ~ ${fmtWon(max(items, 'premium'))}` : '협의'} (보증금 별도) · 평균 월수익 ${avg(items, 'profit') ? fmtMan(avg(items, 'profit')) : '-'}`],
-        sideChips: `<div class="chips" style="margin:14px 0">${kinds.map(([k, a]) => `<a class="chip" href="${u(`/category/${c.slug}/${k[0]}/`)}">${esc(k[1])}<small>${a.length}</small></a>`).join('')}</div>`, extra: categoryViz(items) }) }) });
+        sideChips: `<div class="chips" style="margin:14px 0">${kinds.map(([k, a]) => `<a class="chip" href="${u(`/category/${c.slug}/${k[0]}/`)}">${esc(k[1])}<small>${a.length}</small></a>`).join('')}</div>`, extra: categoryViz(items), leadBox: leadForm({ preset: { category: c.name }, title: `${c.name} 매장을 조건별로 찾아드립니다` }) }) }) });
     for (const [k, items2] of kinds) {
       out.push({ path: `/category/${c.slug}/${k[0]}/`, priority: 0.7, changefreq: 'daily', ld: [ldList(`${k[1]} 창업 매물`, items2, `/category/${c.slug}/${k[0]}/`)], html: layout({ title: `${k[1]} 창업 매물 ${items2.length}건 | ${k[1]} 양도양수 권리금·월매출 — 창업미디어`, desc: `${k[1]} 양도양수 창업 매물 ${items2.length}건. 권리금 ${min(items2, 'premium') ? fmtWon(min(items2, 'premium')) + '부터' : '협의'}, 평균 월매출 ${avg(items2, 'sales') ? fmtMan(avg(items2, 'sales')) : '-'}, 평균 월수익 ${avg(items2, 'profit') ? fmtMan(avg(items2, 'profit')) : '-'}.`, path: `/category/${c.slug}/${k[0]}/`, active: 'listings', keywords: [`${k[1]} 창업`, `${k[1]} 양도양수`, `${k[1]} 창업비용`],
         body: hubBody({ eyebrow: c.name, h1: `${esc(k[1])} <span class="hl">창업 매물</span>`, crumbs: [{ name: '홈', href: '/' }, { name: '매물 검색', href: '/listings/' }, { name: c.name, href: `/category/${c.slug}/` }, { name: k[1], href: `/category/${c.slug}/${k[0]}/` }], filterLink: u(`/listings/?code=${c.code}&kind=${k[0]}`), items: items2,
           faq: [{ q: `${k[1]} 창업 비용은 얼마인가요?`, a: `등록 매물 기준 권리금 ${min(items2, 'premium') ? `${fmtWon(min(items2, 'premium'))}부터 ${fmtWon(max(items2, 'premium'))}까지` : '협의'}이며 임대보증금은 별도입니다. 평균 월수익(세전)은 ${avg(items2, 'profit') ? fmtMan(avg(items2, 'profit')) : '매물별 상이'}입니다.` }, { q: `${k[1]} 매물은 어느 지역에 많나요?`, a: `${Object.entries(items2.reduce((m, l) => { const kk = [l.sido, l.gugun].filter(Boolean).join(' '); if (kk) m[kk] = (m[kk] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]).slice(0, 6).map(([kk, n]) => `${kk}(${n}건)`).join(', ')} 순입니다.` }],
-          lead: `${k[1]} 업종의 양도양수 창업 매물입니다. 월매출·월수익·권리금을 비교하고 담당자와 상담하세요.`, bullets: [`매물 ${items2.length}건 · 평균 월매출 ${avg(items2, 'sales') ? fmtMan(avg(items2, 'sales')) : '-'} · 평균 월수익 ${avg(items2, 'profit') ? fmtMan(avg(items2, 'profit')) : '-'}`, `브랜드: ${Object.entries(items2.reduce((m, l) => { if (l.brand) m[l.brand] = (m[l.brand] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([kk, n]) => `${kk} ${n}건`).join(', ') || '-'}`], extra: categoryViz(items2) }) }) });
+          lead: `${k[1]} 업종의 양도양수 창업 매물입니다. 월매출·월수익·권리금을 비교하고 담당자와 상담하세요.`, bullets: [`매물 ${items2.length}건 · 평균 월매출 ${avg(items2, 'sales') ? fmtMan(avg(items2, 'sales')) : '-'} · 평균 월수익 ${avg(items2, 'profit') ? fmtMan(avg(items2, 'profit')) : '-'}`, `브랜드: ${Object.entries(items2.reduce((m, l) => { if (l.brand) m[l.brand] = (m[l.brand] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([kk, n]) => `${kk} ${n}건`).join(', ') || '-'}`], extra: categoryViz(items2), leadBox: leadForm({ preset: { category: c.name }, title: `${k[1]} 매장을 조건별로 찾아드립니다` }) }) }) });
     }
   }
 
@@ -270,6 +312,7 @@ export function hubPages(ctx) {
     if (k.filter.kind) items = byKind[k.filter.kind] || [];
     if (k.slug === 'items') items = [...listings].filter(l => l.profit).sort((a, b) => (b.profit || 0) - (a.profit || 0));
     if (k.slug === 'transfer') items = [...listings].sort((a, b) => Number(b.id) - Number(a.id));
+    items = photoFirst(items);
     const kinds = Object.entries(items.reduce((m, l) => { const kk = l.kind2 || l.kind1; if (kk) m[kk] = (m[kk] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]);
     const brands = Object.entries(items.reduce((m, l) => { if (l.brand) m[l.brand] = (m[l.brand] || 0) + 1; return m; }, {})).sort((x, y) => y[1] - x[1]);
     const leadMap = {

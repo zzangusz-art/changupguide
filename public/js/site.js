@@ -60,8 +60,8 @@ function initHero() {
   const hero = $('.hero2') || $('.hero'); if (!hero) return;
   const track = $('.hero2__track, .hero__track', hero); const slides = $$('.hslide, .slide', track); if (slides.length < 2) return;
   let i = 0, timer, startX = null;
-  const dots = $('[data-hero-pager], .hero__dots', hero); const counter = $('.hero__counter', hero); const numbered = !!$('[data-hero-pager]', hero);
-  slides.forEach((_, k) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `${k + 1}번 배너`); if (numbered) b.textContent = k + 1; b.addEventListener('click', () => go(k, true)); dots.appendChild(b); });
+  const dots = $('[data-hero-pager], .hero__dots', hero); const counter = $('.hero__counter', hero);
+  slides.forEach((_, k) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `${k + 1}번 배너`); b.addEventListener('click', () => go(k, true)); dots.appendChild(b); });
   function go(k, user) { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; $$('button', dots).forEach((b, n) => n === i ? b.setAttribute('aria-current', 'true') : b.removeAttribute('aria-current')); if (counter) counter.textContent = `${i + 1} / ${slides.length}`; if (user) restart(); }
   function restart() { clearInterval(timer); timer = setInterval(() => go(i + 1), 5600); }
   $('.hero2__arrow--prev, .hero__arrow--prev', hero)?.addEventListener('click', () => go(i - 1, true));
@@ -76,15 +76,81 @@ function initHero() {
 // ---------- 탭 (스켈레톤 전환) ----------
 function initTabs() {
   $$('[data-tabs]').forEach(t => {
-    const tabs = $$(':scope > .tabs__nav > [role=tab]', t); const panels = $$(':scope > .tabs__panels > .tabs__panel', t); const sk = $(':scope > .tabs__panels > .tabs__skeleton', t); let busy = false;
-    tabs.forEach((tab, k) => tab.addEventListener('click', () => {
+    const nav = $(':scope > .tabs__nav', t); const tabs = $$(':scope > .tabs__nav > [role=tab]', t); const panels = $$(':scope > .tabs__panels > .tabs__panel', t); const sk = $(':scope > .tabs__panels > .tabs__skeleton', t); let busy = false; let quiet = false; let stopped = false;
+    tabs.forEach((tab, k) => tab.addEventListener('click', e => {
+      if (e.isTrusted) stopped = true;
       if (busy || tab.getAttribute('aria-selected') === 'true') return; busy = true;
       tabs.forEach(x => x.setAttribute('aria-selected', 'false')); tab.setAttribute('aria-selected', 'true');
       panels.forEach(p => p.hidden = true);
+      if (nav && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: tab.offsetLeft - nav.clientWidth / 2 + tab.offsetWidth / 2, behavior: 'smooth' });
       const show = () => { if (sk) sk.hidden = true; if (panels[k]) panels[k].hidden = false; $$('.reveal', panels[k] || t).forEach(el => el.classList.add('is-in')); busy = false; };
-      if (sk) { sk.hidden = false; setTimeout(show, 260); } else show();
+      if (sk && !quiet) { sk.hidden = false; setTimeout(show, 260); } else show();
     }));
     t.addEventListener('keydown', e => { const idx = tabs.indexOf(document.activeElement); if (idx < 0) return; let n = null; if (e.key === 'ArrowRight') n = (idx + 1) % tabs.length; if (e.key === 'ArrowLeft') n = (idx - 1 + tabs.length) % tabs.length; if (n != null) { tabs[n].focus(); tabs[n].click(); } });
+    const auto = Number(t.dataset.auto || 0);
+    if (auto && tabs.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let hold = false, seen = false;
+      t.addEventListener('mouseenter', () => hold = true); t.addEventListener('mouseleave', () => hold = false); t.addEventListener('focusin', () => hold = true); t.addEventListener('focusout', () => hold = false); t.addEventListener('touchstart', () => hold = true, { passive: true });
+      new IntersectionObserver(es => { seen = es[0].isIntersecting; }, { threshold: .25 }).observe(t);
+      setInterval(() => { if (stopped || hold || !seen || document.hidden) return; const i = tabs.findIndex(x => x.getAttribute('aria-selected') === 'true'); quiet = true; tabs[(i + 1) % tabs.length].click(); quiet = false; }, auto);
+    }
+  });
+}
+
+// ---------- 한 줄 롤링 카드 ----------
+function initRails() {
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $$('[data-rail]').forEach(r => {
+    const t = $('.rail__track', r); const bar = $('.rail__bar i', r); let hold = false, seen = false;
+    const step = () => { const it = t.children[0]; return it ? it.getBoundingClientRect().width + (parseFloat(getComputedStyle(t).columnGap) || 16) : 300; };
+    const move = d => { const max = t.scrollWidth - t.clientWidth; if (max <= 2) return; let x = t.scrollLeft + d * step(); if (d > 0 && t.scrollLeft >= max - 4) x = 0; else if (d < 0 && t.scrollLeft <= 4) x = max; t.scrollTo({ left: x, behavior: still ? 'auto' : 'smooth' }); };
+    const paint = () => { const max = t.scrollWidth - t.clientWidth; const view = t.clientWidth / (t.scrollWidth || 1); if (bar) { bar.style.width = `${Math.round(view * 100)}%`; bar.style.marginLeft = `${max > 0 ? Math.round(t.scrollLeft / t.scrollWidth * 100) : 0}%`; } r.classList.toggle('is-static', max <= 2); };
+    t.addEventListener('scroll', paint, { passive: true }); addEventListener('resize', paint); paint(); new ResizeObserver(paint).observe(t);
+    $('[data-rail-prev]', r)?.addEventListener('click', () => move(-1)); $('[data-rail-next]', r)?.addEventListener('click', () => move(1));
+    r.addEventListener('mouseenter', () => hold = true); r.addEventListener('mouseleave', () => hold = false); r.addEventListener('focusin', () => hold = true); r.addEventListener('focusout', () => hold = false);
+    let tm; t.addEventListener('touchstart', () => { hold = true; clearTimeout(tm); }, { passive: true }); t.addEventListener('touchend', () => { tm = setTimeout(() => hold = false, 6000); }, { passive: true });
+    new IntersectionObserver(es => { seen = es[0].isIntersecting; }, { threshold: .4 }).observe(r);
+    const auto = Number(r.dataset.auto || 0);
+    if (auto && !still) setInterval(() => { if (hold || !seen || document.hidden || r.offsetParent === null) return; move(1); }, auto);
+  });
+}
+
+// ---------- 조건형 리드 폼 ----------
+let LEAD_INDEX = null;
+function initLead() {
+  $$('form[data-lead]').forEach(f => {
+    const root = f.closest('.lead'); const steps = $$('[data-step]', f); const no = $('[data-lead-no]', f); const label = $('[data-lead-label]', f); const bar = $('[data-lead-bar]', f); const prev = $('[data-lead-prev]', f); const next = $('[data-lead-next]', f); const submit = $('[data-lead-submit]', f); const count = $('[data-lead-count]', root); const msg = f.elements.message;
+    f.classList.add('is-js');
+    const presetOn = $$('.lead__opt.is-on', f); let i = 0;
+    const val = n => $$(`.lead__opt.is-on[data-n="${n}"]`, f).map(b => b.dataset.v);
+    function sync() {
+      for (const n of ['budget', 'category', 'area', 'style', 'timing']) f.elements[n].value = val(n).join(', ');
+      const v = (k, t) => t ? `${k}: ${t}` : '';
+      msg.value = [v('권리금', val('budget').join(', ')), v('업종', val('category').join(', ')), v('상권', val('area').join(', ')), v('지역', [f.elements.sido.value, f.elements.gugun.value].filter(Boolean).join(' ')), v('운영', val('style').join(', ')), v('시기', val('timing').join(', ')), v('희망 브랜드', f.elements.brandWish.value), v('유입', document.title.split('|')[0].trim())].filter(Boolean).join(' / ');
+      tally();
+    }
+    function show(k) { i = Math.max(0, Math.min(steps.length - 1, k)); steps.forEach((s, n) => s.classList.toggle('is-on', n === i)); no.textContent = i + 1; label.textContent = steps[i].dataset.label; bar.style.width = `${(i + 1) / steps.length * 100}%`; prev.style.visibility = i ? 'visible' : 'hidden'; next.hidden = i === steps.length - 1; submit.hidden = i !== steps.length - 1; }
+    async function tally() {
+      if (!LEAD_INDEX) { try { LEAD_INDEX = await (await fetch(`${CU.base}/search-index.json`)).json(); } catch { return; } }
+      const b = $('.lead__opt.is-on[data-n="budget"][data-min]', f); const cat = val('category')[0]; const sido = f.elements.sido.value; const areas = val('area').filter(a => ['역세권', '1군상권', '대학가', '몰·마트', '병원', '신도시'].includes(a)); const auto = val('style').includes('오토·투잡');
+      const names = $$('.lead__opt[data-n="category"]', f).map(o => o.dataset.v);
+      const n = LEAD_INDEX.filter(e => (!b || (e.premium != null && e.premium >= +b.dataset.min && e.premium < +b.dataset.max)) && (!cat || cat === names[names.length - 1] || e.k1 === cat) && (!sido || (sido === '기타' ? !['서울', '경기', '인천'].includes(e.s) : e.s === sido)) && (!areas.length || areas.some(a => e.tags.includes(a))) && (!auto || e.tags.some(t => ['풀오토', '오토운영', '투잡'].includes(t)))).length;
+      count.textContent = n.toLocaleString('ko-KR');
+      count.closest('[data-lead-live]').classList.toggle('is-zero', n === 0);
+    }
+    f.addEventListener('click', e => {
+      const o = e.target.closest('.lead__opt'); if (!o) return;
+      const multi = !!o.parentElement.closest('[data-multi]');
+      if (!multi) { $$(`.lead__opt[data-n="${o.dataset.n}"]`, f).forEach(x => { if (x !== o) { x.classList.remove('is-on'); x.setAttribute('aria-pressed', 'false'); } }); }
+      o.classList.toggle('is-on', multi ? undefined : true); o.setAttribute('aria-pressed', o.classList.contains('is-on'));
+      sync();
+      if (!multi && (o.dataset.n === 'budget' || o.dataset.n === 'category')) setTimeout(() => show(i + 1), 180);
+    });
+    f.addEventListener('input', sync);
+    f.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && i < steps.length - 1) { e.preventDefault(); show(i + 1); } });
+    prev.addEventListener('click', () => show(i - 1)); next.addEventListener('click', () => show(i + 1));
+    f.addEventListener('reset', () => setTimeout(() => { $$('.lead__opt', f).forEach(o => { const on = presetOn.includes(o); o.classList.toggle('is-on', on); o.setAttribute('aria-pressed', on); }); sync(); show(0); }));
+    show(0); sync();
   });
 }
 
@@ -260,4 +326,4 @@ function initMisc() {
   if ($('.sticky-bar')) { document.body.classList.add('has-sticky'); if (matchMedia('(max-width:860px)').matches) { const f = $('#floatCta'); if (f) f.style.display = 'none'; } }
 }
 
-initDrawer(); initModals(); initHero(); initHeroBg(); initTabs(); initSeq(); initRegionMap(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();
+initDrawer(); initModals(); initHero(); initHeroBg(); initTabs(); initRails(); initLead(); initSeq(); initRegionMap(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();

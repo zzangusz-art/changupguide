@@ -1,11 +1,13 @@
 // 메인 — 기존 창업미디어 홈 구조(이미지 배너 롤링 → 업종별 베스트 → 테마별 → 카테고리별 인기상품 → 지역·예산 → 인기 프랜차이즈 → 고지)를 현대적으로 재구성
 import { SITE, SEO, CATEGORIES, THEMES, BUDGETS, HERO_SLIDES, POPULAR_BRANDS, FAQ, SIDO_ORDER } from '../data.mjs';
-import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath, brandLogoImg } from '../lib/html.mjs';
+import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath, brandLogoImg, rail } from '../lib/html.mjs';
+import { PICKS, pickItems, themeItems } from '../lib/picks.mjs';
+import { leadForm } from '../lib/lead.mjs';
 import { koreaMap } from '../lib/map.mjs';
 import { agentCard } from '../lib/agents.mjs';
 import { brandByName, fmtMan, fmtWon } from '../lib/text.mjs';
 
-const photoOf = l => l && l.images && l.images[0] && l.images[0].startsWith('photos/') ? imgPath(l.images[0]) : '';
+const photoOf = l => l && !l.noPhoto && l.images && l.images[0] && l.images[0].startsWith('photos/') ? imgPath(l.images[0]) : '';
 
 export function homePage(ctx) {
   const { listings, stats, brandsSorted, bySido, byGugun, byTheme, byCode, byKind, byBudget, posts, agents } = ctx;
@@ -22,12 +24,12 @@ export function homePage(ctx) {
     // 고화질 배경: public/img/hero/{slug}.jpg (1920) + {slug}-m.jpg (모바일 960). 없으면 매장 사진으로 대체
     const heroFile = s.img ? u(`/img/hero/${s.img}.jpg`) : '';
     const heroFileM = s.img ? u(`/img/hero/${s.img}-m.jpg`) : '';
-    const bgUrl = heroFile || (bg ? (/^https?:/.test(bg) ? bg : u('/' + bg)) : '');
+    const bgUrl = s.logo ? '' : heroFile || (bg ? (/^https?:/.test(bg) ? bg : u('/' + bg)) : '');
     const bgStyle = bgUrl ? (i === 0 ? `--bg:url('${esc(bgUrl)}');--bg-m:url('${esc(heroFileM || bgUrl)}')` : '') : '';
     const bgData = bgUrl && i > 0 ? ` data-bg="${esc(bgUrl)}" data-bg-m="${esc(heroFileM || bgUrl)}"` : '';
-    return `<div class="hslide hslide--${s.theme}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${bgStyle}"${bgData}>
-      <div class="hslide__shade"></div>
-      <div class="wrap hslide__in">
+    return `<div class="hslide hslide--${s.theme} ${s.logo ? 'hslide--logo' : ''}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${s.logo ? `--tint:${s.tint}` : bgStyle}"${bgData}>
+      ${s.logo ? '' : '<div class="hslide__shade"></div>'}
+      <div class="wrap hslide__in">${s.logo ? `<div class="hslide__logo"><img src="${u('/img/hero/' + s.logo)}" alt="${esc(s.brand)} 로고" ${i ? 'loading="lazy"' : ''}></div>` : ''}
         <div class="hslide__box glass-dark">
           <span class="hslide__eyebrow">${esc(s.eyebrow)}</span>
           <h2 class="hslide__title">${esc(s.title)}</h2>
@@ -40,7 +42,6 @@ export function homePage(ctx) {
     </div>`;
   }).join('');
   const hero = `<section class="hero2" aria-roledescription="carousel" aria-label="추천 브랜드 창업"><div class="hero2__track">${slides}</div>
-    <button class="hero2__arrow hero2__arrow--prev" type="button" aria-label="이전 배너">${ICONS.arrow}</button><button class="hero2__arrow hero2__arrow--next" type="button" aria-label="다음 배너">${ICONS.arrow}</button>
     <div class="hero2__pager glass" role="tablist" data-hero-pager></div></section>`;
 
   // ---------- 검색 바 ----------
@@ -65,44 +66,49 @@ export function homePage(ctx) {
   const best = `<section class="sec sec--tight"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">업종별</span><h2 class="h2"><span class="hl">업종별</span> 베스트 창업</h2></div><a class="more" href="${u('/listings/')}">전체 매물 ${ICONS.arrow}</a></div>
     <div class="tabs tabs--icons" data-tabs>
       <div class="tabs__nav" role="tablist">${bestTabs.map((t, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="best-${i}" id="best-tab-${i}" type="button">${ILLO[t.icon]}<span>${esc(t.name)}</span><small>${t.items.length}</small></button>`).join('')}</div>
-      <div class="tabs__panels">${bestTabs.map((t, i) => `<div class="tabs__panel" role="tabpanel" id="best-${i}" aria-labelledby="best-tab-${i}" ${i ? 'hidden' : ''}><div class="grid grid--4">${t.items.slice(0, 8).map(l => listingCard(l)).join('')}</div></div>`).join('')}<div class="tabs__skeleton grid grid--4" hidden>${skeletonCards(8)}</div></div>
+      <div class="tabs__panels">${bestTabs.map((t, i) => `<div class="tabs__panel" role="tabpanel" id="best-${i}" aria-labelledby="best-tab-${i}" ${i ? 'hidden' : ''}>${rail(t.items.slice(0, 10).map(l => listingCard(l)))}</div>`).join('')}<div class="tabs__skeleton grid grid--4" hidden>${skeletonCards(4)}</div></div>
     </div></div></section>`;
 
   // ---------- 테마별 창업 (배너 + 탭) ----------
-  const themeTabs = THEMES.filter(t => (byTheme[t.name] || []).length >= 3).slice(0, 6).map(t => ({ ...t, items: byTheme[t.name] }));
+  const themeTabs = THEMES.map(t => ({ ...t, items: themeItems(t, ctx) })).filter(t => t.items.length >= 3);
   const themeCopy = { 초보창업: ['첫 창업이 막막할 때', '운영 매뉴얼이 갖춰진 매장부터, 담당자가 처음부터 끝까지 동행합니다.'], 소자본창업: ['권리금 1억 미만으로 시작', '테이크아웃·배달·소형 매장 중심의 소자본 창업 매물입니다.'], 여성창업: ['혼자서도 운영 가능한 매장', '규칙적인 영업시간과 1인 운영이 가능한 업종을 골랐습니다.'], 고수익창업: ['수익 구조가 확인된 매장', '월매출·월지출·월수익을 항목별로 공개합니다.'], 프랜차이즈창업: ['운영 중인 가맹점 인수', '신규 오픈 비용 없이 매출이 검증된 가맹점으로 시작합니다.'], 시니어창업: ['체력 부담이 적은 업종', '안정 상권과 간편 운영, 본사 교육이 있는 매물입니다.'], 수익형창업: ['상주하지 않아도 돌아가는 매장', '오토·반오토 운영 구조의 투자형 매물입니다.'], 신도시창업: ['입주가 진행 중인 상권', '신도시·택지지구의 성장 상권 매물입니다.'] };
   const themeSec = `<section class="sec sec--paper sec--bordered"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">테마별</span><h2 class="h2">창업미디어 <span class="hl">추천 테마</span></h2></div><a class="more" href="${u('/theme/')}">테마 전체 ${ICONS.arrow}</a></div>
     <div class="tabs tabs--pills" data-tabs>
       <div class="tabs__nav" role="tablist">${themeTabs.map((t, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="theme-${i}" id="theme-tab-${i}" type="button">${esc(t.name)}<small>${t.items.length}</small></button>`).join('')}</div>
       <div class="tabs__panels">${themeTabs.map((t, i) => { const copy = themeCopy[t.name] || [t.h1, t.desc]; const feat = t.items.find(photoOf) || t.items[0]; return `<div class="tabs__panel" role="tabpanel" id="theme-${i}" aria-labelledby="theme-tab-${i}" ${i ? 'hidden' : ''}><div class="theme-row">
         <a class="theme-banner" href="${u(`/theme/${t.slug}/`)}" style="${photoOf(feat) ? `background-image:url('${esc(u('/' + photoOf(feat)))}')` : ''}"><div class="theme-banner__shade"></div><div class="theme-banner__txt"><span class="badge badge--yellow">창업미디어 추천테마</span><strong>${esc(copy[0])}</strong><h3>${esc(t.name)}</h3><p>${esc(copy[1])}</p><span class="theme-banner__cta">창업상품 보러가기 ${ICONS.arrow}</span></div></a>
-        <div class="grid grid--3">${t.items.slice(0, 6).map(l => listingCard(l)).join('')}</div></div></div>`; }).join('')}<div class="tabs__skeleton grid grid--4" hidden>${skeletonCards(8)}</div></div>
+        <div class="theme-row__cards">${rail(t.items.slice(0, 9).map(l => listingCard(l)), { cols: 3 })}</div></div></div>`; }).join('')}<div class="tabs__skeleton grid grid--4" hidden>${skeletonCards(4)}</div></div>
     </div></div></section>`;
 
   // ---------- 카테고리별 인기상품 (좌 패널 + 우 카드 6) ----------
   const catKeywords = { 100: ['#메가커피', '#컴포즈커피', '#파리바게뜨', '#배스킨라빈스', '#롯데리아'], 300: ['#한양화로', '#한솥도시락', '#죽이야기', '#고기전문점', '#디저트/브런치'], 200: ['#교촌치킨', '#BHC치킨', '#치킨전문점', '#BBQ치킨', '#역전할머니맥주'], 500: ['#골프존', '#스터디카페', '#필라테스', '#PC방', '#키즈카페'], 400: ['#올리브영', '#편의점', '#정관장', '#무인매장', '#셀프빨래방'], 600: ['#백소정', '#대형마트', '#백화점', '#영화관', '#대학교'] };
-  const catSecs = CATEGORIES.map((c, idx) => {
-    const items = (byCode[c.code] || []); if (!items.length) return '';
-    const kinds = c.kinds.map(k => [k, (byKind[k[0]] || []).length]).filter(([, n]) => n).slice(0, 7);
-    const feat = items.find(photoOf);
-    const kw = (catKeywords[c.code] || []).map(k => { const name = k.slice(1); const b = brandByName(name); return `<a class="chip" href="${b && !b.generic && ctx.byBrand[b.slug] ? u(`/brand/${b.slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}&code=${c.code}`)}">${esc(k)}</a>`; }).join('');
-    return `<section class="sec sec--tight catsec ${idx % 2 ? 'sec--paper' : ''}"><div class="wrap"><div class="catsec__in">
-      <aside class="catsec__side glass">
-        <span class="eyebrow">카테고리별 인기상품</span><h2 class="h2"><a href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a></h2>
-        <ul class="catsec__kinds">${kinds.map(([k, n]) => `<li><a href="${u(`/category/${c.slug}/${k[0]}/`)}">${esc(k[1])}<small>${n}</small></a></li>`).join('')}</ul>
-        <p class="catsec__label">인기 키워드</p><div class="chips">${kw}</div>
-        ${feat ? `<a class="catsec__banner" href="${u(`/category/${c.slug}/`)}" style="background-image:url('${esc(u('/' + photoOf(feat)))}')"><span>${esc(c.name)} 매물 ${items.length}건 보기 ${ICONS.arrow}</span></a>` : ''}
-      </aside>
-      <div class="grid grid--3">${items.slice(0, 6).map(l => listingCard(l)).join('')}</div>
-    </div></div></section>`;
-  }).join('');
+  const catList = CATEGORIES.filter(c => (byCode[c.code] || []).length);
+  const catSecs = `<section class="sec sec--tight catsec"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">카테고리별</span><h2 class="h2">카테고리별 <span class="hl">인기상품</span></h2></div><a class="more" href="${u('/listings/')}">전체 매물 ${ICONS.arrow}</a></div>
+    <div class="tabs tabs--pills" data-tabs data-auto="8000"><div class="tabs__nav" role="tablist">${catList.map((c, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="cat-${i}" id="cat-tab-${i}" type="button">${esc(c.name)}<small>${byCode[c.code].length}</small></button>`).join('')}</div>
+    <div class="tabs__panels">${catList.map((c, i) => { const items = byCode[c.code];
+      const kinds = c.kinds.map(k => [k, (byKind[k[0]] || []).length]).filter(([, n]) => n).slice(0, 6);
+      const kw = (catKeywords[c.code] || []).slice(0, 5).map(k => { const name = k.slice(1); const b = brandByName(name); return `<a class="chip" href="${b && !b.generic && ctx.byBrand[b.slug] ? u(`/brand/${b.slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}&code=${c.code}`)}">${esc(k)}</a>`; }).join('');
+      return `<div class="tabs__panel" role="tabpanel" id="cat-${i}" aria-labelledby="cat-tab-${i}" ${i ? 'hidden' : ''}><div class="catsec__in">
+        <aside class="catsec__side glass"><h3 class="h2"><a href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a></h3><ul class="catsec__kinds">${kinds.map(([k, n]) => `<li><a href="${u(`/category/${c.slug}/${k[0]}/`)}">${esc(k[1])}<small>${n}</small></a></li>`).join('')}</ul><div class="chips">${kw}</div></aside>
+        <div class="catsec__cards">${rail(items.slice(0, 9).map(l => listingCard(l)), { cols: 3 })}</div></div></div>`; }).join('')}</div></div></div></section>`;
+
+  // ---------- 훅 포인트: 등록 매물 숫자로 계산 ----------
+  const pickData = PICKS.map(p => ({ ...p, items: pickItems(p, listings) })).filter(p => p.items.length);
+  const avgOf = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Math.round(v.reduce((s, l) => s + l[k], 0) / v.length) : 0; };
+  const hooks = `<section class="sec sec--tight hooks-sec"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">지금 등록된 매물 기준</span><h2 class="h2">숫자로 먼저 고르는 <span class="hl">창업 매물</span></h2></div><a class="more" href="${u('/pick/')}">성향별 전체 ${ICONS.arrow}</a></div>
+    ${rail(pickData.map((p, i) => `<a class="hook hook--${['ink', 'yellow', 'white', 'white'][i % 4]}" href="${u(`/pick/${p.slug}/`)}"><span class="hook__tag">${esc(p.name)}</span><strong class="hook__num">${p.items.length.toLocaleString('ko-KR')}<small>건</small></strong><h3>${esc(p.hook)}</h3><p>평균 월수익 ${esc(fmtMan(avgOf(p.items, 'profit')))}</p><span class="hook__cta">매물 보기 ${ICONS.arrow}</span></a>`), { auto: 4200 })}
+  </div></section>`;
+  const picksSec = `<section class="sec sec--paper sec--bordered"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">성향별</span><h2 class="h2">내 창업 성향에 맞는 <span class="hl">추천 매물</span></h2></div><a class="more" href="${u('/pick/')}">전체 보기 ${ICONS.arrow}</a></div>
+    <div class="tabs tabs--pills" data-tabs data-auto="9000"><div class="tabs__nav" role="tablist">${pickData.map((p, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="pk-${i}" id="pk-tab-${i}" type="button">${esc(p.name)}<small>${p.items.length}</small></button>`).join('')}</div>
+    <div class="tabs__panels">${pickData.map((p, i) => `<div class="tabs__panel" role="tabpanel" id="pk-${i}" aria-labelledby="pk-tab-${i}" ${i ? 'hidden' : ''}><p class="pick-line"><b>${esc(p.hook)}</b><span>${esc(p.rule)}</span></p>${rail(p.items.slice(0, 10).map(l => listingCard(l)))}</div>`).join('')}</div></div></div></section>`;
+  const leadSec = `<section class="sec lead-sec"><div class="wrap">${leadForm()}</div></section>`;
 
   // ---------- 지역별 · 예산별 ----------
   const seoulGu = Object.entries(byGugun).filter(([k]) => k.startsWith('서울/')).sort((a, b) => b[1].length - a[1].length).slice(0, 14);
   const gyeonggi = Object.entries(byGugun).filter(([k]) => k.startsWith('경기/') || k.startsWith('인천/')).sort((a, b) => b[1].length - a[1].length).slice(0, 14);
   const regionSec = `<section class="sec"><div class="wrap"><div class="region-budget">
     <div class="panel-card panel-card--map"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">지역별 주요상권</span><h2 class="h2">지역으로 찾기</h2></div><a class="more" href="${u('/region/')}">전체 ${ICONS.arrow}</a></div>
-      <div class="home-map">${koreaMap(Object.fromEntries(Object.entries(bySido).map(([k, a]) => [k, a.length])), { compact: true, id: 'kmap-home' })}<p class="home-map__cap">${SIDO_ORDER.filter(sd => bySido[sd]).map(sd => `<a href="${u(`/region/${encodeURIComponent(sd)}/`)}">${esc(sd)} <b>${bySido[sd].length}</b></a>`).join('')}</p></div>
+      <div class="home-map">${koreaMap(Object.fromEntries(Object.entries(bySido).map(([k, a]) => [k, a.length])), { compact: true, focus: 'capital', id: 'kmap-home' })}<p class="home-map__cap">${SIDO_ORDER.filter(sd => bySido[sd]).map(sd => `<a href="${u(`/region/${encodeURIComponent(sd)}/`)}">${esc(sd)} <b>${bySido[sd].length}</b></a>`).join('')}</p></div>
       <div class="tabs tabs--pills tabs--sm" data-tabs><div class="tabs__nav" role="tablist"><button class="tabs__tab" role="tab" aria-selected="true" aria-controls="rg-0" id="rg-tab-0" type="button">서울</button><button class="tabs__tab" role="tab" aria-selected="false" aria-controls="rg-1" id="rg-tab-1" type="button">경기·인천</button></div>
       <div class="tabs__panels"><div class="tabs__panel" role="tabpanel" id="rg-0"><div class="regions">${seoulGu.map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent('서울')}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.split('/')[1])}<small>${arr.length}</small></a>`).join('')}</div></div><div class="tabs__panel" role="tabpanel" id="rg-1" hidden><div class="regions">${gyeonggi.map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent(k.split('/')[0])}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.replace('/', ' '))}<small>${arr.length}</small></a>`).join('')}</div></div></div></div></div>
     <div class="panel-card"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">예산별 창업상품</span><h2 class="h2">권리금으로 찾기</h2></div><a class="more" href="${u('/budget/')}">전체 ${ICONS.arrow}</a></div>
@@ -112,8 +118,7 @@ export function homePage(ctx) {
 
   // ---------- 인기 프랜차이즈 ----------
   const brandSec = `<section class="sec sec--tight sec--paper sec--bordered"><div class="wrap"><div class="sec__head" style="margin-bottom:18px"><div><span class="eyebrow">인기 프랜차이즈</span><h2 class="h2">브랜드로 찾는 양도양수</h2></div><a class="more" href="${u('/brand/')}">브랜드 전체 ${ICONS.arrow}</a></div>
-    <div class="brand-wall brand-wall--logos">${POPULAR_BRANDS.map(name => { const b = brandByName(name); const slug = b ? b.slug : ''; const n = slug && ctx.byBrand[slug] ? ctx.byBrand[slug].length : 0; const href = n ? u(`/brand/${slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}`); const logo = brandLogoImg(slug, name, { h: 36 }); return `<a class="brand-wall__item ${n ? '' : 'is-empty'}" href="${href}" title="${esc(name)} 창업 매물${n ? ` ${n}건` : ''}">${logo || `<strong>${esc(name)}</strong>`}<small>${n ? `${n}건` : '등록 대기'}</small></a>`; }).join('')}</div>
-    <div class="brand-top"><p class="eyebrow" style="margin:26px 0 10px">매물 많은 브랜드 TOP 12</p><ul class="hbars hbars--inline">${brandsSorted.slice(0, 12).map((b, i) => `<li class="hbars__row reveal" style="--d:${i * 30}ms"><span class="hbars__label"><a href="${u(`/brand/${b.slug}/`)}">${esc(b.name)}</a></span><span class="hbars__track"><span class="hbars__bar" style="width:${Math.max(3, Math.round(b.n / brandsSorted[0].n * 100))}%"></span></span><span class="hbars__val">${b.n}건</span></li>`).join('')}</ul></div></div></section>`;
+    <div class="brand-wall brand-wall--logos">${POPULAR_BRANDS.map(name => { const b = brandByName(name); const slug = b ? b.slug : ''; const n = slug && ctx.byBrand[slug] ? ctx.byBrand[slug].length : 0; const href = n ? u(`/brand/${slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}`); const logo = brandLogoImg(slug, name, { h: 36 }); return `<a class="brand-wall__item ${n ? '' : 'is-empty'}" href="${href}" title="${esc(name)} 창업 매물${n ? ` ${n}건` : ''}">${logo || `<strong>${esc(name)}</strong>`}<small>${n ? `${n}건` : '등록 대기'}</small></a>`; }).join('')}</div></div></section>`;
 
   // ---------- 숫자 · 절차 · 담당자 · 글 ----------
   const statsSec = `<section class="sec sec--tight"><div class="wrap"><div class="stats">
@@ -153,7 +158,7 @@ export function homePage(ctx) {
   <div class="modal" id="modal-notice" aria-hidden="true" role="dialog" aria-labelledby="modal-notice-title"><div class="modal__panel"><button class="modal__close" type="button" data-modal-close aria-label="닫기">${ICONS.close}</button><h3 id="modal-notice-title" class="h3" style="margin-bottom:12px">창업미디어 고지 사항</h3>${SITE.legalNotice.map(p => `<p style="font-size:.92rem;color:var(--ink-2);line-height:1.7">${esc(p)}</p>`).join('')}</div><button class="modal__backdrop" type="button" data-modal-close aria-label="닫기"></button></div>`;
   const recent = `<section class="sec sec--tight"><div class="wrap"><span class="eyebrow">최근 본 매물</span><div class="chips" data-recent></div></div></section>`;
 
-  const body = hero + finder + best + themeSec + catSecs + regionSec + brandSec + statsSec + process + agentSec + blogSec + recent + ctaBand() + `<section class="sec"><div class="wrap">${faqBlock(FAQ)}</div></section>` + noticeSec;
+  const body = hero + finder + hooks + best + themeSec + picksSec + catSecs + leadSec + regionSec + brandSec + statsSec + process + agentSec + blogSec + recent + ctaBand() + `<section class="sec"><div class="wrap">${faqBlock(FAQ)}</div></section>` + noticeSec;
   const ld = [{ '@context': 'https://schema.org', '@type': 'ItemList', name: '최신 창업 매물', itemListElement: latest.map((l, i) => ({ '@type': 'ListItem', position: i + 1, url: abs(`/listing/${l.id}/`), name: l.title })) }];
   return layout({ title: SEO.homeTitle, desc: SEO.homeDesc, path: '/', body, active: 'home', ld, keywords: SEO.keywords, bodyClass: 'is-home' });
 }

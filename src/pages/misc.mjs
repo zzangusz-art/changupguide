@@ -1,5 +1,6 @@
 // 회사 소개, 창업 의뢰, 양도양수 의뢰, FAQ, 개인정보, 약관, 404
 import { SITE, FAQ, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER } from '../data.mjs';
+import { leadForm } from '../lib/lead.mjs';
 import { layout, esc, u, abs, ICONS, ILLO, sticker, starburst, breadcrumb, faqBlock, ctaBand } from '../lib/html.mjs';
 
 export function miscPages(ctx) {
@@ -25,7 +26,7 @@ export function miscPages(ctx) {
 
   out.push({ path: '/inquiry/', priority: 0.8, html: layout({ title: '창업 의뢰 | 지역·브랜드·예산만 알려주세요, 담당 전문가가 매물을 찾아드립니다 — 창업미디어', desc: '원하는 지역·브랜드·예산을 남기면 창업미디어 담당 창업전문가가 조건에 맞는 양도양수 매물을 찾아 연락드립니다. 24시간 접수, 상담 무료.', path: '/inquiry/', active: 'inquiry',
     body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '창업 의뢰', href: '/inquiry/' }])}<div class="form-page">
-      <div class="panel"><p class="eyebrow">창업 의뢰</p><h1 class="h2">어떤 매장을 찾으세요?</h1><p style="font-weight:700;margin:8px 0 18px">지역·브랜드·예산 세 가지만 알려주시면 됩니다. 사이트에 올라오지 않은 매물도 담당자가 함께 찾습니다.</p>${inquiryForm('buy')}</div>
+      <div class="panel"><p class="eyebrow">창업 의뢰</p><h1 class="h2">어떤 매장을 찾으세요?</h1><p style="font-weight:700;margin:8px 0 18px">금액·업종·상권을 차례로 고르면 됩니다. 사이트에 올라오지 않은 매물도 담당자가 함께 찾습니다.</p>${leadForm({ bare: true })}</div>
       <aside><div class="panel" style="position:relative">${starburst('상담 무료', 'red', 8)}<h2 class="h3">접수 후 진행 순서</h2><ul><li>담당 창업전문가 배정 (당일)</li><li>조건에 맞는 매물 3~5건 제안</li><li>매출 자료·임대 조건 확인</li><li>현장 답사 동행</li><li>조건 협의 → 계약 → 인수</li></ul><p style="margin-top:14px"><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a></p></div>
       <div class="panel" style="margin-top:16px;background:#fff"><h2 class="h3">왜 양도양수인가요?</h2><p style="font-weight:500">신규 오픈은 인테리어·설비·가맹비가 모두 새로 들어가고 매출은 예측값입니다. 양도양수는 운영 중인 매장의 실제 월매출을 확인한 뒤 권리금으로 인수하므로, 처음 창업하는 분일수록 리스크가 낮습니다.</p></div></aside>
     </div></div>` }) });

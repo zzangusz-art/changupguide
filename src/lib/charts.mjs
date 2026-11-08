@@ -34,12 +34,12 @@ export function hBars(rows, { unit = '건', max: mx, color = '#111', top = 10, v
 }
 
 /** 세로 막대(히스토그램): rows = [{ label, value, href? }] */
-export function vBars(rows, { unit = '건', height = 160, color = '#111', highlight = -1 } = {}) {
+export function vBars(rows, { unit = '건', height = 170, color = '#111', highlight = -1 } = {}) {
   if (!rows.length || !rows.some(r => r.value)) return '<p class="viz__empty">집계할 매물이 없습니다.</p>';
   const m = Math.max(...rows.map(r => r.value)) || 1;
   return `<div class="vbars" style="--h:${height}px">${rows.map((r, i) => {
-    const h = Math.max(3, Math.round(r.value / m * 100));
-    const inner = `<span class="vbars__val">${n(r.value)}${unit}</span><span class="vbars__col ${i === highlight ? 'is-hl' : ''}" style="height:${h}%;background:${i === highlight ? '#FFCC00' : color}"></span><span class="vbars__label">${esc(r.label)}</span>`;
+    const h = r.value / m;
+    const inner = `<span class="vbars__plot"><span class="vbars__val">${n(r.value)}${unit}</span><span class="vbars__col ${i === highlight ? 'is-hl' : ''}" style="height:calc((100% - 26px) * ${Math.min(1, h).toFixed(3)});background:${i === highlight ? '#FFCC00' : color}"></span></span><span class="vbars__label">${esc(r.label)}</span>`;
     return r.href ? `<a class="vbars__item" href="${r.href}" aria-label="${esc(r.label)} ${n(r.value)}${unit}">${inner}</a>` : `<div class="vbars__item">${inner}</div>`;
   }).join('')}</div>`;
 }
@@ -71,10 +71,12 @@ export function rangeBars(items) {
   }).join('')}</div>`;
 }
 
+export const budgetShort = b => b.max === Infinity ? '6억 이상' : b.min === 0 ? '1억 미만' : `${b.min / 10000}~${b.max / 10000}억`;
+
 /** 권리금 구간 분포 (예산 허브 기준과 동일 구간) */
 export function premiumHistogram(items, { highlight = '', linkBase = '/budget/' } = {}) {
-  const rows = BUDGETS.map(b => ({ label: b.name.replace(' 이상 ~ ', '~').replace(' 미만', ''), value: items.filter(l => l.premium && l.premium >= b.min && l.premium < b.max).length, href: u(`${linkBase}${b.slug}/`) }));
-  const none = items.filter(l => !l.premium).length;
+  const rows = BUDGETS.map(b => ({ label: budgetShort(b), value: items.filter(l => l.premium != null && l.premium >= b.min && l.premium < b.max).length, href: u(`${linkBase}${b.slug}/`) }));
+  const none = items.filter(l => l.premium == null).length;
   return vBars(rows, { highlight: BUDGETS.findIndex(b => b.slug === highlight) }) + (none ? `<p class="viz__foot">권리금 협의 ${none}건은 분포에서 제외</p>` : '');
 }
 
