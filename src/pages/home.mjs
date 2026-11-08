@@ -1,6 +1,6 @@
 // 메인 — 기존 창업미디어 홈 구조(이미지 배너 롤링 → 업종별 베스트 → 테마별 → 카테고리별 인기상품 → 지역·예산 → 인기 프랜차이즈 → 고지)를 현대적으로 재구성
 import { SITE, SEO, CATEGORIES, THEMES, BUDGETS, HERO_SLIDES, POPULAR_BRANDS, FAQ, SIDO_ORDER } from '../data.mjs';
-import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath, brandLogoImg, rail } from '../lib/html.mjs';
+import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath, brandLogoImg, rail, BUILD_ID } from '../lib/html.mjs';
 import { PICKS, pickItems, themeItems } from '../lib/picks.mjs';
 import { leadForm } from '../lib/lead.mjs';
 import { koreaMap } from '../lib/map.mjs';
@@ -21,15 +21,13 @@ export function homePage(ctx) {
     const minPrem = arr.filter(l => l.premium).length ? Math.min(...arr.filter(l => l.premium).map(l => l.premium)) : 0;
     const avgSales = arr.filter(l => l.sales).length ? Math.round(arr.filter(l => l.sales).reduce((x, l) => x + l.sales, 0) / arr.filter(l => l.sales).length) : 0;
     const href = b && arr.length ? u(`/brand/${b.slug}/`) : u(`/listings/?q=${encodeURIComponent(s.brand)}`);
-    // 고화질 배경: public/img/hero/{slug}.jpg (1920) + {slug}-m.jpg (모바일 960). 없으면 매장 사진으로 대체
-    const heroFile = s.img ? u(`/img/hero/${s.img}.jpg`) : '';
-    const heroFileM = s.img ? u(`/img/hero/${s.img}-m.jpg`) : '';
+    // 원본 비율 이미지(public/img/hero/{slug}.jpg)를 자르지 않고 표시, 같은 이미지를 흐리게 깔아 배경으로 사용
+    const heroFile = s.img ? u(`/img/hero/${s.img}.jpg?v=${BUILD_ID}`) : '';
     const bgUrl = s.logo ? '' : heroFile || (bg ? (/^https?:/.test(bg) ? bg : u('/' + bg)) : '');
-    const bgStyle = bgUrl ? (i === 0 ? `--bg:url('${esc(bgUrl)}');--bg-m:url('${esc(heroFileM || bgUrl)}')` : '') : '';
-    const bgData = bgUrl && i > 0 ? ` data-bg="${esc(bgUrl)}" data-bg-m="${esc(heroFileM || bgUrl)}"` : '';
-    return `<div class="hslide hslide--${s.theme} ${s.logo ? 'hslide--logo' : ''}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${s.logo ? `--tint:${s.tint}` : bgStyle}"${bgData}>
-      ${s.logo ? '' : '<div class="hslide__shade"></div>'}
-      <div class="wrap hslide__in">${s.logo ? `<div class="hslide__logo"><img src="${u('/img/hero/' + s.logo)}" alt="${esc(s.brand)} 로고" ${i ? 'loading="lazy"' : ''}></div>` : ''}
+    const bgStyle = bgUrl && i === 0 ? `--bg:url('${esc(bgUrl)}')` : '';
+    const bgData = bgUrl && i > 0 ? ` data-bg="${esc(bgUrl)}"` : '';
+    return `<div class="hslide hslide--${s.theme} ${s.logo ? 'hslide--logo' : 'hslide--photo'}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${s.logo ? `--tint:${s.tint}` : bgStyle}"${bgData}>
+            <div class="wrap hslide__in">${s.logo ? `<div class="hslide__logo"><img src="${u('/img/hero/' + s.logo)}?v=${BUILD_ID}" alt="${esc(s.brand)} 로고"></div>` : bgUrl ? `<div class="hslide__media"><img src="${esc(bgUrl)}" alt="${esc(s.brand)} 대표 이미지" ${s.imgW ? `width="${s.imgW}" height="${s.imgH}"` : ''} ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async"></div>` : ''}
         <div class="hslide__box glass-dark">
           <span class="hslide__eyebrow">${esc(s.eyebrow)}</span>
           <h2 class="hslide__title">${esc(s.title)}</h2>
