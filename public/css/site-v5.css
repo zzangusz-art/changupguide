@@ -241,3 +241,51 @@
   .hslide__logo{flex:none;width:100%;max-width:none;padding:18px}
   .hslide__logo img{max-width:min(72%,260px)}
 }
+
+/* 타이포 축소: 기준 15px, 제목·숫자는 크기와 굵기를 낮춰 차분하게 */
+html{font-size:15px}
+h1,h2,h3,h4{letter-spacing:-.015em}
+.h1{font-size:clamp(1.5rem,2.5vw,2.05rem);font-weight:700;line-height:1.28}
+.h2{font-size:clamp(1.22rem,1.85vw,1.55rem);font-weight:700;letter-spacing:-.015em}
+.h3{font-size:clamp(1.02rem,1.3vw,1.14rem)}
+.hslide__title{font-size:clamp(1.55rem,2.5vw,2.25rem);font-weight:700;line-height:1.25;letter-spacing:-.015em;text-shadow:none;margin-bottom:10px}
+.hslide__sub{font-size:1rem;line-height:1.65}
+.hslide__tags{font-size:.88rem}
+.hslide__facts dd{font-size:1rem}
+.stat strong{font-size:clamp(1.3rem,1.9vw,1.6rem);font-weight:700;letter-spacing:-.02em}
+.stat span{font-size:.88rem}
+.hook__num{font-size:2.05rem;font-weight:700;letter-spacing:-.02em}
+.hook__num small{font-size:1rem;font-weight:600}
+.hook h3{font-size:1.02rem;font-weight:700}
+.hook{min-height:210px}
+.seq__num b{font-size:1.75rem;font-weight:700;letter-spacing:-.02em}
+.seq__body h3{font-size:1.14rem;font-weight:700}
+.rcard__name{font-size:1.28rem;font-weight:700;letter-spacing:-.015em}
+.rcard__h{font-size:1rem}
+.rcard__nums dd{font-size:1.04rem;font-weight:700}
+.rcard__count{font-size:.92rem;font-weight:700}
+.tbanner__in p{font-size:1.1rem;font-weight:700}
+.theme-banner__txt h3{font-size:1.5rem;font-weight:700}
+.lead__live strong{font-size:1.75rem;font-weight:700;letter-spacing:-.02em}
+.lead__step legend{font-size:1.1rem;font-weight:700}
+.lead__opt{font-size:.96rem;font-weight:600}
+.card__title{font-size:1rem;font-weight:600}
+.card__nums dd{font-size:1.02rem;font-weight:700}
+.pick-line b{font-size:1.05rem;font-weight:700}
+.viz__title{font-size:1.05rem;font-weight:700}
+.d-title{font-size:clamp(1.25rem,1.9vw,1.55rem);font-weight:700}
+.keynum dd{font-size:clamp(1rem,1.4vw,1.2rem);font-weight:700}
+.results__head h1{font-size:1.25rem;font-weight:700}
+.article__head h1{font-size:clamp(1.35rem,2.3vw,1.8rem);font-weight:700}
+.agent-hero h1{font-size:clamp(1.3rem,2vw,1.65rem);font-weight:700}
+.agent-card h3,.agent-box__name{font-size:1.08rem;font-weight:700}
+.step::before{font-size:1.2rem;font-weight:700}
+/* 작은 글자는 기준 축소 영향 없이 유지 */
+.quick a,.quick button{font-size:.7rem}
+.quick b{font-size:.79rem}
+.quick b.is-num{font-size:.75rem}
+.mbar a,.mbar button{font-size:.75rem}
+.card__nums dt,.rcard__nums dt{font-size:.84rem}
+@media (max-width:1180px){.quick a,.quick button{font-size:.62rem}.quick b{font-size:.68rem}.quick b.is-num{font-size:.64rem}}
+@media (max-width:860px){.card__title{font-size:.96rem}.card__nums dd{font-size:.96rem}.card__nums dt{font-size:.8rem}input,select,textarea{font-size:16px}}
+@media (max-width:860px){input,select,textarea{font-size:16px!important}}
