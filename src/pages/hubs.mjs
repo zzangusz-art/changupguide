@@ -14,7 +14,7 @@ import { paybackMonths } from '../lib/text.mjs';
 
 const WIDE = new Set(JSON.parse(readFileSync(new URL('../data/photo-wide.json', import.meta.url), 'utf-8')));
 const coverSeen = new Set(); const coverCache = {};
-function coverFor(key, items) {
+export function coverFor(key, items) {
   if (coverCache[key] !== undefined) return coverCache[key];
   let found = '';
   for (const l of items) { for (const f of l.images || []) if (WIDE.has(f) && !coverSeen.has(l.brand || f)) { found = f; coverSeen.add(l.brand || f); break; } if (found) break; }

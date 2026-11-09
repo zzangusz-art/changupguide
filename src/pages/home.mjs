@@ -3,6 +3,7 @@ import { SITE, SEO, CATEGORIES, THEMES, BUDGETS, HERO_SLIDES, POPULAR_BRANDS, FA
 import { layout, esc, u, abs, ICONS, ILLO, CAT_ILLO, badge, listingCard, skeletonCards, faqBlock, ctaBand, img, imgPath, brandLogoImg, rail, BUILD_ID } from '../lib/html.mjs';
 import { PICKS, pickItems, themeItems } from '../lib/picks.mjs';
 import { leadForm } from '../lib/lead.mjs';
+import { coverFor } from './hubs.mjs';
 import { koreaMap } from '../lib/map.mjs';
 import { agentCard } from '../lib/agents.mjs';
 import { brandByName, fmtMan, fmtWon } from '../lib/text.mjs';
@@ -94,7 +95,7 @@ export function homePage(ctx) {
   const pickData = PICKS.map(p => ({ ...p, items: pickItems(p, listings) })).filter(p => p.items.length);
   const avgOf = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Math.round(v.reduce((s, l) => s + l[k], 0) / v.length) : 0; };
   const hooks = `<section class="sec sec--tight hooks-sec"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">지금 등록된 매물 기준</span><h2 class="h2">숫자로 먼저 고르는 <span class="hl">창업 매물</span></h2></div><a class="more" href="${u('/pick/')}">성향별 전체 ${ICONS.arrow}</a></div>
-    <div class="bento">${pickData.map((p, i) => `<a class="hook hook--${['ink', 'yellow'][i] || 'white'}" href="${u(`/pick/${p.slug}/`)}"><span class="hook__tag">${esc(p.name)}</span><strong class="hook__num">${p.items.length.toLocaleString('ko-KR')}<small>건</small></strong><h3>${esc(p.hook)}</h3><p>평균 월수익 ${esc(fmtMan(avgOf(p.items, 'profit')))}</p><span class="hook__cta" aria-hidden="true">${ICONS.arrow}</span></a>`).join('')}</div>
+    <div class="bento">${pickData.map((p, i) => `<a class="hook hook--${['ink', 'yellow'][i] || 'white'}" href="${u(`/pick/${p.slug}/`)}">${(c => c ? `<img class="hook__bg" src="${u('/' + (i ? imgPath(c, 'thumb') : c))}" alt="" loading="lazy" decoding="async">` : '')(coverFor('p-' + p.slug, p.items))}<span class="hook__tag">${esc(p.name)}</span><strong class="hook__num">${p.items.length.toLocaleString('ko-KR')}<small>건</small></strong><h3>${esc(p.hook)}</h3><p>평균 월수익 ${esc(fmtMan(avgOf(p.items, 'profit')))}</p><span class="hook__cta" aria-hidden="true">${ICONS.arrow}</span></a>`).join('')}</div>
   </div></section>`;
   const picksSec = `<section class="sec sec--paper sec--bordered"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">성향별</span><h2 class="h2">내 창업 성향에 맞는 <span class="hl">추천 매물</span></h2></div><a class="more" href="${u('/pick/')}">전체 보기 ${ICONS.arrow}</a></div>
     <div class="tabs tabs--pills" data-tabs data-auto="9000"><div class="tabs__nav" role="tablist">${pickData.map((p, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="pk-${i}" id="pk-tab-${i}" type="button">${esc(p.name)}<small>${p.items.length}</small></button>`).join('')}</div>
@@ -116,7 +117,7 @@ export function homePage(ctx) {
 
   // ---------- 인기 프랜차이즈 ----------
   const brandSec = `<section class="sec sec--tight sec--paper sec--bordered"><div class="wrap"><div class="sec__head" style="margin-bottom:18px"><div><span class="eyebrow">인기 프랜차이즈</span><h2 class="h2">브랜드로 찾는 양도양수</h2></div><a class="more" href="${u('/brand/')}">브랜드 전체 ${ICONS.arrow}</a></div>
-    <div class="brand-wall brand-wall--logos">${POPULAR_BRANDS.map(name => { const b = brandByName(name); const slug = b ? b.slug : ''; const n = slug && ctx.byBrand[slug] ? ctx.byBrand[slug].length : 0; const href = n ? u(`/brand/${slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}`); const logo = brandLogoImg(slug, name, { h: 36 }); return `<a class="brand-wall__item ${n ? '' : 'is-empty'}" href="${href}" title="${esc(name)} 창업 매물${n ? ` ${n}건` : ''}">${logo || `<strong>${esc(name)}</strong>`}<small>${n ? `${n}건` : '등록 대기'}</small></a>`; }).join('')}</div></div></section>`;
+    <div class="brand-wall brand-wall--logos">${POPULAR_BRANDS.map(name => { const b = brandByName(name); const slug = b ? b.slug : ''; const n = slug && ctx.byBrand[slug] ? ctx.byBrand[slug].length : 0; const href = n ? u(`/brand/${slug}/`) : u(`/listings/?q=${encodeURIComponent(name)}`); const logo = brandLogoImg(slug, name, { h: 36 }); return `<a class="brand-wall__item" href="${href}" title="${esc(name)} 창업 매물">${logo || `<strong>${esc(name)}</strong>`}</a>`; }).join('')}</div></div></section>`;
 
   // ---------- 숫자 · 절차 · 담당자 · 글 ----------
   const statsSec = `<section class="sec sec--tight"><div class="wrap"><div class="stats">

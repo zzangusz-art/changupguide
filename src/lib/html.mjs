@@ -112,7 +112,7 @@ export function brandLogoImg(slug, name, { h = 34, cls = 'brand-logo' } = {}) {
 }
 
 // 한 줄 롤링 카드 (스와이프 + 자동 이동)
-export function rail(cards, { cols = 4, auto = 5200, cls = '' } = {}) {
+export function rail(cards, { cols = 4, auto = 3500, cls = '' } = {}) {
   return `<div class="rail rail--${cols} ${cls}" data-rail ${auto ? `data-auto="${auto}"` : ''}><div class="rail__track" tabindex="0">${cards.map(c => `<div class="rail__item">${c}</div>`).join('')}</div><div class="rail__ctrl"><button type="button" data-rail-prev aria-label="이전">‹</button><span class="rail__bar"><i></i></span><button type="button" data-rail-next aria-label="다음">›</button></div></div>`;
 }
 

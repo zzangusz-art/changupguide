@@ -101,17 +101,26 @@ function initTabs() {
 function initRails() {
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   $$('[data-rail]').forEach(r => {
-    const t = $('.rail__track', r); const bar = $('.rail__bar i', r); let hold = false, seen = false;
+    const t = $('.rail__track', r); const bar = $('.rail__bar i', r); const total = t.children.length; let hold = false, busy = false, turned = 0;
     const step = () => { const it = t.children[0]; return it ? it.getBoundingClientRect().width + (parseFloat(getComputedStyle(t).columnGap) || 16) : 300; };
-    const move = d => { const max = t.scrollWidth - t.clientWidth; if (max <= 2) return; let x = t.scrollLeft + d * step(); if (d > 0 && t.scrollLeft >= max - 4) x = 0; else if (d < 0 && t.scrollLeft <= 4) x = max; t.scrollTo({ left: x, behavior: still ? 'auto' : 'smooth' }); };
-    const paint = () => { const max = t.scrollWidth - t.clientWidth; const view = t.clientWidth / (t.scrollWidth || 1); if (bar) { bar.style.width = `${Math.round(view * 100)}%`; bar.style.marginLeft = `${max > 0 ? Math.round(t.scrollLeft / t.scrollWidth * 100) : 0}%`; } r.classList.toggle('is-static', max <= 2); };
+    const paint = () => { const max = t.scrollWidth - t.clientWidth; const view = t.clientWidth / (t.scrollWidth || 1); r.classList.toggle('is-static', max <= 2); if (!bar) return; const w = view * 100; const pos = (((turned + t.scrollLeft / step()) % total) + total) % total; bar.style.width = `${Math.round(w)}%`; bar.style.marginLeft = `${Math.min(100 - w, pos / total * 100).toFixed(1)}%`; };
+    // 스크롤 스냅을 잠시 끄고 시간 기반으로 이동 (브라우저별 부드러운 스크롤·스냅 충돌 방지)
+    function glide(to, done) {
+      const from = t.scrollLeft; const start = Date.now(); const dur = still ? 0 : 520; t.style.scrollSnapType = 'none';
+      const tick = () => { const p = dur ? Math.min(1, (Date.now() - start) / dur) : 1; t.scrollLeft = from + (to - from) * (1 - Math.pow(1 - p, 3)); if (p < 1) setTimeout(tick, 16); else { done && done(); t.style.scrollSnapType = ''; paint(); busy = false; } };
+      tick();
+    }
+    function move(d) {
+      if (busy || t.scrollWidth - t.clientWidth <= 2) return; busy = true; const w = step();
+      if (d > 0) { const base = t.scrollLeft; glide(base + w, () => { t.style.scrollSnapType = 'none'; t.appendChild(t.children[0]); t.scrollLeft = base; turned++; }); }
+      else { t.style.scrollSnapType = 'none'; t.insertBefore(t.children[t.children.length - 1], t.children[0]); t.scrollLeft += w; turned--; glide(t.scrollLeft - w); }
+    }
     t.addEventListener('scroll', paint, { passive: true }); addEventListener('resize', paint); paint(); new ResizeObserver(paint).observe(t);
     $('[data-rail-prev]', r)?.addEventListener('click', () => move(-1)); $('[data-rail-next]', r)?.addEventListener('click', () => move(1));
     r.addEventListener('focusin', e => { if (e.target.matches(':focus-visible')) hold = true; }); r.addEventListener('focusout', () => hold = false);
-    let tm; t.addEventListener('touchstart', () => { hold = true; clearTimeout(tm); }, { passive: true }); t.addEventListener('touchend', () => { tm = setTimeout(() => hold = false, 6000); }, { passive: true });
-    new IntersectionObserver(es => { seen = es[0].isIntersecting; }, { threshold: .4 }).observe(r);
+    let tm; t.addEventListener('touchstart', () => { hold = true; clearTimeout(tm); }, { passive: true }); t.addEventListener('touchend', () => { tm = setTimeout(() => hold = false, 4000); }, { passive: true });
     const auto = Number(r.dataset.auto || 0);
-    if (auto && !still) setInterval(() => { if (hold || !seen || document.hidden || r.offsetParent === null) return; move(1); }, auto);
+    if (auto && !still) setInterval(() => { if (hold || document.hidden || r.offsetParent === null) return; const b = r.getBoundingClientRect(); if (b.bottom < 0 || b.top > innerHeight) return; move(1); }, auto);
   });
 }
 
