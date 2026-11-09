@@ -51,7 +51,6 @@ export function homePage(ctx) {
       <select name="sido" aria-label="지역"><option value="">지역 전체</option>${sidos.map(s => `<option value="${s}">${s} (${bySido[s].length})</option>`).join('')}</select>
       <select name="brandSlug" aria-label="브랜드"><option value="">브랜드 전체</option>${brandsSorted.slice(0, 40).map(b => `<option value="${b.slug}">${esc(b.name)} (${b.n})</option>`).join('')}</select>
       <select name="budget" aria-label="예산"><option value="">예산 전체</option>${BUDGETS.map(b => `<option value="${b.slug}">권리금 ${b.name}</option>`).join('')}</select>
-      <select name="code" aria-label="업종"><option value="">업종 전체</option>${CATEGORIES.map(c => `<option value="${c.code}">${c.name}</option>`).join('')}</select>
     </div>
     <p class="finder2__hint">인기 검색어 ${brandsSorted.slice(0, 6).map(b => `<a href="${u(`/brand/${b.slug}/`)}">#${esc(b.name)}</a>`).join(' ')} <a href="${u('/theme/beginner/')}">#초보창업</a> <a href="${u('/theme/low-capital/')}">#소자본창업</a></p>
   </form></div></section>`;

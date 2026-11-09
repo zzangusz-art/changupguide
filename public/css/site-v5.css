@@ -339,3 +339,34 @@ h1,h2,h3,h4{letter-spacing:-.015em}
 .bento .hook--white::before{background:linear-gradient(90deg,rgba(255,255,255,.93),rgba(255,255,255,.68))}
 .bento .hook--white p{color:#333}
 
+/* 검색바 선택 3칸 */
+.finder2__sel{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* 히어로: 이미지를 오른쪽 끝까지 크게(자르지 않음), 문구 박스는 작게 왼쪽 */
+.hslide--photo .hslide__in,.hslide--logo .hslide__in{position:static;z-index:auto;max-width:none;margin:0;padding:0 28px;flex-direction:row;justify-content:flex-start}
+.hslide--photo .hslide__box,.hslide--logo .hslide__box{position:relative;z-index:2;flex:0 0 340px;width:340px;padding:24px}
+.hslide__box .hslide__title{font-size:1.85rem;margin-bottom:8px}
+.hslide__box .hslide__sub{font-size:.94rem;max-width:none}
+.hslide__box .hslide__tags{font-size:.82rem;margin-bottom:14px}
+.hslide__box .hslide__tags span{margin-right:7px}
+.hslide__box .hslide__btns{flex-wrap:nowrap;gap:6px}
+.hslide__box .hslide__btns .btn{padding:10px 12px;font-size:.9rem;white-space:nowrap}
+.hslide__box .hslide__btns .btn svg{width:15px;height:15px}
+.hslide__box .hslide__facts{gap:14px;margin-top:14px;padding-top:12px}
+.hslide__box .hslide__facts dt{font-size:.76rem}
+.hslide__box .hslide__facts dd{font-size:.92rem;white-space:nowrap}
+.hslide__media,.hslide__logo{position:absolute;top:0;bottom:0;right:0;width:calc(100% - 384px);max-width:none;aspect-ratio:auto;z-index:1;display:flex;align-items:center;justify-content:flex-end;flex:none;padding:0}
+.hslide__media img{width:auto;height:auto;max-width:100%;max-height:100%;border-radius:16px 0 0 16px;box-shadow:-20px 0 60px -24px rgba(0,0,0,.7)}
+.hslide__logo{background:#fff;justify-content:center;border-radius:16px 0 0 16px;top:24px;bottom:24px;box-shadow:-20px 0 60px -24px rgba(0,0,0,.7)}
+.hslide__logo img{max-width:min(72%,600px);max-height:70%}
+@media (max-width:860px){
+  .hslide,.hslide--logo{padding:0 0 52px}
+  .hslide--photo .hslide__in,.hslide--logo .hslide__in{flex-direction:column;gap:12px;padding:0 16px}
+  .hslide__media,.hslide__logo{position:relative;top:auto;bottom:auto;right:auto;width:calc(100% + 32px);margin:0 -16px}
+  .hslide__media img{width:100%;max-height:none;border-radius:0;box-shadow:none}
+  .hslide__logo{aspect-ratio:16/9;border-radius:0;box-shadow:none}
+  .hslide__logo img{max-width:min(70%,280px);max-height:72%}
+  .hslide--photo .hslide__box,.hslide--logo .hslide__box{flex:none;width:100%}
+}
+@media (max-width:520px){.finder2__sel{grid-template-columns:1fr}}
+
