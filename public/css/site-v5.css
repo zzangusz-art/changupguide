@@ -470,3 +470,10 @@ h1,h2,h3,h4{letter-spacing:-.015em}
   .hslide__media{width:calc(100cqw - 384px)}
   .hslide--photo .hslide__box{margin-left:max(0px,calc(100cqw - var(--iw) - 384px))}
 }
+
+/* 메인 카드 폭 통일: 3열 레일의 카드도 4열 레일과 같은 폭, 벤토 줄 높이 통일 */
+@media (min-width:1101px){
+  .theme-row,.catsec__in{grid-template-columns:295px minmax(0,1fr);gap:20px}
+  .bento{grid-auto-rows:minmax(150px,1fr)}
+}
+@media (max-width:1100px){.bento{grid-auto-rows:1fr}}

@@ -376,12 +376,12 @@ export const HERO_SLIDES = [
   { brand: '메가커피', img: 'mega-coffee', imgW: 2400, imgH: 1350, eyebrow: '인기 테이크아웃 프랜차이즈', title: '메가커피 창업', sub: '소형 카페 창업의 기준, 운영 중인 메가커피 매장을 권리금으로 인수', tags: ['#메가커피창업','#소형커피창업','#테이크아웃'], theme: 'yellow', illo: 'cup' },
   { brand: '배스킨라빈스', img: 'baskin-robbins', imgW: 2400, imgH: 1350, eyebrow: '아이스크림 1위 브랜드', title: '배스킨라빈스 창업', sub: '사계절 매출이 검증된 배스킨라빈스 양도양수 매물', tags: ['#배스킨라빈스','#아이스크림창업','#여성창업'], theme: 'pink', illo: 'icecream' },
   { brand: '롯데리아', img: 'lotteria', imgW: 2400, imgH: 1350, eyebrow: '45년 역사, 패스트푸드 선호도 1위', title: '롯데리아 창업', sub: '안정 상권의 롯데리아 매장, 월매출 구조까지 공개', tags: ['#롯데리아','#패스트푸드','#프랜차이즈'], theme: 'red', illo: 'burger' },
-  { brand: '백소정', img: 'baeksojeong', imgW: 1920, imgH: 1312, eyebrow: '소비자가 선택한 돈카츠 1등', title: '백소정 창업', sub: '대형마트·몰 특수상권 백소정 매장 양도양수', tags: ['#백소정','#특수상권','#고수익창업'], theme: 'ink', illo: 'katsu' },
+  { brand: '백소정', img: 'baeksojeong', imgW: 2400, imgH: 1350, eyebrow: '소비자가 선택한 돈카츠 1등', title: '백소정 창업', sub: '대형마트·몰 특수상권 백소정 매장 양도양수', tags: ['#백소정','#특수상권','#고수익창업'], theme: 'ink', illo: 'katsu' },
   { brand: '엽기떡볶이', img: 'yupdduk', imgW: 2400, imgH: 1350, eyebrow: '인기 급상승! 매콤 달콤한', title: '엽기떡볶이 창업', sub: '배달 비중이 높은 엽기떡볶이, 초보 창업자에게 맞는 운영 구조', tags: ['#떡볶이창업','#엽떡','#초보창업'], theme: 'red', illo: 'tteok' },
   { brand: '정관장', img: 'jungkwanjang', imgW: 2400, imgH: 1350, eyebrow: '120여 년의 철학, 대한민국 대표 브랜드', title: '정관장 창업', sub: '판매업 특유의 안정적 운영, 정관장 대리점 양도양수', tags: ['#정관장','#판매창업','#시니어창업'], theme: 'blue', illo: 'ginseng' },
-  { brand: '본죽', img: 'bonjuk', imgW: 2400, imgH: 1225, eyebrow: '대한민국 1등 죽 전문점', title: '본죽 창업', sub: '배달과 홀 매출을 함께 가져가는 본죽·본죽&비빔밥 매장', tags: ['#본죽','#죽전문점','#여성창업'], theme: 'yellow', illo: 'porridge' },
+  { brand: '본죽', img: 'bonjuk', imgW: 2400, imgH: 1350, eyebrow: '대한민국 1등 죽 전문점', title: '본죽 창업', sub: '배달과 홀 매출을 함께 가져가는 본죽·본죽&비빔밥 매장', tags: ['#본죽','#죽전문점','#여성창업'], theme: 'yellow', illo: 'porridge' },
   { brand: '골프존', img: 'golfzon', imgW: 2400, imgH: 1350, eyebrow: '고수익 & 고품격 놀이문화', title: '스크린골프 창업', sub: '골프존 투비전·GDR 시설이 갖춰진 스크린골프 매장 양도양수', tags: ['#스크린골프','#골프존','#투자'], theme: 'blue', illo: 'golf' },
-  { brand: '역전할머니맥주', img: 'yeokjeon', imgW: 2400, imgH: 1800, eyebrow: 'SINCE 1982', title: '역전할머니맥주 창업', sub: '저녁 장사 집중, 역전할머니맥주 매장 창업 상품', tags: ['#역전할머니맥주','#호프창업','#소자본창업'], theme: 'ink', illo: 'beer' },
+  { brand: '역전할머니맥주', img: 'yeokjeon', imgW: 2400, imgH: 1350, eyebrow: 'SINCE 1982', title: '역전할머니맥주 창업', sub: '저녁 장사 집중, 역전할머니맥주 매장 창업 상품', tags: ['#역전할머니맥주','#호프창업','#소자본창업'], theme: 'ink', illo: 'beer' },
 ];
 
 // 기존 사이트 '인기 프랜차이즈' 로고 띠 (텍스트로 표기 — 로고 이미지는 사용하지 않음)
