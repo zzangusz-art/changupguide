@@ -39,28 +39,11 @@
 .finder2{margin-top:0!important;padding:22px 0 8px}
 .finder2__box{background:#fff;border:1px solid var(--line);box-shadow:0 14px 34px -24px rgba(0,0,0,.35);backdrop-filter:none;-webkit-backdrop-filter:none}
 /* 로고 슬라이드 */
-.hslide--logo{background:var(--tint,#fff)}
-.hslide--logo .hslide__in{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center;gap:48px}
-.hslide__logo{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
-.hslide__logo img{display:block;width:min(100%,460px);max-height:300px;height:auto;object-fit:contain}
-.hslide--logo .hslide__box{flex:0 1 600px;background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;color:var(--ink);padding-left:0}
-.hslide--logo .hslide__eyebrow{color:#B5121B}
-.hslide--logo .hslide__title{text-shadow:none}
-.hslide--logo .hslide__sub{color:#333}
-.hslide--logo .hslide__tags{color:#555}
-.hslide--logo .hslide__facts{border-top-color:rgba(0,0,0,.14)}
-.hslide--logo .hslide__facts dt{color:#555}
-.hslide--logo .hslide__facts dd{color:var(--ink)}
-.hslide--logo .btn--glass{background:#fff;color:var(--ink);border-color:var(--ink);backdrop-filter:none}
 @media (max-width:860px){
   .hero2__pager{padding:7px 11px;bottom:12px;gap:6px;max-width:none}
   .hero2__pager button{width:8px;height:8px;background:rgba(0,0,0,.3)}
   .hero2__pager button[aria-current]{width:22px;background:var(--ink)}
   .finder2{padding:16px 0 4px}
-  .hslide--logo{align-items:center}
-  .hslide--logo .hslide__in{flex-direction:column;gap:18px}
-  .hslide__logo img{width:min(68%,260px);max-height:130px}
-  .hslide--logo .hslide__box{flex:none;width:100%;padding:0}
   .card__nums dd{font-size:.98rem}
   .card__nums dt{font-size:.76rem}
   .card__title{font-size:.98rem}
@@ -225,9 +208,7 @@
 @media (max-width:860px){.search-layout,.form-page{grid-template-columns:minmax(0,1fr)}}
 
 /* 로고는 원본 크기 이상으로 늘리지 않음(래스터 번짐 방지), 모바일 지도는 패널 폭 가득 */
-.hslide__logo img{width:auto;max-width:min(100%,460px)}
-.hslide__logo img[src$=".svg"]{width:min(100%,460px)}
-@media (max-width:860px){.hslide__logo img{max-width:min(70%,260px)}.hslide__logo img[src$=".svg"]{width:min(70%,260px)}.region-map-layout__map{padding:10px}}
+@media (max-width:860px){.region-map-layout__map{padding:10px}}
 
 /* 숨김 속성 보장: .grid 등의 display 지정이 [hidden]을 덮어써 스켈레톤이 계속 보이던 문제 */
 [hidden]{display:none!important}
@@ -239,11 +220,24 @@
 .hslide--photo .hslide__box{flex:0 0 min(460px,42%);max-width:none}
 .hslide__media{flex:1;min-width:0;display:flex;align-items:center;justify-content:center}
 .hslide__media img{display:block;width:auto;height:auto;max-width:100%;max-height:510px;border-radius:var(--r);box-shadow:0 24px 60px -24px rgba(0,0,0,.7)}
-.hslide__logo img{object-fit:contain}
 @media (max-width:860px){
   .hslide,.hslide--logo{min-height:0;padding:20px 0 56px;align-items:flex-start}
   .hslide--photo .hslide__in{flex-direction:column;gap:14px}
   .hslide--photo .hslide__box{flex:none;width:100%}
   .hslide__media{width:100%}
   .hslide__media img{width:100%;max-height:none}
+}
+
+/* 로고 슬라이드: 사진 슬라이드와 같은 리퀴드 글래스 박스 + 같은 크기의 카드 */
+.hslide--logo{background:var(--tint,#222)}
+.hslide--logo::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 90% at 16% 18%,rgba(255,255,255,.24),transparent 62%),radial-gradient(50% 80% at 88% 92%,rgba(255,255,255,.12),transparent 60%),linear-gradient(135deg,var(--tint,#222),#151515 130%)}
+.hslide--logo .hslide__in{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center;gap:40px}
+.hslide--logo .hslide__box{flex:0 0 min(460px,42%);max-width:none}
+.hslide__logo{flex:1 1 0;min-width:0;max-width:740px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:var(--r);padding:32px;box-shadow:0 24px 60px -24px rgba(0,0,0,.7)}
+.hslide__logo img{display:block;width:auto;height:auto;max-width:min(100%,440px);max-height:100%}
+@media (max-width:860px){
+  .hslide--logo .hslide__in{flex-direction:column;gap:14px}
+  .hslide--logo .hslide__box{flex:none;width:100%}
+  .hslide__logo{flex:none;width:100%;max-width:none;padding:18px}
+  .hslide__logo img{max-width:min(72%,260px)}
 }
