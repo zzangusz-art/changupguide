@@ -23,8 +23,8 @@ jobs:
       - name: Build
         env:
           # 미리보기(github.io) 설정 — 정식 도메인 전환 시 SITE_URL=https://changupguide.co.kr, SITE_BASE 비움, NOINDEX 삭제, CNAME 추가
-          SITE_URL: ${{ vars.SITE_URL || 'https://zzangusz-art.github.io/changupguide' }}
-          SITE_BASE: ${{ vars.SITE_BASE || 'changupguide' }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://zzangusz-art.github.io' }}
+          SITE_BASE: ${{ vars.SITE_URL == '' && 'changupguide' || vars.SITE_BASE }}
           NOINDEX: ${{ vars.NOINDEX || '1' }}
           API_URL: ${{ vars.API_URL || '' }}
           CNAME: ${{ vars.CNAME || '' }}
