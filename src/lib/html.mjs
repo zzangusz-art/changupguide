@@ -205,7 +205,8 @@ export function footer() {
 // 공통 레이아웃
 export function layout({ title, desc, path, body, active = '', ld = [], og, type = 'website', noindex = false, extraHead = '', bodyClass = '', keywords = [], canonicalPath }) {
   const canonical = abs(canonicalPath || path);
-  const ogImg = og || abs('/og.png');
+  const ogKey = og ? '' : (() => { const m = String(path || '/').split('/').filter(Boolean); if (!m.length) return 'main'; return [`${m[0]}-${m[1]}`, m[0], `kw-${m[0]}`, m[0] === 'category' ? 'listings' : ''].find(k => k && existsSync(join(__pub, 'img', 'og', `${k}.jpg`))) || 'main'; })();
+  const ogImg = og || abs(`/img/og/${ogKey}.jpg`);
   const ldAll = [
     { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: [SITE.company, '창업미디어 창업포털', 'changupmedia'], legalName: SITE.company, url: abs('/'), logo: abs('/logo.png'), telephone: SITE.phoneTel, email: SITE.email, faxNumber: SITE.fax, address: { '@type': 'PostalAddress', streetAddress: '테헤란로 413 태양빌딩 8층', addressLocality: '강남구', addressRegion: '서울특별시', addressCountry: 'KR' }, sameAs: [SITE.blog], contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }], description: SITE.slogan, knowsAbout: SEO.keywords },
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': abs('/#website'), url: abs('/'), name: SITE.name, inLanguage: 'ko-KR', publisher: { '@id': abs('/#org') }, potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: abs('/listings/') + '?q={search_term_string}' }, 'query-input': 'required name=search_term_string' } },
@@ -222,7 +223,7 @@ export function layout({ title, desc, path, body, active = '', ld = [], og, type
 ${keywords.length ? `<meta name="keywords" content="${esc(keywords.join(', '))}">` : ''}
 <meta name="robots" content="${robots}">
 <link rel="canonical" href="${esc(canonical)}">
-<meta property="og:type" content="${type}"><meta property="og:site_name" content="${esc(SITE.name)}"><meta property="og:locale" content="ko_KR"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(canonical)}"><meta property="og:image" content="${esc(ogImg)}">
+<meta property="og:type" content="${type}"><meta property="og:site_name" content="${esc(SITE.name)}"><meta property="og:locale" content="ko_KR"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(canonical)}"><meta property="og:image" content="${esc(ogImg)}">${og ? '' : `<meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${esc(SITE.name)} 공유 이미지">`}
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${esc(ogImg)}">
 <meta name="theme-color" content="#FFCC00">
 ${SITE.naverVerification ? `<meta name="naver-site-verification" content="${esc(SITE.naverVerification)}">` : ''}
