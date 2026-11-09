@@ -27,7 +27,7 @@ export function homePage(ctx) {
     const bgUrl = s.logo ? '' : heroFile || (bg ? (/^https?:/.test(bg) ? bg : u('/' + bg)) : '');
     const bgStyle = bgUrl && i === 0 ? `--bg:url('${esc(bgUrl)}')` : '';
     const bgData = bgUrl && i > 0 ? ` data-bg="${esc(bgUrl)}"` : '';
-    return `<div class="hslide hslide--${s.theme} ${s.logo ? 'hslide--logo' : 'hslide--photo'}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${s.logo ? `--tint:${s.tint}` : bgStyle}"${bgData}>
+    return `<div class="hslide hslide--${s.theme} ${s.logo ? 'hslide--logo' : 'hslide--photo'}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${HERO_SLIDES.length}" style="${s.logo ? `--tint:${s.tint}` : `${bgStyle ? bgStyle + ';' : ''}--ar:${(s.imgW / s.imgH).toFixed(3)}`}"${bgData}>
             <div class="wrap hslide__in">${s.logo ? `<div class="hslide__logo"><img src="${u('/img/hero/' + s.logo)}?v=${BUILD_ID}" alt="${esc(s.brand)} 로고"></div>` : bgUrl ? `<div class="hslide__media"><img src="${esc(bgUrl)}" alt="${esc(s.brand)} 대표 이미지" ${s.imgW ? `width="${s.imgW}" height="${s.imgH}"` : ''} ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async"></div>` : ''}
         <div class="hslide__box glass-dark">
           <span class="hslide__eyebrow">${esc(s.eyebrow)}</span>
@@ -102,13 +102,13 @@ export function homePage(ctx) {
   const leadSec = `<section class="sec lead-sec"><div class="wrap">${leadForm()}</div></section>`;
 
   // ---------- 지역별 · 예산별 ----------
-  const seoulGu = Object.entries(byGugun).filter(([k]) => k.startsWith('서울/')).sort((a, b) => b[1].length - a[1].length).slice(0, 14);
-  const gyeonggi = Object.entries(byGugun).filter(([k]) => k.startsWith('경기/') || k.startsWith('인천/')).sort((a, b) => b[1].length - a[1].length).slice(0, 14);
   const regionSec = `<section class="sec"><div class="wrap"><div class="region-budget">
     <div class="panel-card panel-card--map"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">지역별 주요상권</span><h2 class="h2">지역으로 찾기</h2></div><a class="more" href="${u('/region/')}">전체 ${ICONS.arrow}</a></div>
-      <div class="home-map">${koreaMap(Object.fromEntries(Object.entries(bySido).map(([k, a]) => [k, a.length])), { compact: true, focus: 'capital', id: 'kmap-home' })}<p class="home-map__cap">${SIDO_ORDER.filter(sd => bySido[sd]).map(sd => `<a href="${u(`/region/${encodeURIComponent(sd)}/`)}">${esc(sd)} <b>${bySido[sd].length}</b></a>`).join('')}</p></div>
-      <div class="tabs tabs--pills tabs--sm" data-tabs><div class="tabs__nav" role="tablist"><button class="tabs__tab" role="tab" aria-selected="true" aria-controls="rg-0" id="rg-tab-0" type="button">서울</button><button class="tabs__tab" role="tab" aria-selected="false" aria-controls="rg-1" id="rg-tab-1" type="button">경기·인천</button></div>
-      <div class="tabs__panels"><div class="tabs__panel" role="tabpanel" id="rg-0"><div class="regions">${seoulGu.map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent('서울')}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.split('/')[1])}<small>${arr.length}</small></a>`).join('')}</div></div><div class="tabs__panel" role="tabpanel" id="rg-1" hidden><div class="regions">${gyeonggi.map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent(k.split('/')[0])}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.replace('/', ' '))}<small>${arr.length}</small></a>`).join('')}</div></div></div></div></div>
+      <div class="region-home tabs tabs--pills tabs--sm" data-tabs>
+        <div class="home-map">${koreaMap(Object.fromEntries(Object.entries(bySido).map(([k, a]) => [k, a.length])), { compact: true, focus: 'capital', id: 'kmap-home' })}</div>
+        <div class="tabs__nav" role="tablist">${['서울', '경기', '인천'].filter(sd => bySido[sd]).map((sd, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="rg-${i}" id="rg-tab-${i}" type="button">${sd}<small>${bySido[sd].length}</small></button>`).join('')}</div>
+        <div class="tabs__panels">${['서울', '경기', '인천'].filter(sd => bySido[sd]).map((sd, i) => `<div class="tabs__panel" role="tabpanel" id="rg-${i}" aria-labelledby="rg-tab-${i}" ${i ? 'hidden' : ''}><div class="regions">${Object.entries(byGugun).filter(([k]) => k.startsWith(sd + '/')).sort((x, y) => y[1].length - x[1].length).slice(0, 14).map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent(sd)}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.split('/')[1])}<small>${arr.length}</small></a>`).join('')}</div></div>`).join('')}</div>
+      </div></div>
     <div class="panel-card"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">예산별 창업상품</span><h2 class="h2">권리금으로 찾기</h2></div><a class="more" href="${u('/budget/')}">전체 ${ICONS.arrow}</a></div>
       <ol class="budget-list">${BUDGETS.map(b => { const arr = byBudget[b.slug] || []; const avgP = arr.filter(l => l.profit).length ? Math.round(arr.filter(l => l.profit).reduce((s, l) => s + l.profit, 0) / arr.filter(l => l.profit).length) : 0; return `<li><a href="${u(`/budget/${b.slug}/`)}"><span class="budget-list__name">${esc(b.name)}</span><span class="budget-list__meta">${arr.length}건${avgP ? ` · 평균 월수익 ${esc(fmtMan(avgP))}` : ''}</span>${ICONS.arrow}</a></li>`; }).join('')}</ol>
       <p class="muted" style="font-size:.82rem;margin-top:10px">표시 금액은 임대보증금을 제외한 권리금입니다.</p></div>

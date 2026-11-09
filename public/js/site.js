@@ -101,9 +101,9 @@ function initTabs() {
 function initRails() {
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   $$('[data-rail]').forEach(r => {
-    const t = $('.rail__track', r); const bar = $('.rail__bar i', r); const total = t.children.length; let hold = false, busy = false, turned = 0;
+    const t = $('.rail__track', r); let hold = false, busy = false;
     const step = () => { const it = t.children[0]; return it ? it.getBoundingClientRect().width + (parseFloat(getComputedStyle(t).columnGap) || 16) : 300; };
-    const paint = () => { const max = t.scrollWidth - t.clientWidth; const view = t.clientWidth / (t.scrollWidth || 1); r.classList.toggle('is-static', max <= 2); if (!bar) return; const w = view * 100; const pos = (((turned + t.scrollLeft / step()) % total) + total) % total; bar.style.width = `${Math.round(w)}%`; bar.style.marginLeft = `${Math.min(100 - w, pos / total * 100).toFixed(1)}%`; };
+    const paint = () => r.classList.toggle('is-static', t.scrollWidth - t.clientWidth <= 2);
     // 스크롤 스냅을 잠시 끄고 시간 기반으로 이동 (브라우저별 부드러운 스크롤·스냅 충돌 방지)
     function glide(to, done) {
       const from = t.scrollLeft; const start = Date.now(); const dur = still ? 0 : 520; t.style.scrollSnapType = 'none';
@@ -112,8 +112,8 @@ function initRails() {
     }
     function move(d) {
       if (busy || t.scrollWidth - t.clientWidth <= 2) return; busy = true; const w = step();
-      if (d > 0) { const base = t.scrollLeft; glide(base + w, () => { t.style.scrollSnapType = 'none'; t.appendChild(t.children[0]); t.scrollLeft = base; turned++; }); }
-      else { t.style.scrollSnapType = 'none'; t.insertBefore(t.children[t.children.length - 1], t.children[0]); t.scrollLeft += w; turned--; glide(t.scrollLeft - w); }
+      if (d > 0) { const base = t.scrollLeft; glide(base + w, () => { t.style.scrollSnapType = 'none'; t.appendChild(t.children[0]); t.scrollLeft = base; }); }
+      else { t.style.scrollSnapType = 'none'; t.insertBefore(t.children[t.children.length - 1], t.children[0]); t.scrollLeft += w; glide(t.scrollLeft - w); }
     }
     t.addEventListener('scroll', paint, { passive: true }); addEventListener('resize', paint); paint(); new ResizeObserver(paint).observe(t);
     $('[data-rail-prev]', r)?.addEventListener('click', () => move(-1)); $('[data-rail-next]', r)?.addEventListener('click', () => move(1));
@@ -259,7 +259,7 @@ function initSeq() {
     const nav = btns[i] && btns[i].closest('.seq__nav'); if (nav && nav.scrollWidth > nav.clientWidth) btns[i].scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }
   // 뷰포트 상단 40% 지점을 지나는 단계를 활성화 (IntersectionObserver: 배경 탭에서도 동작)
-  const pick = () => { const mid = innerHeight * 0.42; let best = 0, bd = Infinity; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs((r.top + Math.min(r.height, 320) / 2) - mid); if (d < bd) { bd = d; best = k; } }); if (best !== active) setActive(best); };
+  const area = $('.seq__steps', root); const pick = () => { const b = area.getBoundingClientRect(); const p = Math.max(0, Math.min(.999, (innerHeight * .72 - b.top) / Math.max(1, b.height))); const k = Math.floor(p * steps.length); if (k !== active) setActive(k); };
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(() => pick(), { rootMargin: '-30% 0px -50% 0px', threshold: [0, .25, .5, .75, 1] });
     steps.forEach(s => io.observe(s));
