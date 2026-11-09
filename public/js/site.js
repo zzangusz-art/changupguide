@@ -68,7 +68,7 @@ function initHero() {
   $('.hero2__arrow--next, .hero__arrow--next', hero)?.addEventListener('click', () => go(i + 1, true));
   hero.addEventListener('pointerdown', e => { startX = e.clientX; });
   hero.addEventListener('pointerup', e => { if (startX == null) return; const dx = e.clientX - startX; startX = null; if (Math.abs(dx) > 50) go(dx < 0 ? i + 1 : i - 1, true); });
-  hero.addEventListener('mouseenter', () => clearInterval(timer)); hero.addEventListener('mouseleave', restart);
+  $$('.hslide__box, .hero2__pager', hero).forEach(el => { el.addEventListener('mouseenter', () => clearInterval(timer)); el.addEventListener('mouseleave', restart); });
   document.addEventListener('visibilitychange', () => document.hidden ? clearInterval(timer) : restart());
   go(0); restart();
 }
@@ -76,9 +76,9 @@ function initHero() {
 // ---------- 탭 (스켈레톤 전환) ----------
 function initTabs() {
   $$('[data-tabs]').forEach(t => {
-    const nav = $(':scope > .tabs__nav', t); const tabs = $$(':scope > .tabs__nav > [role=tab]', t); const panels = $$(':scope > .tabs__panels > .tabs__panel', t); const sk = $(':scope > .tabs__panels > .tabs__skeleton', t); let busy = false; let quiet = false; let stopped = false;
+    const nav = $(':scope > .tabs__nav', t); const tabs = $$(':scope > .tabs__nav > [role=tab]', t); const panels = $$(':scope > .tabs__panels > .tabs__panel', t); const sk = $(':scope > .tabs__panels > .tabs__skeleton', t); let busy = false; let quiet = false; let stopped = false; let resume;
     tabs.forEach((tab, k) => tab.addEventListener('click', e => {
-      if (e.isTrusted) stopped = true;
+      if (e.isTrusted) { stopped = true; clearTimeout(resume); resume = setTimeout(() => { stopped = false; }, 15000); }
       if (busy || tab.getAttribute('aria-selected') === 'true') return; busy = true;
       tabs.forEach(x => x.setAttribute('aria-selected', 'false')); tab.setAttribute('aria-selected', 'true');
       panels.forEach(p => p.hidden = true);
@@ -90,7 +90,7 @@ function initTabs() {
     const auto = Number(t.dataset.auto || 0);
     if (auto && tabs.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       let hold = false, seen = false;
-      t.addEventListener('mouseenter', () => hold = true); t.addEventListener('mouseleave', () => hold = false); t.addEventListener('focusin', () => hold = true); t.addEventListener('focusout', () => hold = false); t.addEventListener('touchstart', () => hold = true, { passive: true });
+      nav.addEventListener('mouseenter', () => hold = true); nav.addEventListener('mouseleave', () => hold = false); t.addEventListener('focusin', e => { if (e.target.matches(':focus-visible')) hold = true; }); t.addEventListener('focusout', () => hold = false);
       new IntersectionObserver(es => { seen = es[0].isIntersecting; }, { threshold: .25 }).observe(t);
       setInterval(() => { if (stopped || hold || !seen || document.hidden) return; const i = tabs.findIndex(x => x.getAttribute('aria-selected') === 'true'); quiet = true; tabs[(i + 1) % tabs.length].click(); quiet = false; }, auto);
     }
@@ -107,7 +107,7 @@ function initRails() {
     const paint = () => { const max = t.scrollWidth - t.clientWidth; const view = t.clientWidth / (t.scrollWidth || 1); if (bar) { bar.style.width = `${Math.round(view * 100)}%`; bar.style.marginLeft = `${max > 0 ? Math.round(t.scrollLeft / t.scrollWidth * 100) : 0}%`; } r.classList.toggle('is-static', max <= 2); };
     t.addEventListener('scroll', paint, { passive: true }); addEventListener('resize', paint); paint(); new ResizeObserver(paint).observe(t);
     $('[data-rail-prev]', r)?.addEventListener('click', () => move(-1)); $('[data-rail-next]', r)?.addEventListener('click', () => move(1));
-    r.addEventListener('mouseenter', () => hold = true); r.addEventListener('mouseleave', () => hold = false); r.addEventListener('focusin', () => hold = true); r.addEventListener('focusout', () => hold = false);
+    r.addEventListener('focusin', e => { if (e.target.matches(':focus-visible')) hold = true; }); r.addEventListener('focusout', () => hold = false);
     let tm; t.addEventListener('touchstart', () => { hold = true; clearTimeout(tm); }, { passive: true }); t.addEventListener('touchend', () => { tm = setTimeout(() => hold = false, 6000); }, { passive: true });
     new IntersectionObserver(es => { seen = es[0].isIntersecting; }, { threshold: .4 }).observe(r);
     const auto = Number(r.dataset.auto || 0);

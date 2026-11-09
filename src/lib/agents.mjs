@@ -31,9 +31,9 @@ export function agentProfile(a, ctx) {
   const career = (a.intro || '').match(/(\d{1,2})\s*년\s*차/);
   const specialties = [...new Set([...brands.slice(0, 2).map(b => b.k), ...kinds.slice(0, 2).map(k => k.k)])].slice(0, 4);
   const summary = [
-    specialties.length ? `${specialties.join('·')} 중심으로 ${items.length}건의 양도양수 매물을 담당합니다.` : `양도양수 매물 ${items.length}건을 담당합니다.`,
+    specialties.length ? `${specialties.join('·')} 등을 중심으로 양도양수 매물을 담당합니다.` : '양도양수 매물을 담당합니다.',
     regions.length ? `주요 담당 지역은 ${regions.map(r => r.k).join('·')}이며, ${sidos.map(s => s.k).join('·')} 전역 상권을 다룹니다.` : '',
-    avgProfit ? `담당 매물의 평균 월수익(세전)은 ${fmtMan(avgProfit)}${minPrem ? `, 권리금은 ${fmtWon(minPrem)}부터` : ''}입니다.` : '',
+    '',
     '매출 자료 확인, 현장 답사 동행, 조건 협의와 계약, 프랜차이즈 본사 승인 절차까지 직접 진행합니다.',
   ].filter(Boolean).join(' ');
   return { items, brands, kinds, regions, sidos, avgProfit, minPrem, career: career ? `${career[1]}년 차` : '', specialties, summary, intro: cleanIntro(a.intro) };
@@ -44,9 +44,9 @@ export function agentCard(a, ctx, { compact = false } = {}) {
   return `<div class="agent-card">
     <div class="agent-card__pic">${img(imgPath(a.photo), `${a.name} 창업전문가`, { w: 84, h: 84 })}</div>
     <h3><a href="${u(`/agents/${a.id}/`)}">${esc(a.name)}</a><small>${esc(a.role || '창업전문가')}${p.career ? ` · ${esc(p.career)}` : ''}</small></h3>
-    <p class="spec-line"><b>전문 분야</b> ${p.specialties.length ? esc(p.specialties.join(' · ')) : '양도양수 전반'}</p>
+    <p class="spec-line"><b>전문 분야</b> ${p.specialties.length ? `${esc(p.specialties.join(' · '))} 등` : '양도양수 전반'}</p>
     <p class="spec-line"><b>담당 지역</b> ${p.regions.length ? esc(p.regions.map(r => r.k).join(' · ')) : esc(p.sidos.map(s => s.k).join(' · ') || '서울·경기·인천')}</p>
-    <p>담당 매물 ${p.items.length}건${p.avgProfit ? ` · 평균 월수익 ${esc(fmtMan(p.avgProfit))}` : ''}</p>
+
     ${compact ? '' : `<div class="btns"><a class="btn btn--call btn--sm" href="tel:${esc(phoneTel(a.mobile))}" data-call="" data-agent="${esc(a.id)}" data-phone="${esc(a.mobile)}">${ICONS.phone}${esc(a.mobile)}</a><button class="btn btn--sm" type="button" data-sms="" data-agent="${esc(a.id)}" data-agent-name="${esc(a.name)}">${ICONS.sms}문자</button></div>`}
   </div>`;
 }
