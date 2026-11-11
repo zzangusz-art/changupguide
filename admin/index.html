@@ -5,13 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>창업가이드 관리자</title>
-<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.ico" sizes="any"><link rel="icon" href="../img/brand/mark.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="admin.css">
 <script>window.CU_API = "__API_URL__"; window.CU_BASE = "__SITE_BASE__";</script>
 </head>
-<body>
+<body class="is-space">
+<div class="space" aria-hidden="true"><div class="space__nebula"></div><div class="space__stars" data-stars="220" data-size="1"></div><div class="space__stars space__stars--mid" data-stars="70" data-size="2"></div><div class="space__stars space__stars--big" data-stars="18" data-size="3"></div><div class="space__planet"></div><div class="space__ring"></div><i class="space__shoot"></i><i class="space__shoot space__shoot--2"></i></div>
+<script>
+// 별 레이어: 화면 크기에 맞춰 box-shadow로 점을 찍음 (이미지 없이 가볍게)
+(function () {
+  function paint() {
+    var W = Math.max(innerWidth, 1200), H = Math.max(innerHeight, 900);
+    document.querySelectorAll('[data-stars]').forEach(function (el) {
+      var n = +el.dataset.stars, sz = +el.dataset.size, out = [];
+      for (var i = 0; i < n; i++) { var a = (0.35 + Math.random() * 0.65).toFixed(2), tint = Math.random() < 0.12 ? '255,214,120' : Math.random() < 0.2 ? '170,200,255' : '255,255,255'; out.push(Math.round(Math.random() * W) + 'px ' + Math.round(Math.random() * H) + 'px 0 ' + (sz > 2 ? '0.5px' : '0') + ' rgba(' + tint + ',' + a + ')'); }
+      el.style.width = sz + 'px'; el.style.height = sz + 'px'; el.style.boxShadow = out.join(',');
+    });
+  }
+  paint(); var t; addEventListener('resize', function () { clearTimeout(t); t = setTimeout(paint, 300); });
+})();
+</script>
 <div id="app" aria-live="polite"><div class="loading">관리자 불러오는 중…</div></div>
 <div class="toast-host" id="toasts"></div>
 <script type="module" src="admin.js"></script>

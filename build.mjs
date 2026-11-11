@@ -81,7 +81,10 @@ for (const p of pages) {
 function copyDir(src, dst) { if (!fs.existsSync(src)) return; fs.mkdirSync(dst, { recursive: true }); for (const e of fs.readdirSync(src, { withFileTypes: true })) { const s = path.join(src, e.name), d = path.join(dst, e.name); e.isDirectory() ? copyDir(s, d) : fs.copyFileSync(s, d); } }
 copyDir('public', DIST);
 copyDir('admin', path.join(DIST, 'admin'));
-{ const f = path.join(DIST, 'admin/index.html'); fs.writeFileSync(f, fs.readFileSync(f, 'utf-8').replace('__API_URL__', process.env.API_URL || '').replace('__SITE_BASE__', SITE.base)); }
+// 직원용 짧은 주소: /login/ → /admin/
+fs.mkdirSync(path.join(DIST, 'login'), { recursive: true });
+fs.writeFileSync(path.join(DIST, 'login/index.html'), `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>창업가이드 관리자</title><meta http-equiv="refresh" content="0;url=${u('/admin/')}"><link rel="canonical" href="${u('/admin/')}"><a href="${u('/admin/')}">관리자 로그인으로 이동</a>`);
+{ const f = path.join(DIST, 'admin/index.html'); fs.writeFileSync(f, fs.readFileSync(f, 'utf-8').replace('__API_URL__', process.env.API_URL || '').replace('__SITE_BASE__', SITE.base).replace('href="admin.css"', `href="admin.css?v=${Date.now().toString(36)}"`).replace('src="admin.js"', `src="admin.js?v=${Date.now().toString(36)}"`)); }
 fs.mkdirSync(path.join(DIST, 'js/lib'), { recursive: true });
 fs.copyFileSync('src/lib/text.mjs', path.join(DIST, 'js/lib/text.mjs'));
 fs.copyFileSync('src/data.mjs', path.join(DIST, 'js/data.mjs'));
@@ -114,7 +117,7 @@ chunks.forEach((c, i) => fs.writeFileSync(path.join(DIST, `sitemap-${i + 1}.xml`
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${chunks.map((_, i) => `<sitemap><loc>${abs(`/sitemap-${i + 1}.xml`)}</loc><lastmod>${lastmodDefault}</lastmod></sitemap>`).join('\n')}\n</sitemapindex>`);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), SITE.noindex
   ? `User-agent: *\nDisallow: /\n# 미리보기 빌드 — 정식 도메인 배포 시 NOINDEX 해제\n`
-  : `User-agent: *\nAllow: /\nDisallow: /admin/\n\n# AI 검색·답변 엔진 인용 허용\nUser-agent: GPTBot\nAllow: /\nUser-agent: OAI-SearchBot\nAllow: /\nUser-agent: ChatGPT-User\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: Claude-User\nAllow: /\nUser-agent: Claude-SearchBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\nUser-agent: Yeti\nAllow: /\nUser-agent: Bingbot\nAllow: /\n\nSitemap: ${abs('/sitemap.xml')}\n`);
+  : `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /login/\n\n# AI 검색·답변 엔진 인용 허용\nUser-agent: GPTBot\nAllow: /\nUser-agent: OAI-SearchBot\nAllow: /\nUser-agent: ChatGPT-User\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: Claude-User\nAllow: /\nUser-agent: Claude-SearchBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\nUser-agent: Yeti\nAllow: /\nUser-agent: Bingbot\nAllow: /\n\nSitemap: ${abs('/sitemap.xml')}\n`);
 
 const llms = [`# ${SITE.name}`, '', `> ${SITE.slogan}. 상호 ${SITE.company} (대표 ${SITE.ceo}, 사업자등록번호 ${SITE.bizNo}, 2014년 개업), ${SITE.address}. 사업체(권리금) 양도양수 전문 창업 컨설팅. 부동산 중개대상물은 취급하지 않음. 창업상담 ${SITE.phone}.`, '',
   '## 핵심 사실', `- 등록 매물 ${ctx.stats.total}건 (서울·경기·인천 중심), ${ctx.stats.agents ? `담당 창업전문가 ${ctx.stats.agents}명` : '창업가이드 상담센터 직접 상담'}`, '- 모든 매물은 월매출·월지출·월수익(세전)·권리금(임대보증금 제외)을 공개하며, 정확한 위치는 상담 후 안내', `- 브랜드 ${ctx.stats.brands}개: ${ctx.brandsSorted.slice(0, 20).map(b => `${b.name}(${b.n})`).join(', ')}`, '',

@@ -125,3 +125,32 @@ details.fsec:not([open]) > summary h3::after{content:"＋ 펼치기";font-size:.
 .bulkbar select{padding:5px 8px;border-radius:8px}
 a.stat{color:inherit}
 [hidden]{display:none!important}
+
+/* v18 우주 배경 */
+body.is-space{background:#05060F;color:var(--ink)}
+.space{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:radial-gradient(120% 90% at 50% 120%,#1B1446 0%,#0B0D26 45%,#04050D 100%)}
+.space__nebula{position:absolute;inset:-20%;background:radial-gradient(38% 30% at 18% 22%,rgba(122,76,255,.30),transparent 70%),radial-gradient(34% 26% at 82% 30%,rgba(45,140,255,.22),transparent 70%),radial-gradient(30% 24% at 70% 82%,rgba(255,170,60,.14),transparent 70%),radial-gradient(26% 22% at 30% 75%,rgba(255,80,160,.12),transparent 70%);filter:blur(10px);animation:nebula 60s ease-in-out infinite alternate}
+.space__stars{position:absolute;left:0;top:0;border-radius:50%;background:transparent;animation:drift 240s linear infinite}
+.space__stars--mid{animation-duration:160s;animation-name:drift,twinkle;animation-timing-function:linear,ease-in-out;animation-iteration-count:infinite,infinite;animation-duration:160s,4s}
+.space__stars--big{animation-name:drift,twinkle;animation-duration:110s,6s;animation-timing-function:linear,ease-in-out;animation-iteration-count:infinite,infinite;filter:drop-shadow(0 0 3px rgba(255,255,255,.8))}
+.space__planet{position:absolute;right:-140px;bottom:-160px;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#FFE58A 0%,#FFCC00 22%,#E08A00 52%,#5A2A00 82%,#2A1200 100%);box-shadow:0 0 80px 10px rgba(255,190,40,.25),inset -40px -40px 80px rgba(0,0,0,.55);opacity:.85}
+.space__ring{position:absolute;right:-250px;bottom:30px;width:680px;height:120px;border-radius:50%;border:2px solid rgba(255,214,120,.35);transform:rotate(-14deg);box-shadow:0 0 18px rgba(255,214,120,.15)}
+.space__shoot{position:absolute;top:12%;left:-10%;width:160px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff);transform:rotate(18deg);opacity:0;animation:shoot 9s ease-in 3s infinite}
+.space__shoot--2{top:38%;animation-delay:7.5s;animation-duration:13s}
+@keyframes drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-120px,-60px,0)}}
+@keyframes twinkle{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes nebula{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.06)}}
+@keyframes shoot{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}3%{opacity:1}12%{opacity:0;transform:translate3d(70vw,23vw,0) rotate(18deg)}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.space *{animation:none!important}}
+#app,.toast-host,.modal{position:relative;z-index:1}.modal,.toast-host{position:fixed}
+/* 사이드바·상단: 어두운 유리 */
+.is-space .side{background:rgba(8,10,28,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-right:1px solid rgba(255,255,255,.08)}
+.is-space .topbar h1{color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+.is-space .topbar .muted,.is-space #actions .muted,.is-space .toolbar>.muted,.is-space #view>p.muted,.is-space #view>.muted,.is-space .loading{color:rgba(225,228,255,.78)}
+.is-space .card,.is-space .stat,.is-space .fsec,.is-space .table,.is-space .msgs .list,.is-space .msgs .thread{box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.is-space .card,.is-space .fsec{background:rgba(255,255,255,.97)}
+.is-space .mobile-menu{background:rgba(255,255,255,.92)}
+/* 로그인 */
+.is-space .login{background:transparent}
+.is-space .login .card{background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.4);box-shadow:0 0 0 1px rgba(255,204,0,.25),0 20px 60px rgba(0,0,0,.55),0 0 80px rgba(122,76,255,.25)}
+.login .logo{display:flex;align-items:center;gap:8px}.login .logo svg{width:34px;height:34px}.login .logo b{color:var(--ink)}
