@@ -7,7 +7,7 @@ const catSlug = code => (CATEGORIES.find(c => c.code === code) || {}).slug;
 const SALES_BASIS = { 1: '매출 자료 확인(POS·카드매출 등)', 2: '양도인 진술 기준', 3: '담당자 현장 확인' };
 
 export function listingPage(l, ctx) {
-  const agent = ctx.agents.find(a => a.id === l.agentId) || { name: l.agentName, mobile: l.agentPhone, role: '창업전문가', photo: '', tel: '', kakao: '' };
+  const agent = ctx.agents.find(a => a.id === l.agentId) || { name: l.agentName, mobile: l.agentPhone, role: l.agentRole || '창업전문가', photo: l.agentPhoto || '', tel: '', kakao: '' };
   const images = (l.images || []).map(p => imgPath(p)); const thumbs = (l.images || []).map(p => imgPath(p, 'thumb'));
   const loc = [l.sido, l.gugun].filter(Boolean).join(' ');
   const theme = themeByName(l.theme);

@@ -50,6 +50,9 @@ export const ILLO = {
 };
 export const CAT_ILLO = { coffee: 'coffee', bowl: 'bowl', chicken: 'chicken', golf: 'golf', bag: 'bag', mall: 'mall' };
 
+export const FLAGS = { agents: true };
+const LOGO_MARK = `<svg class="logo__mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#FFCC00"/><path d="M11.5 28.5 27 13M16.5 13H27v10.5" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+export const logoHtml = (cls = '') => `<span class="logo__lockup ${cls}">${LOGO_MARK}<span class="logo__word">창업<b>가이드</b></span></span>`;
 export function sticker(text, { tone = 'yellow', rot = -4, size = '' } = {}) {
   return `<span class="sticker sticker--${tone} ${size}" style="--rot:${rot}deg">${esc(text)}</span>`;
 }
@@ -95,7 +98,7 @@ export function imgPath(p, variant) {
   if (p.startsWith('photos/')) return variant === 'thumb' ? p.replace('photos/', 'photos/thumb/') : p;
   return p;
 }
-// 브랜드 로고 (기존 창업미디어 인기 프랜차이즈 띠에서 추출, public/img/brands/{slug}.png)
+// 브랜드 로고 (기존 창업가이드 인기 프랜차이즈 띠에서 추출, public/img/brands/{slug}.png)
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -138,10 +141,10 @@ export function ctaBand({ title = '원하는 매물이 없다면 창업 의뢰�
 }
 
 export function header(active = '') {
-  const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/pick/', '성향별', 'pick'], ['/blog/', '창업 인사이트', 'blog'], ['/agents/', '담당 전문가', 'agents'], ['/about/', '회사 소개', 'about']];
+  const nav = [['/listings/', '매물 검색', 'listings'], ['/brand/', '브랜드별', 'brand'], ['/region/', '지역별', 'region'], ['/theme/', '테마별', 'theme'], ['/budget/', '예산별', 'budget'], ['/pick/', '성향별', 'pick'], ['/blog/', '창업 인사이트', 'blog'], ...(FLAGS.agents ? [['/agents/', '담당 전문가', 'agents']] : []), ['/about/', '회사 소개', 'about']];
   return `<header class="hdr glass" id="top">
   <div class="wrap hdr__in">
-    <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈"><img class="logo__img" src="${u('/img/legacy/logo_changupcenter_black.png')}" alt="창업전문포털사이트 No.1 창업미디어" width="172" height="80"></a>
+    <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈">${logoHtml()}</a>
     <nav class="hdr__nav" aria-label="주요 메뉴">${nav.map(([h, n, k]) => `<a href="${u(h)}" ${active === k ? 'aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>
     <div class="hdr__cta"><a class="btn btn--yellow" href="${u('/inquiry/')}">창업 문의</a><a class="btn btn--ink btn--icon" href="tel:${SITE.phoneTel}" aria-label="대표번호로 전화">${ICONS.phone}</a><button class="btn btn--white btn--icon" type="button" data-drawer-open="menu" aria-label="메뉴 열기">${ICONS.menu}</button></div>
   </div>
@@ -171,21 +174,21 @@ export function header(active = '') {
 
 export function footer() {
   return `<footer class="ftr">
-  <div class="ftr__legal"><div class="wrap"><a href="${u('/terms/')}">이용약관</a><a href="${u('/privacy/')}">개인정보처리방침</a><a href="${u('/about/')}">회사 소개·오시는 길</a><a href="${u('/faq/')}">자주 묻는 질문</a></div></div>
+  <div class="ftr__legal"><div class="wrap"><a href="${u('/terms/')}">이용약관</a><a href="${u('/privacy/')}">개인정보처리방침</a><a href="${u('/about/')}">회사 소개</a><a href="${u('/faq/')}">자주 묻는 질문</a></div></div>
   <div class="wrap">
     <div class="ftr__top">
-      <div class="ftr__brand"><img class="ftr__logo" src="${u('/img/legacy/logo_changupcenter_black.png')}" alt="창업미디어" width="172" height="80"><p>${esc(SITE.slogan)}</p>
-        <div class="ftr__contact"><a class="btn btn--yellow" href="tel:${SITE.phoneTel}">${ICONS.phone}창업상담 ${esc(SITE.phone)}</a><a class="btn btn--white" href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a></div>
-        <p class="muted">팩스 ${esc(SITE.fax)} · ${esc(SITE.hours)}</p></div>
+      <div class="ftr__brand">${logoHtml('logo__lockup--white')}<p>${esc(SITE.slogan)}</p>
+        <div class="ftr__contact"><a class="btn btn--yellow" href="tel:${SITE.phoneTel}">${ICONS.phone}창업상담 ${esc(SITE.phone)}</a>${SITE.email ? `<a class="btn btn--white" href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : `<a class="btn btn--white" href="${u('/inquiry/')}">온라인 문의</a>`}</div>
+        <p class="muted">${esc(SITE.hours)}</p></div>
       <div class="ftr__cols">
         <div><h4>매물 찾기</h4>${CATEGORIES.map(c => `<a href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a>`).join('')}<a href="${u('/listings/')}">전체 매물</a></div>
         <div><h4>테마</h4>${THEMES.map(t => `<a href="${u(`/theme/${t.slug}/`)}">${esc(t.name)}</a>`).join('')}</div>
         <div><h4>예산별</h4>${BUDGETS.map(b => `<a href="${u(`/budget/${b.slug}/`)}">${esc(b.name)}</a>`).join('')}<a href="${u('/region/')}">지역별 매물</a></div>
-        <div><h4>회사</h4><a href="${u('/about/')}">회사 소개·오시는 길</a><a href="${u('/agents/')}">담당 창업전문가</a><a href="${u('/inquiry/')}">창업 의뢰</a><a href="${u('/sell/')}">양도양수 의뢰</a><a href="${u('/blog/')}">창업 인사이트</a><a href="${u('/faq/')}">자주 묻는 질문</a><a href="${esc(SITE.blog)}" rel="noopener" target="_blank">네이버 블로그</a><a href="${u('/admin/')}">관리자</a></div>
+        <div><h4>회사</h4><a href="${u('/about/')}">회사 소개</a>${FLAGS.agents ? `<a href="${u('/agents/')}">담당 창업전문가</a>` : ''}<a href="${u('/inquiry/')}">창업 의뢰</a><a href="${u('/sell/')}">양도양수 의뢰</a><a href="${u('/blog/')}">창업 인사이트</a><a href="${u('/faq/')}">자주 묻는 질문</a><a href="${esc(SITE.blog)}" rel="noopener" target="_blank">네이버 블로그</a><a href="${u('/admin/')}">관리자</a></div>
       </div>
     </div>
-    <div class="ftr__notice"><h4>창업미디어에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
-    <div class="ftr__info"><p>${esc(SITE.name)} · 회사명 ${esc(SITE.company)} · 사업자등록번호 ${esc(SITE.bizNo)} · ${esc(SITE.address)} (지번: ${esc(SITE.addressJibun)}) · 창업상담 ${esc(SITE.phone)} · 팩스 ${esc(SITE.fax)}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
+    <div class="ftr__notice"><h4>창업가이드에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+    <div class="ftr__info"><p>상호 ${esc(SITE.company)} · 대표 ${esc(SITE.ceo)} · 사업자등록번호 ${esc(SITE.bizNo)} · 업태/종목 ${esc(SITE.bizType)}</p><p>주소 ${esc(SITE.address)} · 창업상담 <a href="tel:${SITE.phoneTel}">${esc(SITE.phone)}</a>${SITE.email ? ` · ${esc(SITE.email)}` : ''}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
   </div>
 </footer>
 <div class="float-cta" id="floatCta"><a class="btn btn--red btn--lg glass-red" href="${u('/inquiry/')}">${ICONS.bolt}<span>문의하기</span></a><a class="btn btn--yellow btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화</span></a><button type="button" class="btn btn--ink btn--icon" data-scroll-top aria-label="맨 위로">${ICONS.chevron}</button></div>
@@ -208,7 +211,7 @@ export function layout({ title, desc, path, body, active = '', ld = [], og, type
   const ogKey = og ? '' : (() => { const m = String(path || '/').split('/').filter(Boolean); if (!m.length) return 'main'; return [`${m[0]}-${m[1]}`, m[0], `kw-${m[0]}`, m[0] === 'category' ? 'listings' : ''].find(k => k && existsSync(join(__pub, 'img', 'og', `${k}.jpg`))) || 'main'; })();
   const ogImg = og || abs(`/img/og/${ogKey}.jpg`);
   const ldAll = [
-    { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: [SITE.company, '창업미디어 창업포털', 'changupmedia'], legalName: SITE.company, url: abs('/'), logo: abs('/logo.png'), telephone: SITE.phoneTel, email: SITE.email, faxNumber: SITE.fax, address: { '@type': 'PostalAddress', streetAddress: '테헤란로 413 태양빌딩 8층', addressLocality: '강남구', addressRegion: '서울특별시', addressCountry: 'KR' }, sameAs: [SITE.blog], contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }], description: SITE.slogan, knowsAbout: SEO.keywords },
+    { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: ['창업가이드 창업컨설팅', 'changupguide'], legalName: SITE.company, founder: { '@type': 'Person', name: SITE.ceo }, foundingDate: '2014-04-01', taxID: SITE.bizNo, url: abs('/'), logo: abs('/logo.png'), telephone: SITE.phoneTel, ...(SITE.email ? { email: SITE.email } : {}), address: { '@type': 'PostalAddress', streetAddress: SITE.addressStreet, addressLocality: SITE.addressLocality, addressRegion: '서울특별시', addressCountry: 'KR' }, contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }], description: SITE.slogan, knowsAbout: SEO.keywords },
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': abs('/#website'), url: abs('/'), name: SITE.name, inLanguage: 'ko-KR', publisher: { '@id': abs('/#org') }, potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: abs('/listings/') + '?q={search_term_string}' }, 'query-input': 'required name=search_term_string' } },
     ...ld,
   ];
@@ -228,7 +231,7 @@ ${keywords.length ? `<meta name="keywords" content="${esc(keywords.join(', '))}"
 <meta name="theme-color" content="#FFCC00">
 ${SITE.naverVerification ? `<meta name="naver-site-verification" content="${esc(SITE.naverVerification)}">` : ''}
 ${SITE.googleVerification ? `<meta name="google-site-verification" content="${esc(SITE.googleVerification)}">` : ''}
-<link rel="icon" href="${u('/favicon.ico')}" sizes="any"><link rel="icon" href="${u('/img/legacy/mark.png')}" type="image/png"><link rel="apple-touch-icon" href="${u('/logo.png')}">
+<link rel="icon" href="${u('/favicon.ico')}" sizes="any"><link rel="icon" href="${u('/img/brand/mark.png')}" type="image/png"><link rel="apple-touch-icon" href="${u('/apple-touch-icon.png')}">
 <link rel="alternate" type="application/rss+xml" title="${esc(SITE.name)} 창업 인사이트" href="${u('/rss.xml')}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">

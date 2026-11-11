@@ -26,8 +26,8 @@ def og():
     try:
         lg = Image.open(os.path.join(out, 'img', 'legacy', 'logo_changupcenter_black.png')).convert('RGBA'); lg = lg.crop(lg.getbbox()); r = 150 / lg.size[1]; lg = lg.resize((int(lg.size[0] * r), 150), Image.LANCZOS); im.paste(lg, (90, 86), lg)
     except Exception as e:
-        d.text((90, 86), '창업미디어', font=font(96), fill=INK)
-    d.text((92, 236), '창업전문포털  ·  (주)세움창업법인', font=font(30), fill=(107, 104, 128))
+        d.text((90, 86), '창업가이드', font=font(96), fill=INK)
+    d.text((92, 236), '창업전문포털  ·  창업 컨설팅', font=font(30), fill=(107, 104, 128))
     d.text((90, 270), '양도양수 창업 매물', font=font(76), fill=INK)
     d.text((90, 360), '지역 · 브랜드 · 예산별 비교', font=font(60), fill=RED)
     # 스티커
@@ -39,7 +39,7 @@ def og():
     im.save(os.path.join(out, 'og.png'), optimize=True)
 
 def logo():
-    pass  # logo.png / favicon.ico / apple-touch-icon.png 은 기존 창업미디어 로고에서 생성 (public/img/legacy)
+    pass  # logo.png / favicon.ico / apple-touch-icon.png 은 기존 창업가이드 로고에서 생성 (public/img/legacy)
 
 def post_cover(title, sub, name, theme='yellow'):
     bg = {'yellow': YEL, 'red': RED, 'blue': BLUE}[theme]
@@ -57,7 +57,7 @@ def post_cover(title, sub, name, theme='yellow'):
     y = 110
     for ln in lines[:4]: d.text((90, y), ln, font=f, fill=INK); y += 74
     d.text((90, y + 14), sub, font=font(32), fill=RED)
-    mark(d, 90, 520, 60); d.text((170, 528), '창업미디어 창업 인사이트', font=font(34), fill=INK)
+    mark(d, 90, 520, 60); d.text((170, 528), '창업가이드 창업 인사이트', font=font(34), fill=INK)
     im.save(name, 'JPEG', quality=86, optimize=True)
 
 if __name__ == '__main__':

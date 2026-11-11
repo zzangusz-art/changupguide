@@ -8,7 +8,8 @@ import { fmtWon, fmtMan, fmtNum, budgetOf, slugify, isoDate, themeByName } from 
 
 const args = process.argv.slice(2); const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const COUNT = Number(opt('--count', 3)); const DATE = opt('--date', isoDate()); const FORCE = args.includes('--force');
-const listings = JSON.parse(fs.readFileSync('src/data/listings.json', 'utf-8')).filter(l => l.status === 'active');
+// 업체 요청: 외부(창업미디어) 수집 매물은 제외, 창업가이드가 직접 등록했거나 검증 완료한 매물만 글감으로 사용
+const listings = JSON.parse(fs.readFileSync('src/data/listings.json', 'utf-8')).filter(l => l.status === 'active' && (l.source !== 'changupmedia.com' || l.verified));
 const agents = JSON.parse(fs.readFileSync('src/data/agents.json', 'utf-8'));
 const dir = path.resolve('content/posts'); fs.mkdirSync(dir, { recursive: true });
 const existing = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')));
@@ -24,6 +25,7 @@ const avg = (arr, k) => { const v = arr.filter(l => l[k]); return v.length ? Mat
 
 // 후보: 지역+브랜드+예산이 모두 있는 매물 우선, 아직 글이 없는 것
 const cands = listings.filter(l => l.sido && l.gugun && l.gugun !== l.sido && (l.brand || l.kindLabel || l.kind2) && l.premium && l.sales && l.profit && !usedListing.has(l.id));
+if (!cands.length) { console.log('글감으로 쓸 자체 등록 매물이 없어 발행을 건너뜁니다.'); process.exit(0); }
 const byBrand = {}; for (const l of cands) (byBrand[l.brand || l.kindLabel || l.kind2] ||= []).push(l);
 // 브랜드 다양성: 브랜드별로 돌아가며 선택
 const brandKeys = Object.keys(byBrand).sort((a, b) => byBrand[b].length - byBrand[a].length);
@@ -51,7 +53,7 @@ function compose(l, t) {
   const theme = themeByName(l.theme);
   const cmpAvgSales = avg(same, 'sales'), cmpAvgProfit = avg(same, 'profit'), cmpAvgPrem = avg(same, 'premium');
   const openers = [
-    `${loc}에서 ${b} 매장을 인수하려면 어느 정도 예산이 필요하고, 그 돈으로 얼마를 벌 수 있을까요. 창업미디어에 등록된 매물 No.${l.id}의 숫자를 기준으로 계산해 봤습니다.`,
+    `${loc}에서 ${b} 매장을 인수하려면 어느 정도 예산이 필요하고, 그 돈으로 얼마를 벌 수 있을까요. 창업가이드에 등록된 매물 No.${l.id}의 숫자를 기준으로 계산해 봤습니다.`,
     `"${loc} ${b} 창업"을 검색하는 분들이 가장 궁금해하는 것은 결국 세 가지입니다. 권리금이 얼마인지, 월매출이 얼마인지, 그래서 손에 얼마가 남는지. 등록 매물 No.${l.id}로 답해 보겠습니다.`,
     `${b} 매장을 신규로 여는 대신 운영 중인 매장을 인수하는 방법이 있습니다. ${loc}에 등록된 양도양수 매물 No.${l.id}는 권리금 ${fmtWon(l.premium)}에 월매출 ${fmtMan(l.sales)} 규모입니다. 이 숫자가 어떤 의미인지 풀어 보겠습니다.`,
   ];
@@ -64,7 +66,7 @@ function compose(l, t) {
     l.areaM2 ? `| 면적 | ${l.areaM2}㎡ (약 ${Math.round(l.areaM2 / 3.3058)}평)${l.floor ? `, ${l.floor}층` : ''} |` : null, `| 담당 | ${agent.name} ${agent.role || '창업전문가'} |`,
     '',
     `## 예산: 권리금 ${fmtWon(l.premium)}의 의미`,
-    `이 매물의 권리금은 ${fmtWon(l.premium)}로, 창업미디어 예산 구간으로는 "${budget ? budget.name : '협의'}"에 해당합니다. 권리금에는 임대보증금이 포함되지 않으므로 실제 준비 자금은 보증금과 첫 달 월세, ${l.brand ? '본사 양수 승인 비용(교육비 등)' : '시설 보수비'}를 더해 잡아야 합니다.${cmpAvgPrem ? ` 같은 ${b} 매물 ${same.length}건의 평균 권리금은 ${fmtWon(cmpAvgPrem)}이므로, 이 매물은 평균보다 ${l.premium > cmpAvgPrem ? '높은' : '낮은'} 편입니다.` : ''}`,
+    `이 매물의 권리금은 ${fmtWon(l.premium)}로, 창업가이드 예산 구간으로는 "${budget ? budget.name : '협의'}"에 해당합니다. 권리금에는 임대보증금이 포함되지 않으므로 실제 준비 자금은 보증금과 첫 달 월세, ${l.brand ? '본사 양수 승인 비용(교육비 등)' : '시설 보수비'}를 더해 잡아야 합니다.${cmpAvgPrem ? ` 같은 ${b} 매물 ${same.length}건의 평균 권리금은 ${fmtWon(cmpAvgPrem)}이므로, 이 매물은 평균보다 ${l.premium > cmpAvgPrem ? '높은' : '낮은'} 편입니다.` : ''}`,
     '',
     `## 매출: 월매출 ${fmtMan(l.sales)}는 어떻게 쓰이나`,
     l.expense ? `월매출 ${fmtMan(l.sales)}에서 월지출 ${fmtMan(l.expense)}를 빼면 세전 월수익 ${fmtMan(l.profit)}이 남습니다. 수익률로는 약 ${rate}%입니다.` : `세전 월수익은 ${fmtMan(l.profit)}, 수익률은 약 ${rate}%입니다.`,
@@ -84,7 +86,7 @@ function compose(l, t) {
     '- 건물 상태, 간판·외부 노출, 주차 가능 여부',
     '',
     '## 이런 분께 맞는 매물입니다',
-    theme ? `- 창업미디어 테마 "${theme.name}" 매물 — ${theme.desc.split('.')[0]}.` : null,
+    theme ? `- 창업가이드 테마 "${theme.name}" 매물 — ${theme.desc.split('.')[0]}.` : null,
     (l.tags || []).includes('풀오토') || (l.tags || []).includes('오토운영') ? '- 매장에 상주하기 어려운 투자형·부업형 창업자 (오토 운영 구조)' : '- 직접 운영하며 인건비를 줄여 수익을 키우고 싶은 분',
     l.brand ? `- ${l.brand} 신규 가맹 대신 매출이 확인된 매장으로 시작하려는 분` : `- ${l.kind2 || l.kind1} 업종 경험이 있거나 담당자 교육으로 시작하려는 분`,
     `- 권리금 예산 ${budget ? budget.name : fmtWon(l.premium)} 범위에서 ${loc}를 보고 있는 분`,
@@ -115,7 +117,7 @@ for (const [i, l] of chosen.entries()) {
   const slug = `${DATE}-${slugify(`${l.sido}-${l.gugun}-${l.brand || l.kindLabel || l.kind2}-${l.id}`)}`;
   const { body, summary, faq } = compose(l, t);
   const post = { slug, title, desc: `${l.sido} ${l.gugun} ${l.brand || l.kindLabel || l.kind2} 양도양수 창업 매물 No.${l.id} 분석. 권리금 ${fmtWon(l.premium)}(보증금 별도), 월매출 ${fmtMan(l.sales)}, 월수익 ${fmtMan(l.profit)}. 예산·수익 구조·회수 기간·상권 체크리스트.`,
-    date: `${DATE}T${String(9 + i * 4).padStart(2, '0')}:05:00+09:00`, category: t.category, author: '창업미디어 편집팀', listingId: l.id, agentId: l.agentId, keywords: [`${l.sido} ${l.gugun} ${l.brand || l.kindLabel || l.kind2} 창업`, `${l.brand || l.kindLabel || l.kind2} 창업비용`, `${l.gugun} 창업`, `${l.brand || l.kindLabel || l.kind2} 양도양수`, '권리금', '창업 매물'],
+    date: `${DATE}T${String(9 + i * 4).padStart(2, '0')}:05:00+09:00`, category: t.category, author: '창업가이드 편집팀', listingId: l.id, agentId: l.agentId, keywords: [`${l.sido} ${l.gugun} ${l.brand || l.kindLabel || l.kind2} 창업`, `${l.brand || l.kindLabel || l.kind2} 창업비용`, `${l.gugun} 창업`, `${l.brand || l.kindLabel || l.kind2} 양도양수`, '권리금', '창업 매물'],
     cover: l.images && l.images[0] ? l.images[0] : '', summary, faq, body, status: 'published', generator: 'template-v1' };
   fs.writeFileSync(path.join(dir, slug + '.json'), JSON.stringify(post, null, 1));
   made.push(slug);

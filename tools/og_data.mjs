@@ -35,12 +35,12 @@ add('inquiry', '무료 매물 찾기', '조건만 남기면\n매물을 찾아드
 add('sell', '양도 의뢰', '내 매장 양도 의뢰', '담당자가 방문해 매출과 시설을 확인합니다', listings);
 add('agents', '담당 전문가', '담당 창업전문가', '매물마다 담당자가 정해져 있습니다', listings);
 add('blog', '창업 인사이트', '창업 인사이트', '지역·브랜드·예산으로 읽는 창업', listings);
-add('about', '회사 소개', '창업미디어 소개', '(주)세움창업법인 · 서울 강남구 테헤란로', listings);
+add('about', '회사 소개', '창업가이드 소개', '2014년부터 양도양수 창업 컨설팅 · 서울 송파구', listings);
 add('faq', '자주 묻는 질문', '양도양수 창업,\n궁금한 점 정리', '비용·절차·권리금 안내', listings);
 for (const t of THEMES) add(`theme-${t.slug}`, '테마별 창업', t.name, t.h1.split(', ').pop().trim(), themeItems(t, { listings, byTheme }));
 for (const b of BUDGETS) add(`budget-${b.slug}`, '예산별 창업', `권리금 ${b.max === Infinity ? '6억 이상' : b.min === 0 ? '1억 미만' : `${b.min / 10000}~${b.max / 10000}억`}`, '월매출·월수익을 숫자로 비교', listings.filter(l => l.premium != null && l.premium >= b.min && l.premium < b.max));
 for (const p of PICKS) add(`pick-${p.slug}`, '성향별 추천', p.name, p.hook, photoFirst(listings.filter(p.fn).sort(p.sort)));
 for (const c of CATEGORIES) add(`category-${c.slug}`, '업종별 창업', c.name, '운영 중인 매장을 권리금으로 인수', listings.filter(l => l.kind1 === c.name));
-for (const [slug, name, items] of [['startup', '창업 매물', listings], ['items', '창업 아이템', listings], ['cafe', '카페 창업', listings.filter(l => /커피|카페/.test(`${l.kind2}${l.brand}`))], ['chicken', '치킨집 창업', listings.filter(l => /치킨/.test(`${l.kind1}${l.kind2}${l.brand}`))], ['transfer', '양도양수', listings]]) add(`kw-${slug}`, '창업미디어', name, '월매출·월수익·권리금 공개 매물', items);
+for (const [slug, name, items] of [['startup', '창업 매물', listings], ['items', '창업 아이템', listings], ['cafe', '카페 창업', listings.filter(l => /커피|카페/.test(`${l.kind2}${l.brand}`))], ['chicken', '치킨집 창업', listings.filter(l => /치킨/.test(`${l.kind1}${l.kind2}${l.brand}`))], ['transfer', '양도양수', listings]]) add(`kw-${slug}`, '창업가이드', name, '월매출·월수익·권리금 공개 매물', items);
 fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 1));
 console.log(out.length, 'items,', out.filter(x => !x.photo).length, 'without photo');

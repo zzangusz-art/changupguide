@@ -110,3 +110,18 @@ h1,h2,h3,h4{margin:0;font-weight:900;letter-spacing:-.02em}p{margin:0 0 .5em}
 @media (max-width:900px){.shell{grid-template-columns:1fr}.side{position:fixed;left:0;top:0;bottom:0;width:240px;transform:translateX(-100%);transition:transform .25s;z-index:70}.side.is-open{transform:none}.main{padding:14px 14px 90px}.grid2,.grid3,.grid4{grid-template-columns:1fr 1fr}.msgs{grid-template-columns:1fr}.mobile-menu{display:inline-flex}.drawer__panel,.drawer__foot{width:100vw}.table{font-size:.82rem}}
 @media (min-width:901px){.mobile-menu{display:none}}
 @media (max-width:560px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+/* v16 간소화 등록·브랜드 기본값·일괄 작업 */
+.field input.is-auto{background:#FFF7CC;border-color:#E6C200}
+.brand-defaults{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 14px;border:1px dashed #C9A800;background:#FFFBEA;border-radius:10px;font-size:.86rem}
+.brand-defaults img{height:30px;max-width:90px;object-fit:contain}
+.brand-defaults > div{flex:1}
+.brand-defaults[hidden]{display:none}
+details.fsec > summary{cursor:pointer;list-style:none}
+details.fsec > summary::-webkit-details-marker{display:none}
+details.fsec > summary h3{margin:0}
+details.fsec:not([open]) > summary h3::after{content:"＋ 펼치기";font-size:.78rem;color:var(--muted);font-weight:700;margin-left:8px}
+.bulkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin-bottom:10px;background:#111;color:#fff;border-radius:10px}
+.bulkbar select{padding:5px 8px;border-radius:8px}
+a.stat{color:inherit}
+[hidden]{display:none!important}

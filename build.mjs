@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, KEYWORD_PAGES } from './src/data.mjs';
 import { indexEntry, canon, BRAND_LIST, isoDate } from './src/lib/text.mjs';
-import { abs, u } from './src/lib/html.mjs';
+import { abs, u, FLAGS } from './src/lib/html.mjs';
 import { homePage } from './src/pages/home.mjs';
 import { photoFirst } from './src/lib/picks.mjs';
 import { listingPage } from './src/pages/listing.mjs';
@@ -16,8 +16,15 @@ const t0 = Date.now();
 const DIST = path.resolve('dist');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf-8'));
 const listingsAll = read('src/data/listings.json');
-const agents = read('src/data/agents.json');
-const listingsActive = listingsAll.filter(l => l.status === 'active');
+// 외부(창업미디어) 수집 데이터 분리: 담당자 계정은 공개하지 않고, 매물은 SHOW_LEGACY=0 이면 검증(verified) 완료분만 공개
+const LEGACY_SRC = 'changupmedia.com';
+const isLegacy = l => l.source === LEGACY_SRC;
+const SHOW_LEGACY = process.env.SHOW_LEGACY !== '0';
+const agents = read('src/data/agents.json').filter(a => a.active && !a.legacy && a.showPublic !== false);
+const agentIds = new Set(agents.map(a => a.id));
+const listingsActive = listingsAll.filter(l => l.status === 'active' && (!isLegacy(l) || SHOW_LEGACY || l.verified));
+for (const l of listingsActive) if (!agentIds.has(l.agentId)) Object.assign(l, { agentId: '', agentName: SITE.name + ' 상담센터', agentPhone: SITE.phone, agentRole: '대표번호', agentPhoto: 'img/brand/mark.png' });
+FLAGS.agents = agents.length > 0;
 for (const l of listingsActive) if (l.duplicateOf) l.canonicalId = l.duplicateOf;
 // 광고·로고·증명사진 이미지는 뒤로 보내고, 실사가 있는 매물을 먼저 노출
 const GRAPHICS = new Set(JSON.parse(fs.readFileSync(new URL('./src/data/photo-graphics.json', import.meta.url), 'utf-8')));
@@ -38,6 +45,7 @@ const ctx = {
   byTheme: by(listings, l => l.theme),
   byBudget: by(listings, l => { const b = BUDGETS.find(b => l.premium != null && l.premium >= b.min && l.premium < b.max); return b ? b.slug : ''; }),
   byAgent: by(listings, l => l.agentId),
+  brandInfo: fs.existsSync('src/data/brands.json') ? Object.fromEntries(read('src/data/brands.json').map(b => [b.slug, b])) : {},
   brandNames: Object.fromEntries(listings.filter(l => l.brandSlug).map(l => [l.brandSlug, l.brand])),
   stats: {
     total: listingsActive.length, unique: listings.length,
@@ -81,6 +89,7 @@ fs.copyFileSync('src/data.mjs', path.join(DIST, 'js/data.mjs'));
 fs.mkdirSync(path.join(DIST, 'admin/seed'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'admin/seed/listings.json'), JSON.stringify(listingsAll));
 fs.writeFileSync(path.join(DIST, 'admin/seed/agents.json'), JSON.stringify(agents));
+if (fs.existsSync('src/data/brands.json')) fs.copyFileSync('src/data/brands.json', path.join(DIST, 'admin/seed/brands.json'));
 fs.writeFileSync(path.join(DIST, 'admin/seed/posts.json'), JSON.stringify(posts.map(p => ({ slug: p.slug, title: p.title, date: p.date, listingId: p.listingId, agentId: p.agentId, status: 'published' }))));
 
 // ---- 검색 인덱스·추천어 ----
@@ -107,8 +116,8 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'), SITE.noindex
   ? `User-agent: *\nDisallow: /\n# 미리보기 빌드 — 정식 도메인 배포 시 NOINDEX 해제\n`
   : `User-agent: *\nAllow: /\nDisallow: /admin/\n\n# AI 검색·답변 엔진 인용 허용\nUser-agent: GPTBot\nAllow: /\nUser-agent: OAI-SearchBot\nAllow: /\nUser-agent: ChatGPT-User\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: Claude-User\nAllow: /\nUser-agent: Claude-SearchBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\nUser-agent: Yeti\nAllow: /\nUser-agent: Bingbot\nAllow: /\n\nSitemap: ${abs('/sitemap.xml')}\n`);
 
-const llms = [`# ${SITE.name} (구 ${SITE.legacyName})`, '', `> ${SITE.slogan}. 회사명 ${SITE.company}, 서울 강남구 테헤란로 413 태양빌딩 8층. 사업체(권리금) 양도양수 전문 창업 컨설팅. 부동산 중개대상물은 취급하지 않음. 창업상담 ${SITE.phone} (24시간).`, '',
-  '## 핵심 사실', `- 등록 매물 ${ctx.stats.total}건 (서울·경기·인천 중심), 담당 창업전문가 ${ctx.stats.agents}명`, '- 모든 매물은 월매출·월지출·월수익(세전)·권리금(임대보증금 제외)을 공개하며, 정확한 위치는 상담 후 안내', `- 브랜드 ${ctx.stats.brands}개: ${ctx.brandsSorted.slice(0, 20).map(b => `${b.name}(${b.n})`).join(', ')}`, '',
+const llms = [`# ${SITE.name}`, '', `> ${SITE.slogan}. 상호 ${SITE.company} (대표 ${SITE.ceo}, 사업자등록번호 ${SITE.bizNo}, 2014년 개업), ${SITE.address}. 사업체(권리금) 양도양수 전문 창업 컨설팅. 부동산 중개대상물은 취급하지 않음. 창업상담 ${SITE.phone}.`, '',
+  '## 핵심 사실', `- 등록 매물 ${ctx.stats.total}건 (서울·경기·인천 중심), ${ctx.stats.agents ? `담당 창업전문가 ${ctx.stats.agents}명` : '창업가이드 상담센터 직접 상담'}`, '- 모든 매물은 월매출·월지출·월수익(세전)·권리금(임대보증금 제외)을 공개하며, 정확한 위치는 상담 후 안내', `- 브랜드 ${ctx.stats.brands}개: ${ctx.brandsSorted.slice(0, 20).map(b => `${b.name}(${b.n})`).join(', ')}`, '',
   '## 주요 페이지', `- [전체 매물 검색](${abs('/listings/')})`, ...CATEGORIES.map(c => `- [${c.name} 매물](${abs(`/category/${c.slug}/`)})`), ...THEMES.map(t => `- [${t.name}](${abs(`/theme/${t.slug}/`)})`), ...KEYWORD_PAGES.map(k => `- [${k.kw}](${abs(`/${k.slug}/`)})`), `- [담당 전문가](${abs('/agents/')})`, `- [창업 인사이트(블로그)](${abs('/blog/')})`, `- [자주 묻는 질문](${abs('/faq/')})`, `- [회사 소개](${abs('/about/')})`, '',
   '## 브랜드별', ...ctx.brandsSorted.slice(0, 40).map(b => `- [${b.name} 창업 매물 ${b.n}건](${abs(`/brand/${b.slug}/`)})`), '',
   '## 지역별', ...SIDO_ORDER.filter(s => ctx.bySido[s]).map(s => `- [${s} ${ctx.bySido[s].length}건](${abs(`/region/${encodeURIComponent(s)}/`)})`), '',

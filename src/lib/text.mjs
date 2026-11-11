@@ -162,8 +162,8 @@ export function makeTitle(l) {
   return parts.join(' ');
 }
 export function makeSeoTitle(l) {
-  const t = makeTitle(l);
-  return `${t} | 창업미디어 양도양수 매물 No.${l.id}`;
+  const t = l.titleManual && l.title ? l.title : makeTitle(l);
+  return `${t} | 창업가이드 양도양수 매물 No.${l.id}`;
 }
 export function makeDesc(l) {
   const loc = [l.sido, l.gugun].filter(Boolean).join(' ');

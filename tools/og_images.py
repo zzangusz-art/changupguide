@@ -33,7 +33,7 @@ def rounded(size, r):
 def cover(im, w, h):
     s = max(w / im.width, h / im.height); im = im.resize((round(im.width * s) + 1, round(im.height * s) + 1), Image.LANCZOS)
     x, y = (im.width - w) // 2, (im.height - h) // 2; return im.crop((x, y, x + w, y + h))
-logo = Image.open(os.path.join(PUB, 'img', 'legacy', 'logo_changupcenter_black.png')).convert('RGBA'); logo = logo.crop(logo.getbbox())
+logo = Image.open(os.path.join(PUB, 'img', 'brand', 'logo.png')).convert('RGBA'); logo = logo.crop(logo.getbbox())
 if logo.height > 58: logo = logo.resize((round(logo.width * 58 / logo.height), 58), Image.LANCZOS)
 
 def render(it):

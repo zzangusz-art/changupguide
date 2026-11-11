@@ -2,7 +2,7 @@
   "name": "changupguide-site",
   "version": "1.0.0",
   "private": true,
-  "description": "창업가이드(구 창업미디어) 공식 홈페이지 — 정적 빌더 + 관리자 + API 서버",
+  "description": "창업가이드 공식 홈페이지 — 정적 빌더 + 관리자 + API 서버",
   "type": "module",
   "engines": { "node": ">=22.12" },
   "scripts": {

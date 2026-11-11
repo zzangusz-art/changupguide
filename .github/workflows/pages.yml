@@ -28,6 +28,8 @@ jobs:
           NOINDEX: ${{ vars.NOINDEX || '1' }}
           API_URL: ${{ vars.API_URL || '' }}
           CNAME: ${{ vars.CNAME || '' }}
+          # 외부(창업미디어) 수집 매물 노출: 미리보기는 1, 정식 오픈 시 0 (검증 완료 매물만 공개)
+          SHOW_LEGACY: ${{ vars.SHOW_LEGACY || '1' }}
         run: node build.mjs
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }

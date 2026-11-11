@@ -1,4 +1,4 @@
-// 창업미디어 공통 인터랙션: 히어로 롤링, 드로어, 모달, 토스트, 갤러리 라이트박스, 통화 연결 알림, 문자 상담 폼, 검색 추천
+// 창업가이드 공통 인터랙션: 히어로 롤링, 드로어, 모달, 토스트, 갤러리 라이트박스, 통화 연결 알림, 문자 상담 폼, 검색 추천
 const CU = window.CU || { base: '', api: '' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
