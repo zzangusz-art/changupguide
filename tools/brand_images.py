@@ -35,7 +35,7 @@ def og():
         f = font(34); w = d.textlength(t, font=f)
         d.rounded_rectangle([x - 18, y - 10, x + w + 18, y + 50], radius=30, fill=col, outline=INK, width=5)
         d.text((x, y), t, font=f, fill=(255, 255, 255) if fc == 'w' else YEL)
-    d.text((90, 470), '24시간 창업상담 010-5548-6188', font=font(40), fill=INK)
+    d.text((90, 470), '양도양수 창업 컨설팅', font=font(40), fill=INK)
     im.save(os.path.join(out, 'og.png'), optimize=True)
 
 def logo():

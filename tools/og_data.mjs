@@ -14,12 +14,16 @@ const byTheme = by(listings, l => l.theme);
 
 const usedBrand = new Set(); const usedFile = new Set(); const usedSize = new Set(); // 파일 크기로 다른 매물의 동일 사진까지 제외
 const sizeOf = f => fs.statSync(new URL(`../public/${f}`, import.meta.url)).size;
+let fallbackIdx = 0;
 function photo(items) {
   for (const strict of [true, false]) for (const l of items) for (const f of l.images || []) {
     if (!WIDE.has(f) || usedFile.has(f) || usedSize.has(sizeOf(f)) || (strict && usedBrand.has(l.brand || f))) continue;
     usedFile.add(f); usedSize.add(sizeOf(f)); usedBrand.add(l.brand || f); return f;
   }
-  return '';
+  // 예시 매물만 있을 때: 해당 묶음의 이미지 → 없으면 예시 이미지를 돌려가며 사용
+  const own = items.flatMap(l => l.images || []).find(f => fs.existsSync(new URL(`../public/${f}`, import.meta.url)));
+  const pool = fs.readdirSync(new URL('../public/img/sample/', import.meta.url)).filter(f => f.endsWith('.jpg')).map(f => `img/sample/${f}`);
+  return own && !usedFile.has(own) ? (usedFile.add(own), own) : pool[(fallbackIdx++) % pool.length] || '';
 }
 const out = [];
 const add = (key, label, title, sub, items) => out.push({ key, label, title, sub, photo: photo(items) });

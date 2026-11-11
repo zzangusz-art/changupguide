@@ -8,8 +8,8 @@ import { fmtWon, fmtMan, fmtNum, budgetOf, slugify, isoDate, themeByName } from 
 
 const args = process.argv.slice(2); const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const COUNT = Number(opt('--count', 3)); const DATE = opt('--date', isoDate()); const FORCE = args.includes('--force');
-// 업체 요청: 외부(창업미디어) 수집 매물은 제외, 창업가이드가 직접 등록했거나 검증 완료한 매물만 글감으로 사용
-const listings = JSON.parse(fs.readFileSync('src/data/listings.json', 'utf-8')).filter(l => l.status === 'active' && (l.source !== 'changupmedia.com' || l.verified));
+// 업체 요청: 외부(창업미디어) 수집 매물·예시(sample) 매물은 제외, 창업가이드가 직접 등록했거나 검증 완료한 매물만 글감으로 사용
+const listings = JSON.parse(fs.readFileSync('src/data/listings.json', 'utf-8')).filter(l => l.status === 'active' && !l.sample && (l.source !== 'changupmedia.com' || l.verified));
 const agents = JSON.parse(fs.readFileSync('src/data/agents.json', 'utf-8'));
 const dir = path.resolve('content/posts'); fs.mkdirSync(dir, { recursive: true });
 const existing = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')));

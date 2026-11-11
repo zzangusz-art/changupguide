@@ -139,7 +139,7 @@ export function homePage(ctx) {
       <span class="eyebrow">진행 절차</span><h2 class="h2">상담부터 인수까지,<br>담당자가 <span class="hl">5단계</span>로 함께합니다</h2>
       <p class="seq__lead">모든 매물에는 담당 창업전문가가 정해져 있습니다. 전화 한 통으로 시작해 인수 후까지 같은 담당자가 이어서 응대합니다.</p>
       <ol class="seq__nav"><span class="seq__line"><i data-seq-progress></i></span>${SEQ.map((s, i) => `<li><button type="button" data-seq-go="${i}" aria-current="${i === 0 ? 'step' : 'false'}"><b>0${i + 1}</b><span>${esc(s.t)}</span><small>${esc(s.time)}</small></button></li>`).join('')}</ol>
-      <div class="seq__cta"><a class="btn btn--yellow btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰 남기기</a><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)}</a></div>
+      <div class="seq__cta"><a class="btn btn--yellow btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰 남기기</a>${SITE.phone ? `<a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)}</a>` : `<a class="btn btn--ink btn--lg" href="${u('/sell/')}">${ICONS.share}양도 의뢰</a>`}</div>
     </div></div>
     <ol class="seq__steps">${SEQ.map((s, i) => `<li class="seq__step" data-seq-step="${i}" id="step-${i + 1}">
       <div class="seq__card glass">

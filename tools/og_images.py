@@ -55,7 +55,7 @@ def render(it):
     for l in lines: d.text((x, y), l, font=f, fill=(28, 24, 18)); y += round(size * 1.28)
     y += 8; fs = font(27, 400)
     for l in wrap(d, it['sub'], fs, maxw)[:2]: d.text((x, y), l, font=fs, fill=(74, 60, 34)); y += 40
-    d.text((x, H - 66), '창업상담 010-5548-6188', font=font(26, 600), fill=(28, 24, 18))
+    d.text((x, H - 66), '양도양수 창업 컨설팅 · 2014년부터', font=font(26, 600), fill=(28, 24, 18))
     bg.convert('RGB').save(os.path.join(OUT, it['key'] + '.jpg'), quality=88, optimize=True, progressive=True)
 
 items = json.load(open(sys.argv[1], encoding='utf-8'))

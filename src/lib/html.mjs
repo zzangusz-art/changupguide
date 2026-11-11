@@ -74,6 +74,7 @@ export function listingCard(l, { eager = false, size = '' } = {}) {
   <a class="card__media" href="${u(`/listing/${l.id}/`)}" aria-label="${esc(l.title)}">
     ${img(img0, `${esc(l.title)} 매장 사진`, { lazy: !eager, w: 480, h: 360, cls: 'card__img' })}
     ${tags.length ? `<div class="card__stickers">${tags.map((t, i) => sticker(t, { tone: ['yellow', 'red', 'blue'][i % 3], rot: [-6, 5, -3][i % 3], size: 'sm' })).join('')}</div>` : ''}
+    ${l.sample ? '<span class="card__sample">예시 매물</span>' : ''}
     ${l.brand ? `<span class="card__brand">${esc(l.brand)}</span>` : ''}
     ${(m => m != null && m <= 18 ? `<span class="card__payback" title="권리금 ÷ 월수익(세전) 단순 계산, 점주 인건비 제외">회수 약 ${Math.max(1, Math.round(m))}개월</span>` : '')(paybackMonths(l))}
   </a>
@@ -86,8 +87,8 @@ export function listingCard(l, { eager = false, size = '' } = {}) {
       <div><dt>권리금</dt><dd class="cool">${esc(premium)}</dd></div>
     </dl>
     <div class="card__foot">
-      <span class="card__agent">${esc(l.agentName || '담당자')} 창업전문가</span>
-      <a class="btn btn--call btn--sm" href="tel:${esc(phoneTel(l.agentPhone))}" data-call="${esc(l.id)}" data-agent="${esc(l.agentId || '')}" data-phone="${esc(l.agentPhone || '')}">${ICONS.phone}전화</a>
+      <span class="card__agent">${l.agentId ? `${esc(l.agentName || '담당자')} 창업전문가` : esc(l.agentName || '창업가이드 상담센터')}</span>
+      ${l.agentPhone ? `<a class="btn btn--call btn--sm" href="tel:${esc(phoneTel(l.agentPhone))}" data-call="${esc(l.id)}" data-agent="${esc(l.agentId || '')}" data-phone="${esc(l.agentPhone || '')}">${ICONS.phone}전화</a>` : `<a class="btn btn--call btn--sm" href="${u(`/listing/${l.id}/`)}">${ICONS.sms}상담</a>`}
     </div>
   </div>
 </article>`;
@@ -135,8 +136,8 @@ export function faqBlock(items, { title = '자주 묻는 질문', id = 'faq' } =
 
 export function ctaBand({ title = '원하는 매물이 없다면 창업 의뢰를 남기세요', sub = '지역·업종·예산을 알려주시면 담당 창업전문가가 조건에 맞는 매장을 찾아 연락드립니다.' } = {}) {
   return `<section class="cta-band"><div class="wrap cta-band__in">
-    <div class="cta-band__txt"><p class="eyebrow">24시간 창업상담</p><h2 class="h2">${esc(title)}</h2><p>${esc(sub)}</p></div>
-    <div class="cta-band__btns"><a class="btn btn--red btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰하기</a><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)}</a><a class="btn btn--white btn--lg" href="${u('/sell/')}">${ICONS.share}내 매장 양도 의뢰</a></div>
+    <div class="cta-band__txt"><p class="eyebrow">${SITE.phone ? '24시간 창업상담' : '무료 창업상담'}</p><h2 class="h2">${esc(title)}</h2><p>${esc(sub)}</p></div>
+    <div class="cta-band__btns"><a class="btn btn--red btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰하기</a>${SITE.phone ? `<a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)}</a>` : ''}<a class="btn btn--white btn--lg" href="${u('/sell/')}">${ICONS.share}내 매장 양도 의뢰</a></div>
   </div></section>`;
 }
 
@@ -146,17 +147,17 @@ export function header(active = '') {
   <div class="wrap hdr__in">
     <a class="logo" href="${u('/')}" aria-label="${esc(SITE.name)} 홈">${logoHtml()}</a>
     <nav class="hdr__nav" aria-label="주요 메뉴">${nav.map(([h, n, k]) => `<a href="${u(h)}" ${active === k ? 'aria-current="page"' : ''}>${esc(n)}</a>`).join('')}</nav>
-    <div class="hdr__cta"><a class="btn btn--yellow" href="${u('/inquiry/')}">창업 문의</a><a class="btn btn--ink btn--icon" href="tel:${SITE.phoneTel}" aria-label="대표번호로 전화">${ICONS.phone}</a><button class="btn btn--white btn--icon" type="button" data-drawer-open="menu" aria-label="메뉴 열기">${ICONS.menu}</button></div>
+    <div class="hdr__cta"><a class="btn btn--yellow" href="${u('/inquiry/')}">창업 문의</a>${SITE.phone ? `<a class="btn btn--ink btn--icon" href="tel:${SITE.phoneTel}" aria-label="대표번호로 전화">${ICONS.phone}</a>` : ''}<button class="btn btn--white btn--icon" type="button" data-drawer-open="menu" aria-label="메뉴 열기">${ICONS.menu}</button></div>
   </div>
 </header>
 <aside class="quick" aria-label="빠른 상담">
-  <a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>창업상담</span><b class="is-num">${esc(SITE.phone.replace('010-', ''))}</b></a>
+  ${SITE.phone ? `<a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>창업상담</span><b class="is-num">${esc(SITE.phone.replace('010-', ''))}</b></a>` : `<a href="${u('/faq/')}">${ICONS.doc}<span>자주 묻는</span><b>질문</b></a>`}
   <a href="${u('/inquiry/')}" class="is-yellow">${ICONS.bolt}<span>창업 의뢰</span><b>문의·접수</b></a>
   <a href="${u('/sell/')}">${ICONS.share}<span>내 매장</span><b>양도 의뢰</b></a>
   <a href="${u('/listings/')}">${ICONS.search}<span>매물</span><b>검색</b></a>
 </aside>
 <nav class="mbar glass" aria-label="모바일 빠른 메뉴">
-  <a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화상담</span></a>
+  ${SITE.phone ? `<a href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화상담</span></a>` : `<a href="${u('/brand/')}">${ICONS.star}<span>브랜드별</span></a>`}
   <a href="${u('/inquiry/')}" class="is-yellow">${ICONS.bolt}<span>창업 문의</span></a>
   <a href="${u('/sell/')}">${ICONS.share}<span>양도 의뢰</span></a>
   <a href="${u('/listings/')}">${ICONS.search}<span>매물 검색</span></a>
@@ -168,7 +169,7 @@ export function header(active = '') {
   <nav class="drawer__nav">${nav.map(([h, n]) => `<a href="${u(h)}">${esc(n)}${ICONS.arrow}</a>`).join('')}<a href="${u('/inquiry/')}">창업 의뢰${ICONS.arrow}</a><a href="${u('/sell/')}">양도양수 의뢰${ICONS.arrow}</a><a href="${u('/faq/')}">자주 묻는 질문${ICONS.arrow}</a></nav>
   <div class="drawer__cats"><p class="eyebrow">업종별</p>${CATEGORIES.map(c => `<a class="chip" href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a>`).join('')}</div>
   <div class="drawer__cats"><p class="eyebrow">테마별</p>${THEMES.map(t => `<a class="chip" href="${u(`/theme/${t.slug}/`)}">${esc(t.name)}</a>`).join('')}</div>
-  <a class="btn btn--yellow btn--lg btn--block" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a>
+  ${SITE.phone ? `<a class="btn btn--yellow btn--lg btn--block" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a>` : `<a class="btn btn--yellow btn--lg btn--block" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰 남기기</a>`}
 </div><button class="drawer__backdrop" type="button" data-drawer-close aria-label="메뉴 닫기"></button></div>`;
 }
 
@@ -178,7 +179,7 @@ export function footer() {
   <div class="wrap">
     <div class="ftr__top">
       <div class="ftr__brand">${logoHtml('logo__lockup--white')}<p>${esc(SITE.slogan)}</p>
-        <div class="ftr__contact"><a class="btn btn--yellow" href="tel:${SITE.phoneTel}">${ICONS.phone}창업상담 ${esc(SITE.phone)}</a>${SITE.email ? `<a class="btn btn--white" href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : `<a class="btn btn--white" href="${u('/inquiry/')}">온라인 문의</a>`}</div>
+        <div class="ftr__contact">${SITE.phone ? `<a class="btn btn--yellow" href="tel:${SITE.phoneTel}">${ICONS.phone}창업상담 ${esc(SITE.phone)}</a>` : `<a class="btn btn--yellow" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰하기</a>`}${SITE.email ? `<a class="btn btn--white" href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : `<a class="btn btn--white" href="${u('/inquiry/')}">온라인 문의</a>`}</div>
         <p class="muted">${esc(SITE.hours)}</p></div>
       <div class="ftr__cols">
         <div><h4>매물 찾기</h4>${CATEGORIES.map(c => `<a href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a>`).join('')}<a href="${u('/listings/')}">전체 매물</a></div>
@@ -188,10 +189,10 @@ export function footer() {
       </div>
     </div>
     <div class="ftr__notice"><h4>창업가이드에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
-    <div class="ftr__info"><p>상호 ${esc(SITE.company)} · 대표 ${esc(SITE.ceo)} · 사업자등록번호 ${esc(SITE.bizNo)} · 업태/종목 ${esc(SITE.bizType)}</p><p>주소 ${esc(SITE.address)} · 창업상담 <a href="tel:${SITE.phoneTel}">${esc(SITE.phone)}</a>${SITE.email ? ` · ${esc(SITE.email)}` : ''}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
+    <div class="ftr__info"><p>상호 ${esc(SITE.company)} · 대표 ${esc(SITE.ceo)} · 사업자등록번호 ${esc(SITE.bizNo)} · 업태/종목 ${esc(SITE.bizType)}</p><p>주소 ${esc(SITE.address)}${SITE.phone ? ` · 창업상담 <a href="tel:${SITE.phoneTel}">${esc(SITE.phone)}</a>` : ''}${SITE.email ? ` · ${esc(SITE.email)}` : ''}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
   </div>
 </footer>
-<div class="float-cta" id="floatCta"><a class="btn btn--red btn--lg glass-red" href="${u('/inquiry/')}">${ICONS.bolt}<span>문의하기</span></a><a class="btn btn--yellow btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화</span></a><button type="button" class="btn btn--ink btn--icon" data-scroll-top aria-label="맨 위로">${ICONS.chevron}</button></div>
+<div class="float-cta" id="floatCta"><a class="btn btn--red btn--lg glass-red" href="${u('/inquiry/')}">${ICONS.bolt}<span>문의하기</span></a>${SITE.phone ? `<a class="btn btn--yellow btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화</span></a>` : ''}<button type="button" class="btn btn--ink btn--icon" data-scroll-top aria-label="맨 위로">${ICONS.chevron}</button></div>
 <div class="toast-host" id="toasts" aria-live="polite"></div>
 <div class="modal" id="modal-sms" aria-hidden="true" role="dialog" aria-labelledby="modal-sms-title"><div class="modal__panel glass"><button class="modal__close" type="button" data-modal-close aria-label="닫기">${ICONS.close}</button>
   <p class="eyebrow">무료 문자 상담 신청</p><h3 id="modal-sms-title" class="h3">담당 창업전문가가 연락드립니다</h3>
@@ -211,7 +212,7 @@ export function layout({ title, desc, path, body, active = '', ld = [], og, type
   const ogKey = og ? '' : (() => { const m = String(path || '/').split('/').filter(Boolean); if (!m.length) return 'main'; return [`${m[0]}-${m[1]}`, m[0], `kw-${m[0]}`, m[0] === 'category' ? 'listings' : ''].find(k => k && existsSync(join(__pub, 'img', 'og', `${k}.jpg`))) || 'main'; })();
   const ogImg = og || abs(`/img/og/${ogKey}.jpg`);
   const ldAll = [
-    { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: ['창업가이드 창업컨설팅', 'changupguide'], legalName: SITE.company, founder: { '@type': 'Person', name: SITE.ceo }, foundingDate: '2014-04-01', taxID: SITE.bizNo, url: abs('/'), logo: abs('/logo.png'), telephone: SITE.phoneTel, ...(SITE.email ? { email: SITE.email } : {}), address: { '@type': 'PostalAddress', streetAddress: SITE.addressStreet, addressLocality: SITE.addressLocality, addressRegion: '서울특별시', addressCountry: 'KR' }, contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }], description: SITE.slogan, knowsAbout: SEO.keywords },
+    { '@context': 'https://schema.org', '@type': 'Organization', '@id': abs('/#org'), name: SITE.name, alternateName: ['창업가이드 창업컨설팅', 'changupguide'], legalName: SITE.company, founder: { '@type': 'Person', name: SITE.ceo }, foundingDate: '2014-04-01', taxID: SITE.bizNo, url: abs('/'), logo: abs('/logo.png'), ...(SITE.phone ? { telephone: SITE.phoneTel } : {}), ...(SITE.email ? { email: SITE.email } : {}), address: { '@type': 'PostalAddress', streetAddress: SITE.addressStreet, addressLocality: SITE.addressLocality, addressRegion: '서울특별시', addressCountry: 'KR' }, ...(SITE.phone ? { contactPoint: [{ '@type': 'ContactPoint', telephone: SITE.phoneTel, contactType: 'sales', areaServed: 'KR', availableLanguage: 'ko', hoursAvailable: 'Mo-Su 00:00-24:00' }] } : {}), description: SITE.slogan, knowsAbout: SEO.keywords },
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': abs('/#website'), url: abs('/'), name: SITE.name, inLanguage: 'ko-KR', publisher: { '@id': abs('/#org') }, potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: abs('/listings/') + '?q={search_term_string}' }, 'query-input': 'required name=search_term_string' } },
     ...ld,
   ];

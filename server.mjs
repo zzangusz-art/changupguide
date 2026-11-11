@@ -56,7 +56,7 @@ function seedIfEmpty() {
   // 외부(창업미디어) 수집 담당자(legacy)는 계정을 만들지 않음 — 연락처·소속 검증 전이므로
   const agents = (fs.existsSync(path.join(ROOT, 'src/data/agents.json')) ? JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/agents.json'), 'utf-8')) : []).filter(a => !a.legacy);
   const defaultPw = process.env.ADMIN_PASSWORD || 'changeme1234';
-  run('INSERT INTO agents(id,name,role,mobile,tel,kakao,email,photo,intro,active,isAdmin,pass,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', 'admin', '총괄 관리자', '대표', process.env.ADMIN_MOBILE || '010-5548-6188', '', '', '', '', '', 1, 1, hashPw(defaultPw), t, t);
+  run('INSERT INTO agents(id,name,role,mobile,tel,kakao,email,photo,intro,active,isAdmin,pass,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', 'admin', '총괄 관리자', '대표', process.env.ADMIN_MOBILE || '', '', '', '', '', '', 1, 1, hashPw(defaultPw), t, t);
   for (const a of agents) run('INSERT OR IGNORE INTO agents(id,name,role,mobile,tel,kakao,email,photo,intro,active,isAdmin,pass,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', a.id, a.name, a.role, a.mobile, a.tel, a.kakao, a.email, a.photo, a.intro, a.active ? 1 : 0, 0, hashPw(defaultPw), t, t);
   const listings = fs.existsSync(path.join(ROOT, 'src/data/listings.json')) ? JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/listings.json'), 'utf-8')) : [];
   const ins = db.prepare('INSERT OR IGNORE INTO listings(id,data,agentId,status,updatedAt,updatedBy) VALUES(?,?,?,?,?,?)');

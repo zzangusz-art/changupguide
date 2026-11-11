@@ -217,7 +217,7 @@ function initSms() {
       toast(r.demo ? '접수되었습니다. (데모: 서버 연결 후 담당자에게 문자·관리자 문의함으로 전달됩니다)' : '접수되었습니다. 담당 창업전문가가 곧 연락드립니다.', 'ok', 4200);
       f.reset(); closeModals();
       if (f.dataset.done) location.href = f.dataset.done;
-    } catch (err) { toast('전송에 실패했습니다. 전화로 문의해 주세요: 010-5548-6188', 'err', 4500); }
+    } catch (err) { toast('전송에 실패했습니다. 잠시 후 다시 시도해 주세요.', 'err', 4500); }
     btn.disabled = false; btn.innerHTML = old;
   }));
 }

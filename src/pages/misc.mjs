@@ -20,14 +20,14 @@ export function miscPages(ctx) {
     <label>남길 말씀<textarea name="message" rows="4" maxlength="1000" placeholder="${type === 'buy' ? '예) 인천 미추홀구 근처 카페, 권리금 1억 이하, 혼자 운영 가능한 매장 찾습니다.' : '예) 역세권 1층, 풀오토 운영 중, 직원 승계 가능합니다.'}"></textarea></label>
     <label class="check"><input type="checkbox" name="agree" required> <span>개인정보 수집·이용에 동의합니다. (상담 목적, 1년 보관) <a href="${u('/privacy/')}" target="_blank">보기</a></span></label>
     <button class="btn btn--red btn--lg btn--block" type="submit">${ICONS.bolt}${type === 'buy' ? '창업 의뢰 접수' : '양도 의뢰 접수'}</button>
-    <p class="muted" style="font-size:.82rem;text-align:center">접수 후 담당 창업전문가가 순서대로 연락드립니다. 급하시면 ${esc(SITE.phone)}</p>
+    <p class="muted" style="font-size:.82rem;text-align:center">접수 후 담당 창업전문가가 순서대로 연락드립니다.${SITE.phone ? ` 급하시면 ${esc(SITE.phone)}` : ''}</p>
   </form>
   <script>document.querySelectorAll('[data-chips]').forEach(c=>{c.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('is-on');c.nextElementSibling.value=[...c.querySelectorAll('.is-on')].map(x=>x.textContent).join(',')}))})</script>`;
 
   out.push({ path: '/inquiry/', priority: 0.8, html: layout({ title: '창업 의뢰 | 지역·브랜드·예산만 알려주세요, 담당 전문가가 매물을 찾아드립니다 — 창업가이드', desc: '원하는 지역·브랜드·예산을 남기면 창업가이드 담당 창업전문가가 조건에 맞는 양도양수 매물을 찾아 연락드립니다. 24시간 접수, 상담 무료.', path: '/inquiry/', active: 'inquiry',
     body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '창업 의뢰', href: '/inquiry/' }])}<div class="form-page">
       <div class="panel"><p class="eyebrow">창업 의뢰</p><h1 class="h2">어떤 매장을 찾으세요?</h1><p style="font-weight:700;margin:8px 0 18px">금액·업종·상권을 차례로 고르면 됩니다. 사이트에 올라오지 않은 매물도 담당자가 함께 찾습니다.</p>${leadForm({ bare: true })}</div>
-      <aside><div class="panel" style="position:relative">${starburst('상담 무료', 'red', 8)}<h2 class="h3">접수 후 진행 순서</h2><ul><li>담당 창업전문가 배정 (당일)</li><li>조건에 맞는 매물 3~5건 제안</li><li>매출 자료·임대 조건 확인</li><li>현장 답사 동행</li><li>조건 협의 → 계약 → 인수</li></ul><p style="margin-top:14px"><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a></p></div>
+      <aside><div class="panel" style="position:relative">${starburst('상담 무료', 'red', 8)}<h2 class="h3">접수 후 진행 순서</h2><ul><li>담당 창업전문가 배정 (당일)</li><li>조건에 맞는 매물 3~5건 제안</li><li>매출 자료·임대 조건 확인</li><li>현장 답사 동행</li><li>조건 협의 → 계약 → 인수</li></ul>${SITE.phone ? `<p style="margin-top:14px"><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a></p>` : ''}</div>
       <div class="panel" style="margin-top:16px;background:#fff"><h2 class="h3">왜 양도양수인가요?</h2><p style="font-weight:500">신규 오픈은 인테리어·설비·가맹비가 모두 새로 들어가고 매출은 예측값입니다. 양도양수는 운영 중인 매장의 실제 월매출을 확인한 뒤 권리금으로 인수하므로, 처음 창업하는 분일수록 리스크가 낮습니다.</p></div></aside>
     </div></div>` }) });
   out.push({ path: '/inquiry/done/', noindex: true, html: layout({ title: '접수 완료 — 창업가이드', desc: '의뢰가 접수되었습니다.', path: '/inquiry/done/', noindex: true,
@@ -36,16 +36,16 @@ export function miscPages(ctx) {
   out.push({ path: '/sell/', priority: 0.8, html: layout({ title: '양도양수 의뢰 | 내 매장 양도, 권리금 평가부터 매물 등록·광고까지 — 창업가이드', desc: '운영 중인 매장을 양도하려면 창업가이드에 의뢰하세요. 담당자가 매장을 방문해 매출·시설을 확인하고 권리금 수준을 함께 정한 뒤, 사이트·제휴 채널에 매물을 등록합니다. 영업 보안 유지.', path: '/sell/', active: 'sell',
     body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '양도양수 의뢰', href: '/sell/' }])}<div class="form-page">
       <div class="panel"><p class="eyebrow">양도양수 의뢰</p><h1 class="h2">내 매장을 양도하려고 합니다</h1><p style="font-weight:700;margin:8px 0 18px">손님·직원·건물주에게 알려지지 않도록 보안을 유지하며 진행합니다. 사이트에는 시·구 단위까지만 표시됩니다.</p>${inquiryForm('sell')}</div>
-      <aside><div class="panel" style="position:relative">${starburst('보안 유지', 'blue', 8)}<h2 class="h3">양도 진행 순서</h2><ul><li>접수 후 담당자 배정·방문 일정 조율</li><li>매출 자료·시설 확인, 권리금 수준 협의</li><li>매물 등록 (사진·숫자 공개 범위 협의)</li><li>예비 창업자 상담·현장 답사 (담당자 동행)</li><li>조건 협의 → 계약 → 인수인계</li></ul><p style="margin-top:14px"><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a></p></div>
+      <aside><div class="panel" style="position:relative">${starburst('보안 유지', 'blue', 8)}<h2 class="h3">양도 진행 순서</h2><ul><li>접수 후 담당자 배정·방문 일정 조율</li><li>매출 자료·시설 확인, 권리금 수준 협의</li><li>매물 등록 (사진·숫자 공개 범위 협의)</li><li>예비 창업자 상담·현장 답사 (담당자 동행)</li><li>조건 협의 → 계약 → 인수인계</li></ul>${SITE.phone ? `<p style="margin-top:14px"><a class="btn btn--ink btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}${esc(SITE.phone)} 바로 전화</a></p>` : ''}</div>
       <div class="panel" style="margin-top:16px;background:#fff"><h2 class="h3">양도 시 준비하면 좋은 자료</h2><ul style="padding-left:18px;list-style:disc;font-weight:700;line-height:1.8"><li>최근 6개월 매출 자료 (POS·카드매출)</li><li>임대차 계약서 (보증금·월세·잔여기간)</li><li>월 고정비 내역 (인건비·관리비 등)</li><li>시설·집기 목록, 매장 사진</li></ul></div></aside>
     </div></div>` }) });
 
   // ---- 회사 소개 ----
-  out.push({ path: '/about/', priority: 0.6, html: layout({ title: '회사 소개 | 창업가이드 — 2014년부터 양도양수 창업 컨설팅, 서울 송파구', desc: `창업가이드는 2014년부터 사업체(권리금) 양도양수를 돕는 창업 컨설팅 회사입니다. 대표 ${SITE.ceo}, 사업자등록번호 ${SITE.bizNo}, ${SITE.address}, 창업상담 ${SITE.phone}.`, path: '/about/', active: 'about',
-    ld: [{ '@context': 'https://schema.org', '@type': 'LocalBusiness', '@id': abs('/about/#business'), name: SITE.name, legalName: SITE.company, founder: { '@type': 'Person', name: SITE.ceo }, foundingDate: '2014-04-01', taxID: SITE.bizNo, url: abs('/'), telephone: SITE.phoneTel, image: abs('/og.png'), address: { '@type': 'PostalAddress', streetAddress: SITE.addressStreet, addressLocality: SITE.addressLocality, addressRegion: '서울특별시', addressCountry: 'KR' }, openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '00:00', closes: '23:59' }], priceRange: '상담 무료', parentOrganization: { '@id': abs('/#org') } }],
+  out.push({ path: '/about/', priority: 0.6, html: layout({ title: '회사 소개 | 창업가이드 — 2014년부터 양도양수 창업 컨설팅, 서울 송파구', desc: `창업가이드는 2014년부터 사업체(권리금) 양도양수를 돕는 창업 컨설팅 회사입니다. 대표 ${SITE.ceo}, 사업자등록번호 ${SITE.bizNo}, ${SITE.address}.`, path: '/about/', active: 'about',
+    ld: [{ '@context': 'https://schema.org', '@type': 'LocalBusiness', '@id': abs('/about/#business'), name: SITE.name, legalName: SITE.company, founder: { '@type': 'Person', name: SITE.ceo }, foundingDate: '2014-04-01', taxID: SITE.bizNo, url: abs('/'), ...(SITE.phone ? { telephone: SITE.phoneTel } : {}), image: abs('/og.png'), address: { '@type': 'PostalAddress', streetAddress: SITE.addressStreet, addressLocality: SITE.addressLocality, addressRegion: '서울특별시', addressCountry: 'KR' }, openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '00:00', closes: '23:59' }], priceRange: '상담 무료', parentOrganization: { '@id': abs('/#org') } }],
     body: `<div class="wrap">${breadcrumb([{ name: '홈', href: '/' }, { name: '회사 소개', href: '/about/' }])}<section class="sec sec--tight" style="padding-top:6px"><p class="eyebrow">ABOUT</p><h1 class="h1">창업가이드는 <span class="hl">양도양수 창업</span>을 전문으로 합니다</h1>
       <div class="about-grid" style="margin-top:24px">
-        <div class="panel"><h2 class="h3">회사 개요</h2><ul><li>상호: ${esc(SITE.company)}</li><li>대표: ${esc(SITE.ceo)}</li><li>사업자등록번호: ${esc(SITE.bizNo)}</li><li>업태/종목: ${esc(SITE.bizType)}</li><li>개업: ${esc(SITE.since)}년</li><li>주소: ${esc(SITE.address)}</li><li>창업상담: <a href="tel:${SITE.phoneTel}"><b>${esc(SITE.phone)}</b></a></li></ul>
+        <div class="panel"><h2 class="h3">회사 개요</h2><ul><li>상호: ${esc(SITE.company)}</li><li>대표: ${esc(SITE.ceo)}</li><li>사업자등록번호: ${esc(SITE.bizNo)}</li><li>업태/종목: ${esc(SITE.bizType)}</li><li>개업: ${esc(SITE.since)}년</li><li>주소: ${esc(SITE.address)}</li>${SITE.phone ? `<li>창업상담: <a href="tel:${SITE.phoneTel}"><b>${esc(SITE.phone)}</b></a></li>` : `<li>상담 문의: <a href="${u('/inquiry/')}"><b>온라인 창업 의뢰</b></a></li>`}</ul>
           <h2 class="h3" style="margin-top:20px">하는 일</h2><p style="font-weight:500">운영 중인 사업체를 권리금으로 양도·양수하는 창업을 돕습니다. 매물 등록과 검증(매출 자료·시설 확인), 예비 창업자 상담과 현장 답사 동행, 조건 협의와 계약 진행, 프랜차이즈 본사 승인 절차까지 담당 창업전문가가 함께합니다. 일반 부동산 중개대상물은 취급하지 않습니다.</p></div>
         <div><div class="map-box"><iframe title="창업가이드 위치" src="https://maps.google.com/maps?q=${encodeURIComponent('서울 송파구 위례송파로 123 포레나송파')}&z=16&output=embed&hl=ko" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
           <div class="panel" style="margin-top:16px"><h2 class="h3">방문 상담 안내</h2><ul><li>주소: ${esc(SITE.address)}</li><li>방문 상담은 사전 예약제로 운영합니다. 전화나 온라인 문의로 일정을 먼저 정해 주세요.</li><li>관심 매물을 알려주시면 매출 자료와 현장 답사 일정을 함께 준비해 드립니다.</li></ul></div></div>
@@ -71,8 +71,8 @@ export function miscPages(ctx) {
     <h3>2. 보유 기간</h3><p>상담 신청 정보는 접수일로부터 1년간 보관 후 파기합니다. 계약이 진행된 경우 관련 법령에 따른 기간 동안 보관합니다.</p>
     <h3>3. 제3자 제공</h3><p>상담 연결을 위해 해당 매물의 담당 창업전문가(회사 소속)에게 전달되며, 그 외 제3자에게 제공하지 않습니다. 법령에 따른 요청이 있는 경우는 예외입니다.</p>
     <h3>4. 처리 위탁</h3><p>문자 발송·홈페이지 호스팅을 위해 외부 사업자에게 처리를 위탁할 수 있으며, 위탁 시 수탁자와 업무 내용을 이 페이지에 공개합니다.</p>
-    <h3>5. 정보주체의 권리</h3><p>이용자는 언제든지 개인정보 열람·정정·삭제·처리정지를 요청할 수 있습니다. 요청: 창업상담 ${esc(SITE.phone)} 또는 온라인 문의</p>
-    <h3>6. 개인정보 보호책임자</h3><p>${esc(SITE.ceo)} (대표) · ${esc(SITE.company)} 창업상담 ${esc(SITE.phone)}</p>
+    <h3>5. 정보주체의 권리</h3><p>이용자는 언제든지 개인정보 열람·정정·삭제·처리정지를 요청할 수 있습니다. 요청: ${SITE.phone ? `창업상담 ${esc(SITE.phone)} 또는 ` : ''}온라인 문의</p>
+    <h3>6. 개인정보 보호책임자</h3><p>${esc(SITE.ceo)} (대표) · ${esc(SITE.company)}${SITE.phone ? ` 창업상담 ${esc(SITE.phone)}` : ' (온라인 문의로 접수)'}</p>
     <h3>7. 고지</h3><p>이 방침은 ${ctx.today}부터 적용됩니다. 변경 시 홈페이지에 공지합니다.</p>`));
   out.push(legal('이용약관', '/terms/', `
     <h3>제1조 (목적)</h3><p>이 약관은 ${esc(SITE.company)}(이하 "회사")가 운영하는 창업가이드 홈페이지(이하 "사이트")의 이용 조건과 절차, 회사와 이용자의 권리·의무를 정합니다.</p>

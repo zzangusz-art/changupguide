@@ -436,7 +436,7 @@ route('settings', async view => {
   view.innerHTML = `<div class="grid2" style="align-items:start">
     <div class="card"><h2>통화 알림·문의 문자 발송</h2><form data-sms style="display:grid;gap:10px">
       <label class="field"><span>발송 서비스</span><select name="provider">${[['none', '사용 안 함 (기록만)'], ['aligo', '알리고 (apis.aligo.in)'], ['solapi', '솔라피 / 쿨SMS']].map(([v, t]) => `<option value="${v}" ${sms.provider === v ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="hint">알리고·솔라피 모두 사전에 발신번호 등록이 필요합니다. 키는 서버에만 저장됩니다.</span></label>
-      <label class="field"><span>발신번호</span><input name="sender" value="${esc(sms.sender || '')}" placeholder="등록된 발신번호 (예 01055486188)"></label>
+      <label class="field"><span>발신번호</span><input name="sender" value="${esc(sms.sender || '')}" placeholder="등록된 발신번호 (숫자만)"></label>
       <div class="grid2"><label class="field"><span>알리고 API key</span><input name="aligoKey" value="${esc(sms.aligoKey || '')}"></label><label class="field"><span>알리고 user_id</span><input name="aligoUser" value="${esc(sms.aligoUser || '')}"></label><label class="field"><span>솔라피 API key</span><input name="solapiKey" value="${esc(sms.solapiKey || '')}"></label><label class="field"><span>솔라피 API secret</span><input name="solapiSecret" value="${esc(sms.solapiSecret || '')}"></label></div>
       <label class="chip"><input type="checkbox" name="notifyAdmin" ${s.notifyAdmin ? 'checked' : ''}> 새 문의가 오면 관리자에게도 문자</label>
       <div style="display:flex;gap:8px"><button class="btn btn--red" type="submit">저장</button><button class="btn" type="button" data-test>내 번호로 테스트 발송</button></div></form></div>

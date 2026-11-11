@@ -23,7 +23,7 @@ const SHOW_LEGACY = process.env.SHOW_LEGACY !== '0';
 const agents = read('src/data/agents.json').filter(a => a.active && !a.legacy && a.showPublic !== false);
 const agentIds = new Set(agents.map(a => a.id));
 const listingsActive = listingsAll.filter(l => l.status === 'active' && (!isLegacy(l) || SHOW_LEGACY || l.verified));
-for (const l of listingsActive) if (!agentIds.has(l.agentId)) Object.assign(l, { agentId: '', agentName: SITE.name + ' 상담센터', agentPhone: SITE.phone, agentRole: '대표번호', agentPhoto: 'img/brand/mark.png' });
+for (const l of listingsActive) if (!agentIds.has(l.agentId)) Object.assign(l, { agentId: '', agentName: SITE.name + ' 상담센터', agentPhone: SITE.phone, agentRole: SITE.phone ? '대표번호' : '온라인 상담', agentPhoto: 'img/brand/mark.png' });
 FLAGS.agents = agents.length > 0;
 for (const l of listingsActive) if (l.duplicateOf) l.canonicalId = l.duplicateOf;
 // 광고·로고·증명사진 이미지는 뒤로 보내고, 실사가 있는 매물을 먼저 노출
@@ -65,7 +65,7 @@ const pages = []; // {path, html, lastmod, priority, changefreq}
 function emit(p, html, meta = {}) { pages.push({ path: p, html, ...meta }); }
 
 emit('/', homePage(ctx), { priority: 1.0, changefreq: 'daily' });
-for (const l of listingsActive) emit(`/listing/${l.id}/`, listingPage(l, ctx), { priority: 0.8, changefreq: 'weekly', lastmod: l.updatedAt, noindex: !!l.canonicalId });
+for (const l of listingsActive) emit(`/listing/${l.id}/`, listingPage(l, ctx), { priority: 0.8, changefreq: 'weekly', lastmod: l.updatedAt, noindex: !!l.canonicalId || !!l.sample });
 for (const p of hubPages(ctx)) emit(p.path, p.html, p);
 for (const p of miscPages(ctx)) emit(p.path, p.html, p);
 for (const p of blogPages(ctx)) emit(p.path, p.html, p);

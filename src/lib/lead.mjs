@@ -25,7 +25,7 @@ export function leadForm({ preset = {}, title = '조건만 남기면 담당자�
   const live = `<div class="lead__live" data-lead-live aria-live="polite"><span>지금 조건에 맞는 매물</span><strong><b data-lead-count>-</b><small>건</small></strong></div>`;
   const shell = `<section class="lead" id="lead" aria-label="창업 조건 상담 신청"><div class="lead__copy"><span class="eyebrow">무료 매물 찾기</span><h2 class="h2">${esc(title)}</h2><p>${esc(sub)}</p>
       ${live}
-      <ul class="lead__points"><li>${ICONS.check}담당자가 조건에 맞는 매물을 추려서 제안</li><li>${ICONS.check}월매출·임대 조건 자료를 상담 때 확인</li><li>${ICONS.check}급하시면 <a href="tel:${SITE.phoneTel}"><b>${esc(SITE.phone)}</b></a></li></ul></div>
+      <ul class="lead__points"><li>${ICONS.check}담당자가 조건에 맞는 매물을 추려서 제안</li><li>${ICONS.check}월매출·임대 조건 자료를 상담 때 확인</li>${SITE.phone ? `<li>${ICONS.check}급하시면 <a href="tel:${SITE.phoneTel}"><b>${esc(SITE.phone)}</b></a></li>` : `<li>${ICONS.check}접수 후 담당자가 순서대로 연락</li>`}</ul></div>
     <form class="lead__form form" data-form="buy" data-lead novalidate-off>
       <input type="hidden" name="message" value="">${['budget', 'category', 'area', 'style', 'timing'].map(n => `<input type="hidden" name="${n}" value="">`).join('')}
       <div class="lead__head"><span class="lead__stepno"><b data-lead-no>1</b> / ${steps.length}</span><span class="lead__label" data-lead-label>${esc(steps[0][0])}</span></div>
