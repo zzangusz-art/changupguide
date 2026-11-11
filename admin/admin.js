@@ -25,6 +25,7 @@ async function render() {
   const hash = location.hash.replace(/^#\/?/, '') || 'dashboard';
   const [name, ...rest] = hash.split('/');
   if (!me) return renderLogin();
+  window.spaceBg?.stop();
   const fn = routes[name] || routes.dashboard;
   try { cache.agents = cache.agents || await api.agents(); } catch {}
   app.innerHTML = shell(name);
@@ -54,10 +55,17 @@ const setTitle = (t, actions = '') => { $('#title').textContent = t; $('#actions
 
 // ---------- 로그인 ----------
 function renderLogin() {
-  app.innerHTML = `<div class="login"><div class="card"><div class="logo"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#FFCC00"/><path d="M11.5 28.5 27 13M16.5 13H27v10.5" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>창업<b>가이드</b> 관리자</span></div><p class="muted" style="margin-bottom:16px">창업가이드 직원·관리자 전용</p>
-    <form id="loginForm" class="grid2" style="grid-template-columns:1fr"><label class="field"><span>아이디</span><input name="id" required autocomplete="username" placeholder="직원 아이디"></label><label class="field"><span>비밀번호</span><input name="password" type="password" required autocomplete="current-password"></label><button class="btn btn--red btn--lg btn--block" type="submit">로그인</button></form>
-    ${api.demo ? `<div class="alert info" style="margin-top:14px">데모 모드: 아이디 <code class="kbd">admin</code>(관리자) 또는 <code class="kbd">staff1</code>(직원), 비밀번호 <code class="kbd">1234</code></div>` : '<p class="muted" style="margin-top:12px;font-size:.82rem">비밀번호를 잊으셨으면 관리자에게 재설정을 요청하세요.</p>'}
-  </div></div>`;
+  window.spaceBg?.start();
+  app.innerHTML = `<div class="login"><form class="login-card" id="loginForm">
+    <div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#FFCC00"/><path d="M11.5 28.5 27 13M16.5 13H27v10.5" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>창업<b>가이드</b></span></div>
+    <h1>매물 관리 시스템</h1>
+    <p class="sub">창업가이드 직원 전용 시스템입니다.<br>계정이 없으면 관리자에게 문의하세요.</p>
+    <label for="liUser">아이디</label><input id="liUser" name="id" required autocomplete="username">
+    <label for="liPass">비밀번호</label><input id="liPass" name="password" type="password" required autocomplete="current-password">
+    <button type="submit">로그인</button>
+    ${api.demo ? '<div class="login-demo">데모: <code>admin</code>(관리자) · <code>staff1</code>(직원) / 비밀번호 <code>1234</code></div>' : ''}
+    <div class="login-note">무단 접근 및 자료 외부 유출을 금지합니다.</div>
+  </form></div>`;
   $('#loginForm').addEventListener('submit', async e => { e.preventDefault(); const f = new FormData(e.target); try { const r = await api.login(f.get('id').trim(), f.get('password')); me = r.user; toast(`${me.name}님 환영합니다`, 'ok'); location.hash = '#/dashboard'; render(); } catch (err) { fail(err); } });
 }
 

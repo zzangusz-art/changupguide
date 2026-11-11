@@ -126,35 +126,6 @@ details.fsec:not([open]) > summary h3::after{content:"＋ 펼치기";font-size:.
 a.stat{color:inherit}
 [hidden]{display:none!important}
 
-/* v18 우주 배경 */
-body.is-space{background:#05060F;color:var(--ink)}
-.space{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:radial-gradient(120% 90% at 50% 120%,#1B1446 0%,#0B0D26 45%,#04050D 100%)}
-.space__nebula{position:absolute;inset:-20%;background:radial-gradient(38% 30% at 18% 22%,rgba(122,76,255,.30),transparent 70%),radial-gradient(34% 26% at 82% 30%,rgba(45,140,255,.22),transparent 70%),radial-gradient(30% 24% at 70% 82%,rgba(255,170,60,.14),transparent 70%),radial-gradient(26% 22% at 30% 75%,rgba(255,80,160,.12),transparent 70%);filter:blur(10px);animation:nebula 60s ease-in-out infinite alternate}
-.space__stars{position:absolute;left:0;top:0;border-radius:50%;background:transparent;animation:drift 240s linear infinite}
-.space__stars--mid{animation-duration:160s;animation-name:drift,twinkle;animation-timing-function:linear,ease-in-out;animation-iteration-count:infinite,infinite;animation-duration:160s,4s}
-.space__stars--big{animation-name:drift,twinkle;animation-duration:110s,6s;animation-timing-function:linear,ease-in-out;animation-iteration-count:infinite,infinite;filter:drop-shadow(0 0 3px rgba(255,255,255,.8))}
-.space__planet{position:absolute;right:-140px;bottom:-160px;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#FFE58A 0%,#FFCC00 22%,#E08A00 52%,#5A2A00 82%,#2A1200 100%);box-shadow:0 0 80px 10px rgba(255,190,40,.25),inset -40px -40px 80px rgba(0,0,0,.55);opacity:.85}
-.space__ring{position:absolute;right:-250px;bottom:30px;width:680px;height:120px;border-radius:50%;border:2px solid rgba(255,214,120,.35);transform:rotate(-14deg);box-shadow:0 0 18px rgba(255,214,120,.15)}
-.space__shoot{position:absolute;top:12%;left:-10%;width:160px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff);transform:rotate(18deg);opacity:0;animation:shoot 9s ease-in 3s infinite}
-.space__shoot--2{top:38%;animation-delay:7.5s;animation-duration:13s}
-@keyframes drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-120px,-60px,0)}}
-@keyframes twinkle{0%,100%{opacity:1}50%{opacity:.45}}
-@keyframes nebula{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.06)}}
-@keyframes shoot{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}3%{opacity:1}12%{opacity:0;transform:translate3d(70vw,23vw,0) rotate(18deg)}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.space *{animation:none!important}}
-#app,.toast-host,.modal{position:relative;z-index:1}.modal,.toast-host{position:fixed}
-/* 사이드바·상단: 어두운 유리 */
-.is-space .side{background:rgba(8,10,28,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-right:1px solid rgba(255,255,255,.08)}
-.is-space .topbar h1{color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.5)}
-.is-space .topbar .muted,.is-space #actions .muted,.is-space .toolbar>.muted,.is-space #view>p.muted,.is-space #view>.muted,.is-space .loading{color:rgba(225,228,255,.78)}
-.is-space .card,.is-space .stat,.is-space .fsec,.is-space .table,.is-space .msgs .list,.is-space .msgs .thread{box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.is-space .card,.is-space .fsec{background:rgba(255,255,255,.97)}
-.is-space .mobile-menu{background:rgba(255,255,255,.92)}
-/* 로그인 */
-.is-space .login{background:transparent}
-.is-space .login .card{background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.4);box-shadow:0 0 0 1px rgba(255,204,0,.25),0 20px 60px rgba(0,0,0,.55),0 0 80px rgba(122,76,255,.25)}
-.login .logo{display:flex;align-items:center;gap:8px}.login .logo svg{width:34px;height:34px}.login .logo b{color:var(--ink)}
-
 /* v19 쉬운 업데이트 */
 .st-sel{padding:4px 8px;border-radius:999px;border:1px solid #D9D5C9;font-weight:800;font-size:.78rem;background:#fff;cursor:pointer}
 .st-sel.st-active{background:#E3F6DE;border-color:#9BD38E}.st-sel.st-held{background:#FFF3C4;border-color:#E6C200}.st-sel.st-done{background:#E7EBFF;border-color:#A9B6FF}
@@ -168,3 +139,38 @@ body.is-space{background:#05060F;color:var(--ink)}
 .todo ul{margin:6px 0 0;padding-left:18px;font-size:.86rem}.todo li{margin:4px 0}.todo a:hover{text-decoration:underline}
 .help-list{margin:0;padding-left:20px;line-height:1.7;font-size:.92rem}.help-list li{margin-bottom:4px}
 @media (max-width:900px){.drawer__foot{left:0!important;width:auto!important;padding:10px 12px;flex-wrap:wrap}.drawer__foot .btn--lg{flex:1}.guide__steps{grid-template-columns:1fr}}
+
+/* v20 빅링커 방식: 로그인 = 우주, 로그인 후 = 회색조 */
+:root{--bg-gray:#F4F6F8;--line-gray:#E4E7EC;--navy:#101828}
+body{background:var(--bg-gray)}
+.space-canvas{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;background:#05070F}
+.space-canvas[hidden]{display:none}
+#app{position:relative;z-index:1}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:transparent}
+.login-card{position:relative;width:372px;max-width:100%;background:rgba(13,18,32,.78);border:1px solid rgba(140,165,220,.22);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:14px;padding:42px 38px;box-shadow:0 30px 80px rgba(0,0,0,.6);color:#e8ecf6}
+.login-card .brand{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;font-size:1.45rem;font-weight:500;letter-spacing:-.04em;color:#fff}
+.login-card .brand b{font-weight:900}.login-card .brand svg{width:34px;height:34px}
+.login-card h1{font-size:14px;font-weight:600;color:#AEBADB;text-align:center;letter-spacing:4px;margin-bottom:4px}
+.login-card p.sub{color:#66738F;font-size:12.5px;margin:14px 0 18px;text-align:center;line-height:1.6}
+.login-card label{display:block;font-size:12.5px;font-weight:600;color:#93A0BE;margin:14px 0 6px}
+.login-card input{width:100%;padding:11px 12px;border:1px solid #2A3550;border-radius:8px;background:rgba(8,12,24,.8);color:#E8ECF6;font-weight:500}
+.login-card input:focus{outline:1.5px solid #5A7FD6;border-color:transparent}
+.login-card button{width:100%;margin-top:24px;padding:12px;background:#24427E;color:#fff;border:none;border-radius:8px;font-size:14.5px;font-weight:700;letter-spacing:2px}
+.login-card button:hover{background:#2D529C}
+.login-note{margin-top:18px;font-size:11.5px;color:#55617D;text-align:center}
+.login-demo{margin-top:14px;padding:10px 12px;border:1px solid rgba(140,165,220,.22);border-radius:8px;background:rgba(8,12,24,.55);color:#93A0BE;font-size:12px;line-height:1.6;text-align:center}
+.login-demo code{background:rgba(255,255,255,.08);color:#E8ECF6;padding:1px 6px;border-radius:5px}
+/* 로그인 후: 회색 배경 + 흰 사이드바 */
+.side{background:#fff;color:var(--navy);border-right:1px solid var(--line-gray)}
+.side .logo{color:var(--navy);border-bottom:1px solid #F0F2F5;margin-bottom:6px}
+.side .logo b{color:var(--navy)}
+.side a.nav{color:#344054}
+.side a.nav:hover{background:#F2F4F7}
+.side a.nav.is-on{background:var(--navy);color:#fff}
+.side .me{background:#F8FAFC;border:1px solid var(--line-gray);color:#344054}
+.side .me .muted{color:#98A2B3}
+.card,.stat,.fsec,.table,.msgs .list,.table-wrap{border-color:var(--line-gray)}
+.card,.stat,.fsec{box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.table th{background:#F8FAFC}
+.topbar h1{color:var(--navy)}
+@media (max-width:900px){.side{box-shadow:0 0 40px rgba(16,24,40,.18)}}
