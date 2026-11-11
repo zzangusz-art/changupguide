@@ -154,3 +154,17 @@ body.is-space{background:#05060F;color:var(--ink)}
 .is-space .login{background:transparent}
 .is-space .login .card{background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.4);box-shadow:0 0 0 1px rgba(255,204,0,.25),0 20px 60px rgba(0,0,0,.55),0 0 80px rgba(122,76,255,.25)}
 .login .logo{display:flex;align-items:center;gap:8px}.login .logo svg{width:34px;height:34px}.login .logo b{color:var(--ink)}
+
+/* v19 쉬운 업데이트 */
+.st-sel{padding:4px 8px;border-radius:999px;border:1px solid #D9D5C9;font-weight:800;font-size:.78rem;background:#fff;cursor:pointer}
+.st-sel.st-active{background:#E3F6DE;border-color:#9BD38E}.st-sel.st-held{background:#FFF3C4;border-color:#E6C200}.st-sel.st-done{background:#E7EBFF;border-color:#A9B6FF}
+.photos-pick.is-drag{outline:3px dashed var(--yellow);outline-offset:6px;border-radius:12px}
+.photos-pick .add--up{background:var(--yellow);border-style:solid;cursor:pointer}.photos-pick .add small{font-weight:600;font-size:.7rem}
+.guide__steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.guide__steps a{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #E6E2D6;border-radius:12px;background:#FFFBEA}
+.guide__steps a:hover{border-color:var(--ink)}
+.guide__steps b{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--yellow);display:grid;place-items:center}
+.guide__steps span{font-size:.82rem;color:var(--muted);line-height:1.45}.guide__steps strong{display:block;color:var(--ink);font-size:.95rem}
+.todo ul{margin:6px 0 0;padding-left:18px;font-size:.86rem}.todo li{margin:4px 0}.todo a:hover{text-decoration:underline}
+.help-list{margin:0;padding-left:20px;line-height:1.7;font-size:.92rem}.help-list li{margin-bottom:4px}
+@media (max-width:900px){.drawer__foot{left:0!important;width:auto!important;padding:10px 12px;flex-wrap:wrap}.drawer__foot .btn--lg{flex:1}.guide__steps{grid-template-columns:1fr}}

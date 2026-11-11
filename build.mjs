@@ -15,6 +15,8 @@ import { blogPages, loadPosts } from './src/pages/blog.mjs';
 const t0 = Date.now();
 const DIST = path.resolve('dist');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf-8'));
+// 관리자 "설정 → 사이트 정보"에서 바꾼 대표번호·이메일·상담시간 (src/data/site.json)
+if (fs.existsSync('src/data/site.json')) { const o = read('src/data/site.json'); for (const k of ['phone', 'email', 'hours']) if (typeof o[k] === 'string') SITE[k] = o[k].trim() || (k === 'hours' ? SITE.hours : ''); const d = SITE.phone.replace(/[^0-9]/g, ''); SITE.phoneTel = d ? '+82' + d.replace(/^0/, '') : ''; }
 const listingsAll = read('src/data/listings.json');
 // 외부(창업미디어) 수집 데이터 분리: 담당자 계정은 공개하지 않고, 매물은 SHOW_LEGACY=0 이면 검증(verified) 완료분만 공개
 const LEGACY_SRC = 'changupmedia.com';
@@ -81,6 +83,8 @@ for (const p of pages) {
 function copyDir(src, dst) { if (!fs.existsSync(src)) return; fs.mkdirSync(dst, { recursive: true }); for (const e of fs.readdirSync(src, { withFileTypes: true })) { const s = path.join(src, e.name), d = path.join(dst, e.name); e.isDirectory() ? copyDir(s, d) : fs.copyFileSync(s, d); } }
 copyDir('public', DIST);
 copyDir('admin', path.join(DIST, 'admin'));
+// 관리자 스크립트 모듈도 배포마다 새로 받도록 import 경로에 버전 부여
+{ const v = Date.now().toString(36); const f = path.join(DIST, 'admin/admin.js'); fs.writeFileSync(f, fs.readFileSync(f, 'utf-8').replace("from './api.js'", `from './api.js?v=${v}'`).replace("from '../js/data.mjs'", `from '../js/data.mjs?v=${v}'`).replace("from '../js/lib/text.mjs'", `from '../js/lib/text.mjs?v=${v}'`)); }
 // 직원용 짧은 주소: /login/ → /admin/
 fs.mkdirSync(path.join(DIST, 'login'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'login/index.html'), `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>창업가이드 관리자</title><meta http-equiv="refresh" content="0;url=${u('/admin/')}"><link rel="canonical" href="${u('/admin/')}"><a href="${u('/admin/')}">관리자 로그인으로 이동</a>`);

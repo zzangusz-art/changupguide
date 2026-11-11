@@ -112,7 +112,7 @@ export class LocalApi {
   async generatePosts() { this.admin(); return { ok: true, log: '데모 모드에서는 글 생성이 서버(또는 GitHub Actions)에서만 실행됩니다. 실제 운영에서는 매일 09:05·13:05·18:05에 자동 발행됩니다.' }; }
   async updatePost(slug, patch) { this.admin(); const p = this.db.posts.find(x => x.slug === slug); if (p) Object.assign(p, patch); this.save(); return { ok: true }; }
   async settings() { this.admin(); return { ...this.db.settings, lastBuild: null, siteUrl: location.origin + (window.CU_BASE || '').replace('__SITE_BASE__', ''), base: '' }; }
-  async saveSettings(s) { this.admin(); if (s.sms) this.db.settings.sms = { ...this.db.settings.sms, ...s.sms }; if (s.notifyAdmin != null) this.db.settings.notifyAdmin = !!s.notifyAdmin; this.save(); return { ok: true }; }
+  async saveSettings(s) { this.admin(); if (s.sms) this.db.settings.sms = { ...this.db.settings.sms, ...s.sms }; if (s.notifyAdmin != null) this.db.settings.notifyAdmin = !!s.notifyAdmin; if (s.site) this.db.settings.site = { ...(this.db.settings.site || {}), ...s.site }; this.save(); return { ok: true }; }
   async testSms() { this.admin(); return { ok: false, detail: '데모 모드 — 서버 연결 후 발송됩니다' }; }
   async rebuild() { this.admin(); return { ok: true }; }
   async audit() { this.admin(); return this.db.audit; }
