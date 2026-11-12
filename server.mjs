@@ -49,7 +49,17 @@ const run = (sql, ...p) => db.prepare(sql).run(...p);
 const setting = k => { const r = q1('SELECT value FROM settings WHERE key=?', k); return r ? JSON.parse(r.value) : null; };
 const setSetting = (k, v) => run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', k, JSON.stringify(v));
 const audit = (agentId, action, target, detail = '') => run('INSERT INTO audit(agentId,action,target,detail,at) VALUES(?,?,?,?,?)', agentId, action, String(target), typeof detail === 'string' ? detail : JSON.stringify(detail), now());
-if (db) { seedIfEmpty(); seedBrands(); seedSite(); setTimeout(() => rebuild(), 1500); }
+if (db) { seedIfEmpty(); seedBrands(); seedSite(); adminReset(); setTimeout(() => rebuild(), 1500); }
+// 관리자 비밀번호 재설정: Railway 변수 ADMIN_RESET_PASSWORD 에 새 비밀번호를 넣고 재배포하면 admin 비밀번호가 그 값으로 바뀜.
+// 같은 값으로는 한 번만 적용(이후 내 정보에서 바꾼 비밀번호를 되돌리지 않음). 적용 후 변수는 지워도 됨.
+function adminReset() {
+  const pw = String(process.env.ADMIN_RESET_PASSWORD || ''); if (pw.length < 8) { if (pw) console.log('[admin-reset] 8자 이상이어야 합니다 — 적용 안 함'); return; }
+  const tag = crypto.createHash('sha256').update('cu-reset:' + pw).digest('hex').slice(0, 24); if (setting('adminResetApplied') === tag) return;
+  if (!q1("SELECT 1 FROM agents WHERE id='admin'")) { const t = now(); run('INSERT INTO agents(id,name,role,mobile,tel,kakao,email,photo,intro,active,isAdmin,pass,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', 'admin', '총괄 관리자', '대표', '', '', '', '', '', '', 1, 1, hashPw(pw), t, t); }
+  else run("UPDATE agents SET pass=?, active=1, isAdmin=1, updatedAt=? WHERE id='admin'", hashPw(pw), now());
+  run("DELETE FROM sessions WHERE agentId='admin'"); setSetting('adminResetApplied', tag); audit('system', 'password_reset', 'admin', 'ADMIN_RESET_PASSWORD');
+  console.log('[admin-reset] admin 비밀번호를 ADMIN_RESET_PASSWORD 값으로 바꿨습니다.');
+}
 // 사이트 정보·추적 ID: DB에 아직 없으면 저장소의 src/data/site.json 값으로 시작
 function seedSite() { const f = path.join(ROOT, 'src/data/site.json'); if (!setting('site') && fs.existsSync(f)) try { setSetting('site', JSON.parse(fs.readFileSync(f, 'utf-8'))); } catch {} } // 헬퍼(q, q1, run) 정의 뒤에 시드
 
