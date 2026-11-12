@@ -14,6 +14,7 @@ const STATIC_ONLY = process.argv.includes('--static');
 const PORT = Number(process.env.PORT || 8787);
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, 'data'));
 const DIST = path.join(ROOT, 'dist');
+const PHOTO_DIR = path.join(DATA_DIR, 'photos'); // 업로드 사진 (Railway Volume 안)
 const BASE = process.env.SITE_BASE ? '/' + String(process.env.SITE_BASE).replace(/^[A-Za-z]:.*?[\\/]([^\\/]+)$/, '$1').replace(/^\/+|\/+$/g, '') : '';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.xml': 'application/xml; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2' };
 
@@ -48,14 +49,14 @@ const run = (sql, ...p) => db.prepare(sql).run(...p);
 const setting = k => { const r = q1('SELECT value FROM settings WHERE key=?', k); return r ? JSON.parse(r.value) : null; };
 const setSetting = (k, v) => run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', k, JSON.stringify(v));
 const audit = (agentId, action, target, detail = '') => run('INSERT INTO audit(agentId,action,target,detail,at) VALUES(?,?,?,?,?)', agentId, action, String(target), typeof detail === 'string' ? detail : JSON.stringify(detail), now());
-if (db) { seedIfEmpty(); seedBrands(); } // 헬퍼(q, q1, run) 정의 뒤에 시드
+if (db) { seedIfEmpty(); seedBrands(); setTimeout(() => rebuild(), 1500); } // 헬퍼(q, q1, run) 정의 뒤에 시드
 
 function seedIfEmpty() {
   if (q1('SELECT COUNT(*) c FROM agents').c > 0) return;
   const t = now();
   // 외부(창업미디어) 수집 담당자(legacy)는 계정을 만들지 않음 — 연락처·소속 검증 전이므로
   const agents = (fs.existsSync(path.join(ROOT, 'src/data/agents.json')) ? JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/agents.json'), 'utf-8')) : []).filter(a => !a.legacy);
-  const defaultPw = process.env.ADMIN_PASSWORD || 'changeme1234';
+  const defaultPw = process.env.ADMIN_PASSWORD || crypto.randomBytes(6).toString('base64url');
   run('INSERT INTO agents(id,name,role,mobile,tel,kakao,email,photo,intro,active,isAdmin,pass,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', 'admin', '총괄 관리자', '대표', process.env.ADMIN_MOBILE || '', '', '', '', '', '', 1, 1, hashPw(defaultPw), t, t);
   for (const a of agents) run('INSERT OR IGNORE INTO agents(id,name,role,mobile,tel,kakao,email,photo,intro,active,isAdmin,pass,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', a.id, a.name, a.role, a.mobile, a.tel, a.kakao, a.email, a.photo, a.intro, a.active ? 1 : 0, 0, hashPw(defaultPw), t, t);
   const listings = fs.existsSync(path.join(ROOT, 'src/data/listings.json')) ? JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/listings.json'), 'utf-8')) : [];
@@ -66,7 +67,7 @@ function seedIfEmpty() {
     ins.run(l.id, JSON.stringify(l), l.agentId, l.status, l.updatedAt || t, 'import');
   }
   setSetting('sms', { provider: process.env.SMS_PROVIDER || 'none', sender: process.env.SMS_SENDER || '', aligoKey: process.env.ALIGO_KEY || '', aligoUser: process.env.ALIGO_USER || '', solapiKey: process.env.SOLAPI_KEY || '', solapiSecret: process.env.SOLAPI_SECRET || '' });
-  console.log(`[seed] agents ${agents.length + 1}, listings ${listings.length}. 초기 비밀번호(전원): ${defaultPw} — 관리자에서 즉시 변경하세요.`);
+  console.log(`[seed] agents ${agents.length + 1}, listings ${listings.length}. admin 초기 비밀번호: ${defaultPw} — 로그인 후 내 정보에서 바로 변경하세요.`);
 }
 
 function seedBrands() {
@@ -216,9 +217,9 @@ async function api(req, res, url) {
     if (!need()) return; const { name, data, tags = [], w, h } = body; const mt = String(data || '').match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/); if (!mt) return json(res, 400, { error: '이미지 데이터가 올바르지 않습니다' });
     const buf = Buffer.from(mt[3], 'base64'); if (buf.length > 8e6) return json(res, 400, { error: '8MB 이하로 올려주세요' });
     const id = uid('p'); const ext = mt[2] === 'jpeg' ? 'jpg' : mt[2]; const file = `photos/u_${id}.${ext}`;
-    fs.mkdirSync(path.join(ROOT, 'public/photos/thumb'), { recursive: true }); fs.writeFileSync(path.join(ROOT, 'public', file), buf);
+    fs.mkdirSync(path.join(PHOTO_DIR, 'thumb'), { recursive: true }); fs.writeFileSync(path.join(PHOTO_DIR, `u_${id}.${ext}`), buf);
     // 썸네일: 클라이언트가 보낸 thumb(data URL) 우선, 없으면 원본 복사
-    const th = String(body.thumb || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); fs.writeFileSync(path.join(ROOT, 'public/photos/thumb', `u_${id}.${ext}`), th ? Buffer.from(th[2], 'base64') : buf);
+    const th = String(body.thumb || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); fs.writeFileSync(path.join(PHOTO_DIR, 'thumb', `u_${id}.${ext}`), th ? Buffer.from(th[2], 'base64') : buf);
     run('INSERT INTO photos(id,file,thumb,name,agentId,tags,w,h,size,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?)', id, file, file.replace('photos/', 'photos/thumb/'), String(name || '').slice(0, 80), me.id, JSON.stringify(tags), w || 0, h || 0, buf.length, now()); audit(me.id, 'photo_upload', id, name);
     return json(res, 200, { item: { id, file, thumb: file.replace('photos/', 'photos/thumb/'), name, agentId: me.id, tags } });
   }
@@ -317,6 +318,7 @@ function serveStatic(req, res, url) {
   let file = path.join(DIST, p);
   if (p.endsWith('/')) file = path.join(file, 'index.html');
   else if (!path.extname(file) && fs.existsSync(path.join(file, 'index.html'))) { res.writeHead(301, { Location: BASE + p + '/' + url.search }); return res.end(); }
+  if ((!fs.existsSync(file) || fs.statSync(file).isDirectory()) && p.startsWith('/photos/')) { const up = path.join(PHOTO_DIR, p.slice('/photos/'.length)); if (up.startsWith(PHOTO_DIR) && fs.existsSync(up) && fs.statSync(up).isFile()) file = up; }
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) { file = path.join(DIST, '404.html'); res.statusCode = 404; }
   const ext = path.extname(file).toLowerCase();
   res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');

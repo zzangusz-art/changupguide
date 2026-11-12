@@ -126,7 +126,8 @@ export class LocalApi {
 }
 
 export async function createApi() {
-  if (API || location.hostname === 'localhost' && !location.pathname.includes('/changupguide/')) {
+  // GitHub Pages 미리보기만 데모, 그 외(Railway·정식 도메인·로컬 서버)는 같은 주소의 /api 에 연결
+  if (API || !/github\.io$/.test(location.hostname) && !location.pathname.includes('/changupguide/')) {
     const a = new RemoteApi();
     try { const r = await fetch(a.base + '/api/me', { credentials: 'include' }); if (r.status !== 503 && r.status !== 404 && r.headers.get('content-type')?.includes('json')) return a; } catch {}
   }
