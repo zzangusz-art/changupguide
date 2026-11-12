@@ -6,7 +6,7 @@ export const SITE = {
   name: '창업가이드',
   legacyName: '',
   slogan: '창업가이드 — 검증된 양도양수 창업 매물, 담당 창업전문가와 바로 상담',
-  url: env.SITE_URL || 'https://changupguide.co.kr',
+  url: env.SITE_URL || 'https://www.changupguide.co.kr', // 정식 주소 (Railway 연결 도메인: www)
   // 미리보기(GitHub Pages) 빌드일 때 하위 경로 접두어. 예: /changupguide
   base: env.SITE_BASE ? '/' + String(env.SITE_BASE).replace(/^[A-Za-z]:.*?[\/]([^\/]+)$/, '$1').replace(/^\/+|\/+$/g, '') : '',
   noindex: env.NOINDEX === '1',

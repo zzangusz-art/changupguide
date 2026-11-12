@@ -50,3 +50,10 @@ GitHub 저장소 Settings → Variables 에 `SITE_URL=https://changupguide.co.kr
 2. 첫 실행 때 `admin` 계정(비밀번호 ADMIN_PASSWORD)과 매물·브랜드가 DB에 들어갑니다. 로그인 후 직원 계정을 만들고 비밀번호를 바로 바꾸세요.
 3. 사이트와 관리자는 같은 도메인에서 서비스해야 로그인 쿠키가 동작합니다 (`https://도메인/admin/`).
 4. 백업: 관리자 → 설정·백업 → "백업 내려받기" (주 1회 이상). 복원·매물 JSON 불러오기도 같은 화면.
+
+## 운영 주소 (2026-11-12)
+- 사이트: https://www.changupguide.co.kr (Railway, GitHub main 푸시 시 자동 배포)
+- 관리자: https://www.changupguide.co.kr/admin/ (짧은 주소 /login/)
+- 초기 관리자 계정: `admin` / 비밀번호는 Railway → Deployments → 첫 배포 Deploy Logs의 `[seed] admin 초기 비밀번호` 줄 (로그인 후 즉시 변경)
+- `changupguide.co.kr`(www 없음)은 Cloudflare에서 www로 301 리다이렉트 필요 (Railway 플랜의 커스텀 도메인 1개 제한)
+- 배포: `deploy.bat` 실행(또는 Claude Code 작업 종료 시 자동) → 커밋·푸시 → Railway·GitHub Pages 재배포
