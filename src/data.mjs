@@ -29,6 +29,12 @@ export const SITE = {
   hours: '온라인 문의 24시간 접수',
   naverVerification: '', // 네이버 서치어드바이저 소유확인 코드 (발급 후 입력)
   googleVerification: '',
+  bingVerification: '', // 빙 웹마스터 (msvalidate.01)
+  // 방문 분석 — 관리자 설정 → 추적·검색엔진 연결에서 입력하면 src/data/site.json 으로 들어옴
+  gaId: '', // GA4 측정 ID (G-XXXXXXX)
+  gtmId: '', // 구글 태그 매니저 (GTM-XXXXXXX)
+  naverWa: '', // 네이버 애널리틱스 사이트 ID
+  clarityId: '', // Microsoft Clarity 프로젝트 ID (히트맵·세션 녹화)
   // 기존 사이트 푸터에 고지된 법적 안내문 — 그대로 유지
   legalNotice: [
     '창업가이드는 사업체(권리금) 양도양수를 주업무로 하는 회사입니다. 일반적인 부동산에서 행하는 중개대상물을 취급하지 않습니다. 따라서 저희가 광고하는 사업체는 중개대상물이 아님을 밝히는 바입니다.',

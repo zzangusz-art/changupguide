@@ -51,6 +51,16 @@ export const ILLO = {
 export const CAT_ILLO = { coffee: 'coffee', bowl: 'bowl', chicken: 'chicken', golf: 'golf', bag: 'bag', mall: 'mall' };
 
 export const FLAGS = { agents: true };
+// 방문 분석 스니펫 (ID가 있을 때만). 이벤트는 public/js/site.js 의 track() 이 dataLayer·gtag·네이버로 전달
+function trackingHead() {
+  const j = v => JSON.stringify(String(v));
+  return [
+    SITE.gtmId ? `<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer',${j(SITE.gtmId)});</script>` : '',
+    SITE.gaId ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${esc(SITE.gaId)}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',${j(SITE.gaId)});</script>` : '',
+    SITE.naverWa ? `<script src="https://wcs.naver.net/wcslog.js"></script><script>if(!wcs_add)var wcs_add={};wcs_add["wa"]=${j(SITE.naverWa)};if(window.wcs){wcs_do();}</script>` : '',
+    SITE.clarityId ? `<script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script",${j(SITE.clarityId)});</script>` : '',
+  ].filter(Boolean).join('\n');
+}
 const LOGO_MARK = `<svg class="logo__mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#FFCC00"/><path d="M11.5 28.5 27 13M16.5 13H27v10.5" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 export const logoHtml = (cls = '') => `<span class="logo__lockup ${cls}">${LOGO_MARK}<span class="logo__word">창업<b>가이드</b></span></span>`;
 export function sticker(text, { tone = 'yellow', rot = -4, size = '' } = {}) {
@@ -232,6 +242,8 @@ ${keywords.length ? `<meta name="keywords" content="${esc(keywords.join(', '))}"
 <meta name="theme-color" content="#FFCC00">
 ${SITE.naverVerification ? `<meta name="naver-site-verification" content="${esc(SITE.naverVerification)}">` : ''}
 ${SITE.googleVerification ? `<meta name="google-site-verification" content="${esc(SITE.googleVerification)}">` : ''}
+${SITE.bingVerification ? `<meta name="msvalidate.01" content="${esc(SITE.bingVerification)}">` : ''}
+${trackingHead()}
 <link rel="icon" href="${u('/favicon.ico')}" sizes="any"><link rel="icon" href="${u('/img/brand/mark.png')}" type="image/png"><link rel="apple-touch-icon" href="${u('/apple-touch-icon.png')}">
 <link rel="alternate" type="application/rss+xml" title="${esc(SITE.name)} 창업 인사이트" href="${u('/rss.xml')}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -245,6 +257,7 @@ ${extraHead}
 ${ldAll.map(jsonld).join('\n')}
 </head>
 <body class="${bodyClass}">
+${SITE.gtmId ? `<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${esc(SITE.gtmId)}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>` : ''}
 <a class="skip" href="#main">본문 바로가기</a>
 ${header(active)}
 <main id="main">${body}</main>

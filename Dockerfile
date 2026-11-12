@@ -6,5 +6,5 @@ COPY . .
 # PORT는 Railway가 주입(8080). 로컬 docker run 시 -e PORT=8787
 ENV DATA_DIR=/app/data NODE_ENV=production
 RUN node build.mjs
-EXPOSE 8787
+EXPOSE 8080
 CMD ["node", "server.mjs"]

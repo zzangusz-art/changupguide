@@ -16,7 +16,7 @@ const t0 = Date.now();
 const DIST = path.resolve('dist');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf-8'));
 // 관리자 "설정 → 사이트 정보"에서 바꾼 대표번호·이메일·상담시간 (src/data/site.json)
-if (fs.existsSync('src/data/site.json')) { const o = read('src/data/site.json'); for (const k of ['phone', 'email', 'hours']) if (typeof o[k] === 'string') SITE[k] = o[k].trim() || (k === 'hours' ? SITE.hours : ''); const d = SITE.phone.replace(/[^0-9]/g, ''); SITE.phoneTel = d ? '+82' + d.replace(/^0/, '') : ''; }
+if (fs.existsSync('src/data/site.json')) { const o = read('src/data/site.json'); for (const k of ['phone', 'email', 'hours', 'gaId', 'gtmId', 'naverWa', 'clarityId', 'googleVerification', 'naverVerification', 'bingVerification']) if (typeof o[k] === 'string') SITE[k] = o[k].trim() || (k === 'hours' ? SITE.hours : ''); const d = SITE.phone.replace(/[^0-9]/g, ''); SITE.phoneTel = d ? '+82' + d.replace(/^0/, '') : ''; }
 const listingsAll = read('src/data/listings.json');
 // 외부(창업미디어) 수집 데이터 분리: 담당자 계정은 공개하지 않고, 매물은 SHOW_LEGACY=0 이면 검증(verified) 완료분만 공개
 const LEGACY_SRC = 'changupmedia.com';

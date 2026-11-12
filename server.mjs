@@ -49,7 +49,9 @@ const run = (sql, ...p) => db.prepare(sql).run(...p);
 const setting = k => { const r = q1('SELECT value FROM settings WHERE key=?', k); return r ? JSON.parse(r.value) : null; };
 const setSetting = (k, v) => run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', k, JSON.stringify(v));
 const audit = (agentId, action, target, detail = '') => run('INSERT INTO audit(agentId,action,target,detail,at) VALUES(?,?,?,?,?)', agentId, action, String(target), typeof detail === 'string' ? detail : JSON.stringify(detail), now());
-if (db) { seedIfEmpty(); seedBrands(); setTimeout(() => rebuild(), 1500); } // 헬퍼(q, q1, run) 정의 뒤에 시드
+if (db) { seedIfEmpty(); seedBrands(); seedSite(); setTimeout(() => rebuild(), 1500); }
+// 사이트 정보·추적 ID: DB에 아직 없으면 저장소의 src/data/site.json 값으로 시작
+function seedSite() { const f = path.join(ROOT, 'src/data/site.json'); if (!setting('site') && fs.existsSync(f)) try { setSetting('site', JSON.parse(fs.readFileSync(f, 'utf-8'))); } catch {} } // 헬퍼(q, q1, run) 정의 뒤에 시드
 
 function seedIfEmpty() {
   if (q1('SELECT COUNT(*) c FROM agents').c > 0) return;
@@ -302,7 +304,7 @@ async function api(req, res, url) {
 
   // --- 설정·운영 ---
   if (p === '/settings' && m === 'GET') { if (!needAdmin()) return; const s = setting('sms') || {}; return json(res, 200, { sms: { ...s, aligoKey: s.aligoKey ? '••••' + String(s.aligoKey).slice(-4) : '', solapiSecret: s.solapiSecret ? '••••' : '' }, notifyAdmin: !!setting('notifyAdmin'), site: setting('site') || {}, lastBuild: setting('lastBuild'), siteUrl: process.env.SITE_URL || '', base: BASE }); }
-  if (p === '/settings' && m === 'PUT') { if (!needAdmin()) return; if (body.sms) { const cur = setting('sms') || {}; const s = { ...cur, ...body.sms }; if (String(body.sms.aligoKey || '').startsWith('••••')) s.aligoKey = cur.aligoKey; if (String(body.sms.solapiSecret || '').startsWith('••••')) s.solapiSecret = cur.solapiSecret; setSetting('sms', s); } if (body.notifyAdmin != null) setSetting('notifyAdmin', !!body.notifyAdmin); if (body.site) { const cur = setting('site') || {}; const v = {}; for (const k of ['phone', 'email', 'hours']) v[k] = String(body.site[k] ?? cur[k] ?? '').slice(0, 80); setSetting('site', v); scheduleRebuild(); } audit(me.id, 'settings', ''); return json(res, 200, { ok: true }); }
+  if (p === '/settings' && m === 'PUT') { if (!needAdmin()) return; if (body.sms) { const cur = setting('sms') || {}; const s = { ...cur, ...body.sms }; if (String(body.sms.aligoKey || '').startsWith('••••')) s.aligoKey = cur.aligoKey; if (String(body.sms.solapiSecret || '').startsWith('••••')) s.solapiSecret = cur.solapiSecret; setSetting('sms', s); } if (body.notifyAdmin != null) setSetting('notifyAdmin', !!body.notifyAdmin); if (body.site) { const cur = setting('site') || {}; const v = {}; for (const k of ['phone', 'email', 'hours', 'gaId', 'gtmId', 'naverWa', 'clarityId', 'googleVerification', 'naverVerification', 'bingVerification']) v[k] = String(body.site[k] ?? cur[k] ?? '').trim().replace(/[<>"'`]/g, '').slice(0, 120); setSetting('site', v); scheduleRebuild(); } audit(me.id, 'settings', ''); return json(res, 200, { ok: true }); }
   if (p === '/settings/test-sms' && m === 'POST') { if (!needAdmin()) return; const r = await sendSms(body.to || me.mobile, '[창업가이드] 문자 발송 테스트입니다.'); return json(res, 200, r); }
   if (p === '/rebuild' && m === 'POST') { if (!needAdmin()) return; scheduleRebuild(100); return json(res, 200, { ok: true }); }
   if (p === '/audit' && m === 'GET') { if (!needAdmin()) return; return json(res, 200, { items: q('SELECT * FROM audit ORDER BY id DESC LIMIT 300') }); }

@@ -213,7 +213,7 @@ function initSms() {
     const btn = f.querySelector('[type=submit]'); btn.disabled = true; const old = btn.innerHTML; btn.innerHTML = '전송 중…';
     try {
       const r = await api('/api/inquiries', data);
-      store.push('inquiries', data, 50);
+      store.push('inquiries', data, 50); track('generate_lead', { form_type: data.type, listing_id: data.listingId || '' }, 4);
       toast(r.demo ? '접수되었습니다. (데모: 서버 연결 후 담당자에게 문자·관리자 문의함으로 전달됩니다)' : '접수되었습니다. 담당 창업전문가가 곧 연락드립니다.', 'ok', 4200);
       f.reset(); closeModals();
       if (f.dataset.done) location.href = f.dataset.done;
@@ -336,3 +336,15 @@ function initMisc() {
 }
 
 initDrawer(); initModals(); initHero(); initHeroBg(); initTabs(); initRails(); initLead(); initSeq(); initRegionMap(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();
+
+// ---------- 방문 분석 이벤트: GTM(dataLayer)·GA4(gtag)·네이버(전환) 공통 ----------
+function track(name, params = {}, naverCnv = 0) {
+  try { (window.dataLayer = window.dataLayer || []).push({ event: name, ...params }); } catch {}
+  try { if (window.gtag) window.gtag('event', name, params); } catch {}
+  try { if (naverCnv && window.wcs && window.wcs.cnv) { const _nasa = { cnv: window.wcs.cnv(String(naverCnv), '1') }; window.wcs_do(_nasa); } } catch {}
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="tel:"]'); if (a) track('click_call', { listing_id: a.dataset.call || '', link_text: (a.textContent || '').trim().slice(0, 40) }, 4);
+  const sms = e.target.closest('[data-sms]'); if (sms) track('open_sms_form', { listing_id: sms.dataset.sms || '' });
+  const k = e.target.closest('a[href*="kakao"], a[href*="pf.kakao"]'); if (k) track('click_kakao', {});
+}, true);
