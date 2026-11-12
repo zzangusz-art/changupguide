@@ -337,7 +337,7 @@ function serveStatic(req, res, url) {
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) { file = path.join(DIST, '404.html'); res.statusCode = 404; }
   const ext = path.extname(file).toLowerCase();
   res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
-  res.setHeader('Cache-Control', ext === '.html' || ext === '.json' || ext === '.xml' ? 'no-cache' : 'public, max-age=86400');
+  res.setHeader('Cache-Control', ['.html', '.json', '.xml', '.txt'].includes(ext) ? 'no-cache' : 'public, max-age=86400');
   fs.createReadStream(file).pipe(res);
 }
 
