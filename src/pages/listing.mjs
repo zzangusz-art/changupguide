@@ -141,6 +141,6 @@ export function listingPage(l, ctx) {
       { '@type': 'PropertyValue', name: '지역', value: loc }, { '@type': 'PropertyValue', name: '담당자', value: `${agent.name} ${agent.role || '창업전문가'}` },
     ].filter(Boolean),
   }];
-  return layout({ title, desc, path: `/listing/${l.id}/`, canonicalPath: l.canonicalId ? `/listing/${l.canonicalId}/` : undefined, body, active: 'listings', ld, type: 'product', og: images[0] ? (/^https?:/.test(images[0]) ? images[0] : abs('/' + images[0])) : undefined, bodyClass: 'is-listing', keywords: [loc, l.brand, l.kind2, `${l.gugun} ${l.brand || l.kind2} 창업`, '양도양수', '권리금'].filter(Boolean),
+  return layout({ title, desc, path: `/listing/${l.id}/`, noindex: !!l.sample, canonicalPath: l.canonicalId ? `/listing/${l.canonicalId}/` : undefined, body, active: 'listings', ld, type: 'product', og: images[0] ? (/^https?:/.test(images[0]) ? images[0] : abs('/' + images[0])) : undefined, bodyClass: 'is-listing', keywords: [loc, l.brand, l.kind2, `${l.gugun} ${l.brand || l.kind2} 창업`, '양도양수', '권리금'].filter(Boolean),
     extraHead: `<meta name="listing-id" content="${esc(l.id)}">` }).replace('<body class="is-listing">', `<body class="is-listing" data-listing-id="${esc(l.id)}" data-listing-title="${esc(l.title)}" data-listing-img="${esc(thumbs[0] ? (/^https?:/.test(thumbs[0]) ? thumbs[0] : u('/' + thumbs[0])) : '')}">`);
 }

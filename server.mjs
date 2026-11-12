@@ -98,7 +98,20 @@ function rebuild() {
   const t = Date.now();
   const child = spawn(process.execPath, [path.join(ROOT, 'build.mjs')], { env: { ...process.env, API_URL: process.env.API_URL || '' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d);
-  child.on('close', code => { building = false; setSetting('lastBuild', { at: now(), ok: code === 0, ms: Date.now() - t, log: out.slice(-2000) }); console.log(`[build] ${code === 0 ? 'ok' : 'FAIL'} ${Date.now() - t}ms`); if (pending) { pending = false; rebuild(); } });
+  child.on('close', code => { building = false; setSetting('lastBuild', { at: now(), ok: code === 0, ms: Date.now() - t, log: out.slice(-2000) }); console.log(`[build] ${code === 0 ? 'ok' : 'FAIL'} ${Date.now() - t}ms`); if (code === 0) setTimeout(pingIndexNow, 5000); if (pending) { pending = false; rebuild(); } });
+}
+
+// ---------- IndexNow: 사이트가 다시 만들어지면 네이버·빙에 바뀐 주소 알림 ----------
+let lastPing = 0;
+async function pingIndexNow() {
+  try {
+    const site = (process.env.SITE_URL || '').replace(/\/$/, ''); if (!/^https:\/\//.test(site) || /railway\.app|github\.io|localhost/.test(site) || process.env.NOINDEX === '1') return;
+    if (Date.now() - lastPing < 30 * 60 * 1000) return; lastPing = Date.now();
+    const key = (fs.readFileSync(path.join(ROOT, 'src/data.mjs'), 'utf-8').match(/indexNowKey:\s*'([0-9a-f]{32})'/) || [])[1]; if (!key) return;
+    const sm = fs.readFileSync(path.join(DIST, 'sitemap-1.xml'), 'utf-8'); const urls = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]).slice(0, 10000);
+    const host = new URL(site).host; const body = JSON.stringify({ host, key, keyLocation: `${site}/${key}.txt`, urlList: urls });
+    for (const ep of ['https://searchadvisor.naver.com/indexnow', 'https://api.indexnow.org/indexnow']) { const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body }).catch(e => ({ status: String(e) })); console.log(`[indexnow] ${ep} ${r.status} (${urls.length} urls)`); }
+  } catch (e) { console.log('[indexnow] skip', e.message); }
 }
 
 // ---------- SMS ----------

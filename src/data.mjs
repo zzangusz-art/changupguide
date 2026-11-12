@@ -30,6 +30,7 @@ export const SITE = {
   naverVerification: '', // 네이버 서치어드바이저 소유확인 코드 (발급 후 입력)
   googleVerification: '',
   bingVerification: '', // 빙 웹마스터 (msvalidate.01)
+  indexNowKey: '129c6c8269d34966cc42145989bb2218', // IndexNow(네이버·빙) 키 — /{key}.txt 로 공개
   // 방문 분석 — 관리자 설정 → 추적·검색엔진 연결에서 입력하면 src/data/site.json 으로 들어옴
   gaId: '', // GA4 측정 ID (G-XXXXXXX)
   gtmId: '', // 구글 태그 매니저 (GTM-XXXXXXX)

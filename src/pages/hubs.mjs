@@ -124,7 +124,7 @@ function hubBody({ h1, lead, bullets, items, crumbs, filterLink, faq, sideChips 
 
 export function hubPages(ctx) {
   const out = []; const { listings, byBrand, bySido, byGugun, byTheme, byCode, byKind, byBudget, byAgent, agents, brandsSorted, brandNames } = ctx;
-  const ldList = (name, items, path) => ({ '@context': 'https://schema.org', '@type': 'CollectionPage', name, url: abs(path), mainEntity: { '@type': 'ItemList', numberOfItems: items.length, itemListElement: items.slice(0, 30).map((l, i) => ({ '@type': 'ListItem', position: i + 1, url: abs(`/listing/${l.id}/`), name: l.title })) } });
+  const ldList = (name, itemsAll, path) => { const items = itemsAll.filter(l => !l.sample); return ({ '@context': 'https://schema.org', '@type': 'CollectionPage', name, url: abs(path), mainEntity: { '@type': 'ItemList', numberOfItems: items.length, itemListElement: items.slice(0, 30).map((l, i) => ({ '@type': 'ListItem', position: i + 1, url: abs(`/listing/${l.id}/`), name: l.title })) } }); };
 
   // ---- 매물 검색 페이지 (클라이언트 필터) ----
   const regionsMeta = {}; for (const s of SIDO_ORDER) if (bySido[s]) regionsMeta[s] = Object.entries(byGugun).filter(([k]) => k.startsWith(s + '/')).map(([k, arr]) => ({ name: k.split('/')[1], n: arr.length })).sort((a, b) => b.n - a.n);

@@ -2,7 +2,7 @@
 // env: SITE_URL (canonical 기준), SITE_BASE (하위 경로, 예 /changupguide), NOINDEX=1 (미리보기), API_URL (관리자·통화알림 API)
 import fs from 'node:fs';
 import path from 'node:path';
-import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, KEYWORD_PAGES } from './src/data.mjs';
+import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, KEYWORD_PAGES, FAQ, PRICE_NOTICE } from './src/data.mjs';
 import { indexEntry, canon, BRAND_LIST, isoDate } from './src/lib/text.mjs';
 import { abs, u, FLAGS } from './src/lib/html.mjs';
 import { homePage } from './src/pages/home.mjs';
@@ -121,22 +121,33 @@ chunks.forEach((c, i) => fs.writeFileSync(path.join(DIST, `sitemap-${i + 1}.xml`
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${chunks.map((_, i) => `<sitemap><loc>${abs(`/sitemap-${i + 1}.xml`)}</loc><lastmod>${lastmodDefault}</lastmod></sitemap>`).join('\n')}\n</sitemapindex>`);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), SITE.noindex
   ? `User-agent: *\nDisallow: /\n# 미리보기 빌드 — 정식 도메인 배포 시 NOINDEX 해제\n`
-  : `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /login/\n\n# AI 검색·답변 엔진 인용 허용\nUser-agent: GPTBot\nAllow: /\nUser-agent: OAI-SearchBot\nAllow: /\nUser-agent: ChatGPT-User\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: Claude-User\nAllow: /\nUser-agent: Claude-SearchBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\nUser-agent: Yeti\nAllow: /\nUser-agent: Bingbot\nAllow: /\n\nSitemap: ${abs('/sitemap.xml')}\n`);
+  : `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /login/\n\n# AI 검색·답변 엔진 인용 허용\nUser-agent: GPTBot\nAllow: /\nUser-agent: OAI-SearchBot\nAllow: /\nUser-agent: ChatGPT-User\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: Claude-User\nAllow: /\nUser-agent: Claude-SearchBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\nUser-agent: Yeti\nAllow: /\nUser-agent: Bingbot\nAllow: /\nUser-agent: Daumoa\nAllow: /\nUser-agent: Applebot\nAllow: /\nUser-agent: Applebot-Extended\nAllow: /\nUser-agent: Google-CloudVertexBot\nAllow: /\nUser-agent: Amazonbot\nAllow: /\nUser-agent: DuckAssistBot\nAllow: /\nUser-agent: meta-externalagent\nAllow: /\nUser-agent: MistralAI-User\nAllow: /\n\nSitemap: ${abs('/sitemap.xml')}\n`);
 
-const llms = [`# ${SITE.name}`, '', `> ${SITE.slogan}. 상호 ${SITE.company} (대표 ${SITE.ceo}, 사업자등록번호 ${SITE.bizNo}, 2014년 개업), ${SITE.address}. 사업체(권리금) 양도양수 전문 창업 컨설팅. 부동산 중개대상물은 취급하지 않음. 창업상담 ${SITE.phone}.`, '',
-  '## 핵심 사실', `- 등록 매물 ${ctx.stats.total}건 (서울·경기·인천 중심), ${ctx.stats.agents ? `담당 창업전문가 ${ctx.stats.agents}명` : '창업가이드 상담센터 직접 상담'}`, '- 모든 매물은 월매출·월지출·월수익(세전)·권리금(임대보증금 제외)을 공개하며, 정확한 위치는 상담 후 안내', `- 브랜드 ${ctx.stats.brands}개: ${ctx.brandsSorted.slice(0, 20).map(b => `${b.name}(${b.n})`).join(', ')}`, '',
-  '## 주요 페이지', `- [전체 매물 검색](${abs('/listings/')})`, ...CATEGORIES.map(c => `- [${c.name} 매물](${abs(`/category/${c.slug}/`)})`), ...THEMES.map(t => `- [${t.name}](${abs(`/theme/${t.slug}/`)})`), ...KEYWORD_PAGES.map(k => `- [${k.kw}](${abs(`/${k.slug}/`)})`), `- [담당 전문가](${abs('/agents/')})`, `- [창업 인사이트(블로그)](${abs('/blog/')})`, `- [자주 묻는 질문](${abs('/faq/')})`, `- [회사 소개](${abs('/about/')})`, '',
-  '## 브랜드별', ...ctx.brandsSorted.slice(0, 40).map(b => `- [${b.name} 창업 매물 ${b.n}건](${abs(`/brand/${b.slug}/`)})`), '',
-  '## 지역별', ...SIDO_ORDER.filter(s => ctx.bySido[s]).map(s => `- [${s} ${ctx.bySido[s].length}건](${abs(`/region/${encodeURIComponent(s)}/`)})`), '',
-  '## 최신 글', ...posts.slice(0, 10).map(p => `- [${p.title}](${abs(`/blog/${p.slug}/`)})`),
+// ---- llms.txt (AI 답변 엔진용 요약) — 예시 매물은 제외 ----
+const real = listings.filter(l => !l.sample);
+const realBrands = Object.entries(real.reduce((m, l) => { if (l.brandSlug) (m[l.brandSlug] ||= { name: l.brand, n: 0 }).n++; return m; }, {})).sort((a, b) => b[1].n - a[1].n);
+const contact = [SITE.phone ? `창업상담 ${SITE.phone}` : '', `온라인 문의 ${abs('/inquiry/')}`].filter(Boolean).join(' · ');
+const llms = [`# ${SITE.name}`, '',
+  `> ${SITE.name}는 2014년부터 운영 중인 사업체(권리금) 양도양수 전문 창업 컨설팅 회사입니다. 운영 중인 매장을 권리금으로 인수하려는 예비 창업자에게 지역·브랜드·예산에 맞는 매물을 월매출·월수익·권리금 숫자로 안내하고, 현장 답사부터 계약·본사 승인까지 담당자가 함께합니다. 부동산 중개대상물은 취급하지 않습니다.`, '',
+  '## 회사 정보', `- 상호: ${SITE.company} (대표 ${SITE.ceo})`, `- 사업자등록번호: ${SITE.bizNo}`, `- 업태/종목: ${SITE.bizType}`, `- 주소: ${SITE.address}`, `- 개업: 2014년`, `- 문의: ${contact}`, `- 웹사이트: ${abs('/')}`, '',
+  '## 서비스', '- 창업 의뢰(매수): 지역·업종·예산을 남기면 조건에 맞는 운영 중 매장을 추려 제안', '- 양도 의뢰(매도): 운영 중인 매장의 권리금 평가, 매물 등록·광고, 양수인 연결', '- 진행: 상담 → 매물 제안 → 현장 답사 동행 → 조건 협의 → 계약 → 프랜차이즈 본사 승인·인수인계', '- 서울·경기·인천 중심, 카페·음식점·치킨/주점·스크린골프·판매업 등 업종 전반', '',
+  '## 매물 정보 기준', `- ${PRICE_NOTICE}`, '- 월수익은 세전 기준이며 점주 인건비는 월지출에 포함하지 않음', '- 정확한 위치·상호는 양도인 보안을 위해 상담 후 안내',
+  ...(real.length ? [`- 현재 공개 매물 ${real.length}건 (브랜드 ${realBrands.length}개)`] : ['- 매물은 담당자가 확인 후 순차 등록 중']), '',
+  '## 주요 페이지', `- [전체 매물 검색](${abs('/listings/')})`, `- [창업 의뢰](${abs('/inquiry/')})`, `- [양도 의뢰](${abs('/sell/')})`, `- [자주 묻는 질문](${abs('/faq/')})`, `- [회사 소개](${abs('/about/')})`,
+  ...CATEGORIES.map(c => `- [${c.name} 창업 매물](${abs(`/category/${c.slug}/`)})`), ...THEMES.map(t => `- [${t.name}](${abs(`/theme/${t.slug}/`)})`), ...BUDGETS.map(b => `- [권리금 ${b.name} 매물](${abs(`/budget/${b.slug}/`)})`), ...KEYWORD_PAGES.map(k => `- [${k.kw}](${abs(`/${k.slug}/`)})`), '',
+  ...(realBrands.length ? ['## 브랜드별', ...realBrands.slice(0, 40).map(([slug, b]) => `- [${b.name} 창업 매물 ${b.n}건](${abs(`/brand/${slug}/`)})`), ''] : []),
+  '## 자주 묻는 질문', ...FAQ.map(f => `### ${f.q}\n${f.a}`), '',
+  ...(posts.length ? ['## 창업 인사이트', ...posts.slice(0, 10).map(p => `- [${p.title}](${abs(`/blog/${p.slug}/`)})`)] : []),
 ].join('\n');
 fs.writeFileSync(path.join(DIST, 'llms.txt'), llms);
-fs.writeFileSync(path.join(DIST, 'llms-full.txt'), llms + '\n\n## 매물 목록\n' + listings.map(l => `- [${l.title}](${abs(`/listing/${l.id}/`)}) — ${l.kind1} ${l.kind2 ? `(${l.kind2})` : ''}, 담당 ${l.agentName}`).join('\n'));
+fs.writeFileSync(path.join(DIST, 'llms-full.txt'), llms + (real.length ? '\n\n## 매물 목록\n' + real.map(l => `- [${l.title}](${abs(`/listing/${l.id}/`)}) — ${l.kind1}${l.kind2 ? ` (${l.kind2})` : ''}${l.sales ? `, 월매출 ${l.sales.toLocaleString()}만원` : ''}${l.profit ? `, 월수익 ${l.profit.toLocaleString()}만원` : ''}${l.premium ? `, 권리금 ${l.premium.toLocaleString()}만원` : ''}`).join('\n') : ''));
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 fs.writeFileSync(path.join(DIST, 'rss.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${esc(SITE.name)} 창업 인사이트</title><link>${abs('/blog/')}</link><description>지역·브랜드·예산별 창업 매물 분석과 양도양수 가이드</description><language>ko-KR</language><atom:link href="${abs('/rss.xml')}" rel="self" type="application/rss+xml"/>${posts.slice(0, 30).map(p => `<item><title>${esc(p.title)}</title><link>${abs(`/blog/${p.slug}/`)}</link><guid>${abs(`/blog/${p.slug}/`)}</guid><pubDate>${new Date(p.date).toUTCString()}</pubDate><description>${esc(p.desc)}</description></item>`).join('')}</channel></rss>`);
 fs.writeFileSync(path.join(DIST, 'feed.json'), JSON.stringify({ version: 'https://jsonfeed.org/version/1.1', title: `${SITE.name} 창업 인사이트`, home_page_url: abs('/'), feed_url: abs('/feed.json'), items: posts.slice(0, 30).map(p => ({ id: abs(`/blog/${p.slug}/`), url: abs(`/blog/${p.slug}/`), title: p.title, summary: p.desc, date_published: p.date })) }));
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
+// IndexNow(네이버·빙) 소유 확인 키 파일 — 서버가 재생성 후 바뀐 주소를 알림
+if (SITE.indexNowKey) fs.writeFileSync(path.join(DIST, `${SITE.indexNowKey}.txt`), SITE.indexNowKey);
 if (process.env.CNAME) fs.writeFileSync(path.join(DIST, 'CNAME'), process.env.CNAME);
 
 console.log(`built ${pages.length} pages (${listingsActive.length} listings, ${duplicates} duplicate→canonical, ${posts.length} posts) → dist/ in ${((Date.now() - t0) / 1000).toFixed(1)}s  base=${SITE.base || '/'} url=${SITE.url} noindex=${SITE.noindex}`);
