@@ -15,14 +15,16 @@ import { blogPages, loadPosts } from './src/pages/blog.mjs';
 const t0 = Date.now();
 const DIST = path.resolve('dist');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf-8'));
+// 운영 서버는 DB 내용을 CU_DATA_DIR(볼륨 안)로 내보낸 뒤 빌드 — 저장소의 src/data 는 초기값·예시용
+const DATA = process.env.CU_DATA_DIR || 'src/data'; const dp = f => path.join(DATA, f);
 // 관리자 "설정 → 사이트 정보"에서 바꾼 대표번호·이메일·상담시간 (src/data/site.json)
-if (fs.existsSync('src/data/site.json')) { const o = read('src/data/site.json'); for (const k of ['phone', 'email', 'hours', 'gaId', 'gtmId', 'naverWa', 'clarityId', 'googleVerification', 'naverVerification', 'bingVerification']) if (typeof o[k] === 'string') SITE[k] = o[k].trim() || (k === 'hours' ? SITE.hours : ''); const d = SITE.phone.replace(/[^0-9]/g, ''); SITE.phoneTel = d ? '+82' + d.replace(/^0/, '') : ''; }
-const listingsAll = read('src/data/listings.json');
+if (fs.existsSync(dp('site.json'))) { const o = read(dp('site.json')); for (const k of ['phone', 'email', 'hours', 'gaId', 'gtmId', 'naverWa', 'clarityId', 'googleVerification', 'naverVerification', 'bingVerification']) if (typeof o[k] === 'string') SITE[k] = o[k].trim() || (k === 'hours' ? SITE.hours : ''); const d = SITE.phone.replace(/[^0-9]/g, ''); SITE.phoneTel = d ? '+82' + d.replace(/^0/, '') : ''; }
+const listingsAll = read(dp('listings.json'));
 // 외부(창업미디어) 수집 데이터 분리: 담당자 계정은 공개하지 않고, 매물은 SHOW_LEGACY=0 이면 검증(verified) 완료분만 공개
 const LEGACY_SRC = 'changupmedia.com';
 const isLegacy = l => l.source === LEGACY_SRC;
 const SHOW_LEGACY = process.env.SHOW_LEGACY !== '0';
-const agents = read('src/data/agents.json').filter(a => a.active && !a.legacy && a.showPublic !== false);
+const agents = read(dp('agents.json')).filter(a => a.active && !a.legacy && a.showPublic !== false);
 const agentIds = new Set(agents.map(a => a.id));
 const listingsActive = listingsAll.filter(l => l.status === 'active' && (!isLegacy(l) || SHOW_LEGACY || l.verified));
 for (const l of listingsActive) if (!agentIds.has(l.agentId)) Object.assign(l, { agentId: '', agentName: SITE.name + ' 상담센터', agentPhone: SITE.phone, agentRole: SITE.phone ? '대표번호' : '온라인 상담', agentPhoto: 'img/brand/mark.png' });
@@ -47,7 +49,7 @@ const ctx = {
   byTheme: by(listings, l => l.theme),
   byBudget: by(listings, l => { const b = BUDGETS.find(b => l.premium != null && l.premium >= b.min && l.premium < b.max); return b ? b.slug : ''; }),
   byAgent: by(listings, l => l.agentId),
-  brandInfo: fs.existsSync('src/data/brands.json') ? Object.fromEntries(read('src/data/brands.json').map(b => [b.slug, b])) : {},
+  brandInfo: fs.existsSync(dp('brands.json')) ? Object.fromEntries(read(dp('brands.json')).map(b => [b.slug, b])) : {},
   brandNames: Object.fromEntries(listings.filter(l => l.brandSlug).map(l => [l.brandSlug, l.brand])),
   stats: {
     total: listingsActive.length, unique: listings.length,
@@ -96,7 +98,7 @@ fs.copyFileSync('src/data.mjs', path.join(DIST, 'js/data.mjs'));
 fs.mkdirSync(path.join(DIST, 'admin/seed'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'admin/seed/listings.json'), JSON.stringify(listingsAll));
 fs.writeFileSync(path.join(DIST, 'admin/seed/agents.json'), JSON.stringify(agents));
-if (fs.existsSync('src/data/brands.json')) fs.copyFileSync('src/data/brands.json', path.join(DIST, 'admin/seed/brands.json'));
+if (fs.existsSync(dp('brands.json'))) fs.copyFileSync(dp('brands.json'), path.join(DIST, 'admin/seed/brands.json'));
 fs.writeFileSync(path.join(DIST, 'admin/seed/posts.json'), JSON.stringify(posts.map(p => ({ slug: p.slug, title: p.title, date: p.date, listingId: p.listingId, agentId: p.agentId, status: 'published' }))));
 
 // ---- 검색 인덱스·추천어 ----

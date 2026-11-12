@@ -6,6 +6,8 @@ rem   Double-click to run manually. "deploy.bat auto" = no pause (used by the Cl
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 git rev-parse --is-inside-work-tree >NUL 2>&1 || (echo [deploy] not a git repository & exit /b 1)
+rem 0) back up production data to this PC first (..\backups, outside git) - see tools\pc-backup.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\pc-backup.ps1"
 git add -A
 git diff --cached --quiet
 if errorlevel 1 (

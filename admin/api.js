@@ -6,7 +6,13 @@ const uid = (p = '') => p + Math.random().toString(36).slice(2, 10) + Date.now()
 export class RemoteApi {
   constructor() { this.demo = false; this.base = API; }
   async req(path, method = 'GET', body) {
-    const r = await fetch(this.base + '/api' + path, { method, credentials: 'include', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    // 서버 재배포(약 10~40초)·순간 끊김 동안에는 자동으로 다시 시도 — 입력한 내용이 날아가지 않도록
+    let r, wait = [1500, 3000, 5000, 8000, 12000];
+    for (let i = 0; ; i++) {
+      try { r = await fetch(this.base + '/api' + path, { method, credentials: 'include', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined }); if (![502, 503, 504].includes(r.status) || i >= wait.length) break; }
+      catch (e) { if (i >= wait.length) { const err = new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 저장하세요. (작성 내용은 이 화면에 그대로 있습니다)'); err.status = 0; throw err; } }
+      window.dispatchEvent(new CustomEvent('cu-retry', { detail: i + 1 })); await new Promise(res => setTimeout(res, wait[i]));
+    }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { const e = new Error(j.error || `오류 ${r.status}`); e.status = r.status; e.data = j; throw e; }
     return j;
@@ -19,7 +25,13 @@ export class RemoteApi {
   listings() { return this.req('/listings').then(r => r.items); }
   getListing(id) { return this.req(`/listings/${id}`); }
   createListing(l) { return this.req('/listings', 'POST', { listing: l }); }
-  updateListing(l, baseUpdatedAt) { return this.req(`/listings/${l.id}`, 'PUT', { listing: l, baseUpdatedAt }); }
+  updateListing(l, baseUpdatedAt, baseItem, force) { return this.req(`/listings/${l.id}`, 'PUT', { listing: l, baseUpdatedAt, baseItem, force: !!force }); }
+  listingHistory(id) { return this.req(`/listings/${id}/history`); }
+  revertListing(id, hid) { return this.req(`/listings/${id}/history/${hid}/restore`, 'POST', {}); }
+  backups() { return this.req('/backups'); }
+  makeBackup() { return this.req('/backups', 'POST', {}); }
+  restoreBackup(name, mode) { return this.req(`/backups/${encodeURIComponent(name)}/restore`, 'POST', { mode }); }
+  backupUrl(name) { return `${this.base}/api/backups/${encodeURIComponent(name)}`; }
   archiveListing(id) { return this.req(`/listings/${id}`, 'DELETE'); }
   reassign(id, agentId) { return this.req(`/listings/${id}/reassign`, 'POST', { agentId }); }
   lock(id) { return this.req(`/listings/${id}/lock`, 'POST', {}); }
@@ -94,6 +106,12 @@ export class LocalApi {
   async archiveListing(id) { const u = this.need(); const l = this.db.listings.find(x => x.id === String(id)); if (!l) throw new Error('없는 매물'); if (!this.canEdit(u, l)) throw new Error('본인 담당 매물만'); l.status = 'archived'; l.updatedAt = now(); this.log('listing_archive', id); this.save(); return { ok: true }; }
   async reassign(id, agentId) { const u = this.admin(); const l = this.db.listings.find(x => x.id === String(id)); const ag = this.db.agents.find(a => a.id === agentId); if (!l || !ag) throw new Error('없음'); const prev = l.agentId; l.agentId = ag.id; l.agentName = ag.name; l.agentPhone = ag.mobile; l.updatedAt = now(); this.db.messages.unshift({ id: uid('m'), fromId: u.id, toId: ag.id, listingId: l.id, body: `매물 No.${l.id} (${l.title}) 담당이 ${prev}에서 ${ag.name}님으로 변경되었습니다.`, readAt: null, createdAt: now() }); if (prev && prev !== ag.id) this.db.messages.unshift({ id: uid('m'), fromId: u.id, toId: prev, listingId: l.id, body: `매물 No.${l.id} (${l.title}) 담당이 ${ag.name}님으로 이관되었습니다.`, readAt: null, createdAt: now() }); this.log('listing_reassign', id, `${prev}→${ag.id}`); this.save(); return { item: l }; }
   async lock() { return { ok: true }; }
+  async listingHistory() { return { items: [], current: null }; }
+  async revertListing() { throw new Error('데모 모드에서는 지원하지 않습니다'); }
+  async backups() { return { items: [], storage: { persistent: true, demo: true }, backupKey: '' }; }
+  async makeBackup() { throw new Error('데모 모드에서는 지원하지 않습니다'); }
+  async restoreBackup() { throw new Error('데모 모드에서는 지원하지 않습니다'); }
+  backupUrl() { return '#'; }
   async photos() { this.need(); return [...this.db.photos].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))); }
   async uploadPhoto(p) { const u = this.need(); const it = { id: uid('p'), file: p.data, thumb: p.thumb || p.data, name: p.name, agentId: u.id, tags: p.tags || [], w: p.w, h: p.h, createdAt: now(), inline: true }; this.db.photos.unshift(it); this.log('photo_upload', it.id, p.name); this.save(); return it; }
   async deletePhoto(id) { const u = this.need(); const ph = this.db.photos.find(p => p.id === id); if (!ph) return {}; if (!u.isAdmin && ph.agentId !== u.id) throw new Error('본인이 올린 사진만 삭제할 수 있습니다'); const used = this.db.listings.filter(l => l.status !== 'archived' && (l.images || []).includes(ph.file)); if (used.length) throw new Error(`매물 ${used.map(l => l.id).join(', ')}에서 사용 중입니다`); this.db.photos = this.db.photos.filter(p => p.id !== id); this.save(); return { ok: true }; }
@@ -125,7 +143,10 @@ export class LocalApi {
   async restore(d, mode) { this.admin(); const t = Array.isArray(d) ? { listings: d.map(l => ({ id: String(l.id), data: JSON.stringify(l) })) } : d.tables; if (!t) throw new Error('백업 파일 형식이 아닙니다'); const cnt = {}; if (t.listings) { const rows = t.listings.map(r => typeof r.data === 'string' ? JSON.parse(r.data) : r); if (mode === 'replace') this.db.listings = rows; else for (const l of rows) { const i = this.db.listings.findIndex(x => x.id === l.id); if (i >= 0) this.db.listings[i] = l; else this.db.listings.unshift(l); } cnt.listings = rows.length; } if (t.brands) { const rows = t.brands.map(r => typeof r.data === 'string' ? JSON.parse(r.data) : r); this.db.brands = mode === 'replace' ? rows : [...rows, ...(this.db.brands || []).filter(b => !rows.some(r => r.slug === b.slug))]; cnt.brands = rows.length; } this.log('restore', mode, JSON.stringify(cnt)); this.save(); return { ok: true, counts: cnt }; }
 }
 
+export const PROD_ADMIN = 'https://www.changupguide.co.kr/admin/';
 export async function createApi() {
+  // GitHub Pages 미리보기의 관리자는 브라우저에만 저장되어 직원 입력이 사라질 수 있음 → 운영 관리자로 보냄
+  if (/github\.io$/.test(location.hostname) && !new URLSearchParams(location.search).has('demo')) { location.replace(PROD_ADMIN); return new Promise(() => {}); }
   // GitHub Pages 미리보기만 데모, 그 외(Railway·정식 도메인·로컬 서버)는 같은 주소의 /api 에 연결
   if (API || !/github\.io$/.test(location.hostname) && !location.pathname.includes('/changupguide/')) {
     const a = new RemoteApi();

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +16,15 @@ const PORT = Number(process.env.PORT || 8787);
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, 'data'));
 const DIST = path.join(ROOT, 'dist');
 const PHOTO_DIR = path.join(DATA_DIR, 'photos'); // 업로드 사진 (Railway Volume 안)
+// 운영 데이터는 전부 DATA_DIR(볼륨) 안에만 둠 — 코드 배포(이미지 교체)로 지워지지 않도록
+const EXPORT_DIR = path.join(DATA_DIR, 'export'); // DB → 빌드용 JSON
+const POSTS_DIR = path.join(DATA_DIR, 'posts'); // 인사이트 글 (관리자 생성·수정분 보존)
+const BK_DIR = path.join(DATA_DIR, 'backups'); // 자동 백업
+const BUILD_ENV = { CU_DATA_DIR: EXPORT_DIR, CU_POSTS_DIR: POSTS_DIR };
+const ON_RAILWAY = !!(process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_SERVICE_ID);
+const VOLUME = process.env.RAILWAY_VOLUME_MOUNT_PATH ? path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH) : '';
+const PERSISTENT = !ON_RAILWAY || (!!VOLUME && (DATA_DIR + path.sep).startsWith(VOLUME + path.sep) || DATA_DIR === VOLUME);
+if (!PERSISTENT) console.log(`[storage] 경고: DATA_DIR(${DATA_DIR})이 Railway 볼륨(${VOLUME || '없음'}) 밖입니다 — 재배포 시 데이터가 사라집니다!`);
 const BASE = process.env.SITE_BASE ? '/' + String(process.env.SITE_BASE).replace(/^[A-Za-z]:.*?[\\/]([^\\/]+)$/, '$1').replace(/^\/+|\/+$/g, '') : '';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.xml': 'application/xml; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2' };
 
@@ -37,7 +47,10 @@ if (!STATIC_ONLY) {
   CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
   CREATE TABLE IF NOT EXISTS locks(listingId TEXT PRIMARY KEY, agentId TEXT, at TEXT);
   CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, agentId TEXT, action TEXT, target TEXT, detail TEXT, at TEXT);
-  CREATE TABLE IF NOT EXISTS brands(slug TEXT PRIMARY KEY, data TEXT, updatedAt TEXT);`);
+  CREATE TABLE IF NOT EXISTS brands(slug TEXT PRIMARY KEY, data TEXT, updatedAt TEXT);
+  CREATE TABLE IF NOT EXISTS listing_history(id INTEGER PRIMARY KEY AUTOINCREMENT, listingId TEXT, data TEXT, action TEXT, byId TEXT, at TEXT);
+  CREATE INDEX IF NOT EXISTS ix_history ON listing_history(listingId, id);`);
+  db.exec('PRAGMA busy_timeout=5000;');
 }
 const now = () => new Date().toISOString();
 const uid = (p = '') => p + crypto.randomBytes(8).toString('hex');
@@ -49,7 +62,6 @@ const run = (sql, ...p) => db.prepare(sql).run(...p);
 const setting = k => { const r = q1('SELECT value FROM settings WHERE key=?', k); return r ? JSON.parse(r.value) : null; };
 const setSetting = (k, v) => run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', k, JSON.stringify(v));
 const audit = (agentId, action, target, detail = '') => run('INSERT INTO audit(agentId,action,target,detail,at) VALUES(?,?,?,?,?)', agentId, action, String(target), typeof detail === 'string' ? detail : JSON.stringify(detail), now());
-if (db) { seedIfEmpty(); seedBrands(); seedSite(); adminReset(); setTimeout(() => rebuild(), 1500); }
 // 관리자 비밀번호 재설정: Railway 변수 ADMIN_RESET_PASSWORD 에 새 비밀번호를 넣고 재배포하면 admin 비밀번호가 그 값으로 바뀜.
 // 같은 값으로는 한 번만 적용(이후 내 정보에서 바꾼 비밀번호를 되돌리지 않음). 적용 후 변수는 지워도 됨.
 function adminReset() {
@@ -82,6 +94,85 @@ function seedIfEmpty() {
   console.log(`[seed] agents ${agents.length + 1}, listings ${listings.length}. admin 초기 비밀번호: ${defaultPw} — 로그인 후 내 정보에서 바로 변경하세요.`);
 }
 
+// ---------- 저장소 → DB 동기화 (개발자가 저장소에 추가한 새 항목만, 직원이 고친 값은 절대 덮어쓰지 않음) ----------
+// 한 번 가져온 번호·주소는 repoSeen 에 기록 → 관리자가 지운 항목이 배포 때 되살아나지 않음
+function syncFromRepo() {
+  try {
+    const seen = setting('repoSeen') || { listings: [], brands: [], posts: [] }; const S = k => new Set(seen[k] || []); const add = { listings: 0, brands: 0, posts: 0, siteKeys: 0 };
+    const rf = f => { const x = path.join(ROOT, f); return fs.existsSync(x) ? JSON.parse(fs.readFileSync(x, 'utf-8')) : null; };
+    const sl = S('listings'); for (const l of rf('src/data/listings.json') || []) { const id = String(l.id); if (sl.has(id)) continue; sl.add(id); if (!q1('SELECT 1 FROM listings WHERE id=?', id)) { run('INSERT INTO listings(id,data,agentId,status,updatedAt,updatedBy) VALUES(?,?,?,?,?,?)', id, JSON.stringify({ ...l, id }), l.agentId || '', l.status || 'active', l.updatedAt || now(), 'repo'); add.listings++; } }
+    const sb = S('brands'); for (const b of rf('src/data/brands.json') || []) { if (!b.slug || sb.has(b.slug)) continue; sb.add(b.slug); if (!q1('SELECT 1 FROM brands WHERE slug=?', b.slug)) { run('INSERT INTO brands(slug,data,updatedAt) VALUES(?,?,?)', b.slug, JSON.stringify(b), b.updatedAt || now()); add.brands++; } }
+    const site = setting('site'); const rs = rf('src/data/site.json'); if (site && rs) { for (const [k, v] of Object.entries(rs)) if (typeof v === 'string' && v && !site[k]) { site[k] = v; add.siteKeys++; } if (add.siteKeys) setSetting('site', site); }
+    const sp = S('posts'); const pdir = path.join(ROOT, 'content/posts'); fs.mkdirSync(POSTS_DIR, { recursive: true });
+    if (fs.existsSync(pdir)) for (const f of fs.readdirSync(pdir).filter(f => f.endsWith('.json'))) { if (sp.has(f)) continue; sp.add(f); if (!fs.existsSync(path.join(POSTS_DIR, f))) { fs.copyFileSync(path.join(pdir, f), path.join(POSTS_DIR, f)); add.posts++; } }
+    setSetting('repoSeen', { listings: [...sl], brands: [...sb], posts: [...sp] });
+    console.log(`[sync] 저장소 → DB 새 항목: 매물 ${add.listings}, 브랜드 ${add.brands}, 글 ${add.posts}, 사이트 설정 ${add.siteKeys}`);
+  } catch (e) { console.log('[sync] skip', e.message); }
+}
+
+// ---------- 매물 변경 이력 (수정·삭제·일괄변경 직전 상태를 보관, 매물당 최근 60개) ----------
+function snap(listingId, data, action, byId) {
+  run('INSERT INTO listing_history(listingId,data,action,byId,at) VALUES(?,?,?,?,?)', String(listingId), typeof data === 'string' ? data : JSON.stringify(data), action, byId || '', now());
+  run('DELETE FROM listing_history WHERE listingId=? AND id NOT IN (SELECT id FROM listing_history WHERE listingId=? ORDER BY id DESC LIMIT 60)', String(listingId), String(listingId));
+}
+// 동시 수정 자동 합치기: 내가 바꾼 칸만 최신본 위에 적용. 같은 칸을 둘 다 다르게 바꿨을 때만 충돌
+const MERGE_SKIP = new Set(['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'source', 'legacyAgent', 'agentName', 'agentPhone', 'clientKey']);
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+function merge3(base, mine, theirs) {
+  const out = { ...theirs }, conflicts = [], applied = [];
+  for (const k of new Set([...Object.keys(base), ...Object.keys(mine)])) {
+    if (MERGE_SKIP.has(k) || same(mine[k], base[k])) continue;
+    applied.push(k);
+    if (same(theirs[k], base[k]) || same(theirs[k], mine[k])) { out[k] = mine[k]; continue; }
+    if ((k === 'images' || k === 'tags') && Array.isArray(mine[k]) && Array.isArray(theirs[k])) { const rm = (base[k] || []).filter(x => !mine[k].includes(x)); out[k] = [...mine[k], ...theirs[k].filter(x => !mine[k].includes(x) && !rm.includes(x))]; continue; }
+    if (k === 'title' && !mine.titleManual) { out[k] = mine[k]; continue; }
+    conflicts.push(k);
+  }
+  const theirChanged = Object.keys(theirs).filter(k => !MERGE_SKIP.has(k) && !same(theirs[k], base[k]));
+  return { out, conflicts, applied, theirChanged };
+}
+
+// ---------- 자동 백업 (볼륨 안 backups/ 에 gzip JSON) — 부팅 때, 변경이 있으면 1시간마다, 매일 1회, 복원 직전 ----------
+const BACKUP_TABLES = ['agents', 'listings', 'listing_history', 'brands', 'photos', 'inquiries', 'calls', 'messages', 'notices', 'notice_reads', 'settings', 'audit'];
+const KEEP = { boot: 10, hourly: 48, daily: 45, prerestore: 10, manual: 20 };
+const kst = () => new Date(Date.now() + 9 * 3600e3).toISOString();
+function dumpAll() {
+  const posts = fs.existsSync(POSTS_DIR) ? fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.json')).map(f => { try { return { file: f, data: JSON.parse(fs.readFileSync(path.join(POSTS_DIR, f), 'utf-8')) }; } catch { return null; } }).filter(Boolean) : [];
+  return { app: 'changupguide', version: 2, at: now(), tables: Object.fromEntries(BACKUP_TABLES.map(t => [t, q(`SELECT * FROM ${t}`)])), posts };
+}
+function snapshotBackup(tag) {
+  try {
+    if (!db || !q1('SELECT COUNT(*) c FROM agents').c) return null;
+    fs.mkdirSync(BK_DIR, { recursive: true }); const name = `${tag}-${kst().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')}.json.gz`;
+    fs.writeFileSync(path.join(BK_DIR, name), zlib.gzipSync(JSON.stringify(dumpAll())));
+    const mine = fs.readdirSync(BK_DIR).filter(f => f.startsWith(tag + '-')).sort(); for (const f of mine.slice(0, Math.max(0, mine.length - (KEEP[tag] || 10)))) fs.unlinkSync(path.join(BK_DIR, f));
+    setSetting('lastBackup', { at: now(), name, ok: true }); return name;
+  } catch (e) { console.log('[backup] FAIL', e.message); try { setSetting('lastBackup', { at: now(), ok: false, error: e.message }); } catch {} return null; }
+}
+function periodicBackup() {
+  const files = fs.existsSync(BK_DIR) ? fs.readdirSync(BK_DIR) : []; const day = kst().slice(0, 10).replace(/-/g, '');
+  if (!files.some(f => f.startsWith(`daily-${day}`))) snapshotBackup('daily');
+  const lastAudit = (q1('SELECT MAX(id) m FROM audit') || {}).m || 0; const st = setting('hourlyMark') || {};
+  if (lastAudit > (st.audit || 0) && Date.now() - (st.t || 0) > 55 * 60 * 1000) { if (snapshotBackup('hourly')) setSetting('hourlyMark', { audit: lastAudit, t: Date.now() }); }
+}
+const backupKey = () => process.env.BACKUP_KEY || setting('backupKey') || (() => { const k = crypto.randomBytes(18).toString('base64url'); setSetting('backupKey', k); return k; })();
+function restoreTables(tables, mode, me, posts) {
+  const allow = { agents: 'id', listings: 'id', listing_history: null, brands: 'slug', photos: 'id', inquiries: 'id', calls: 'id', messages: 'id', notices: 'id', notice_reads: null, settings: 'key', audit: null };
+  const cnt = {}; db.exec('BEGIN');
+  try {
+    for (const [t, rows] of Object.entries(tables)) {
+      if (!(t in allow) || !Array.isArray(rows)) continue; if (mode === 'replace' && t !== 'agents') db.exec(`DELETE FROM ${t}`);
+      const cols = q(`PRAGMA table_info(${t})`).map(c => c.name).filter(c => !((t === 'audit' || t === 'listing_history') && c === 'id')); let n = 0;
+      for (const r of rows) { if (t === 'listings' && mode === 'merge') { const cur = q1('SELECT data FROM listings WHERE id=?', String(r.id)); if (cur && cur.data !== r.data) snap(r.id, cur.data, 'restore', me.id); } const use = cols.filter(c => c in r); if (!use.length) continue; run(`INSERT OR REPLACE INTO ${t}(${use.join(',')}) VALUES(${use.map(() => '?').join(',')})`, ...use.map(c => r[c] == null ? null : typeof r[c] === 'object' ? JSON.stringify(r[c]) : r[c])); n++; }
+      cnt[t] = n;
+    }
+    if (!q1('SELECT 1 FROM agents WHERE id=? AND isAdmin=1 AND active=1', me.id)) throw new Error('복원 후 현재 관리자 계정이 사라지거나 비활성화됩니다. 백업 파일을 확인하세요.');
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  if (Array.isArray(posts)) { fs.mkdirSync(POSTS_DIR, { recursive: true }); for (const p of posts) if (p && /^[^/\\]+\.json$/.test(p.file || '')) fs.writeFileSync(path.join(POSTS_DIR, p.file), JSON.stringify(p.data, null, 1)); cnt.posts = posts.length; }
+  return cnt;
+}
+
 function seedBrands() {
   if (q1('SELECT COUNT(*) c FROM brands').c > 0) return;
   const f = path.join(ROOT, 'src/data/brands.json'); if (!fs.existsSync(f)) return;
@@ -89,24 +180,29 @@ function seedBrands() {
   for (const b of JSON.parse(fs.readFileSync(f, 'utf-8'))) ins.run(b.slug, JSON.stringify(b), b.updatedAt || now());
 }
 
+// 시작 순서 (아래 상수 정의 뒤에 실행): 부팅 백업 → 시드 → 저장소 새 항목 동기화 → 비밀번호 재설정 → 재빌드, 이후 20분마다 백업 점검
+if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+
 // ---------- 데이터 내보내기 + 재빌드 ----------
 let rebuildTimer = null, building = false, pending = false;
 function exportData() {
   const listings = q('SELECT data FROM listings').map(r => JSON.parse(r.data));
   const agents = q('SELECT * FROM agents').map(a => ({ id: a.id, name: a.name, role: a.role, mobile: a.mobile, tel: a.tel, kakao: a.kakao, email: a.email, photo: a.photo, intro: a.intro, active: !!a.active, isAdmin: !!a.isAdmin, listingCount: 0 })).filter(a => !a.isAdmin || a.id !== 'admin');
   for (const a of agents) a.listingCount = listings.filter(l => l.agentId === a.id && l.status === 'active').length;
-  fs.mkdirSync(path.join(ROOT, 'src/data'), { recursive: true });
-  fs.writeFileSync(path.join(ROOT, 'src/data/listings.json'), JSON.stringify(listings, null, 1));
-  fs.writeFileSync(path.join(ROOT, 'src/data/agents.json'), JSON.stringify(agents.sort((a, b) => b.listingCount - a.listingCount), null, 1));
-  const site = setting('site'); if (site) fs.writeFileSync(path.join(ROOT, 'src/data/site.json'), JSON.stringify(site, null, 1));
-  fs.writeFileSync(path.join(ROOT, 'src/data/brands.json'), JSON.stringify(q('SELECT data FROM brands').map(r => JSON.parse(r.data)).sort((a, b) => (b.sampleCount || 0) - (a.sampleCount || 0)), null, 1));
+  // 저장소(src/data)는 건드리지 않음 — 로컬 테스트 데이터가 커밋되어 운영에 섞이는 것을 막기 위해
+  fs.mkdirSync(EXPORT_DIR, { recursive: true }); fs.mkdirSync(POSTS_DIR, { recursive: true });
+  const wj = (f, v) => { const t = path.join(EXPORT_DIR, f + '.tmp'); fs.writeFileSync(t, JSON.stringify(v, null, 1)); fs.renameSync(t, path.join(EXPORT_DIR, f)); };
+  wj('listings.json', listings);
+  wj('agents.json', agents.sort((a, b) => b.listingCount - a.listingCount));
+  const repoSite = path.join(ROOT, 'src/data/site.json'); wj('site.json', setting('site') || (fs.existsSync(repoSite) ? JSON.parse(fs.readFileSync(repoSite, 'utf-8')) : {}));
+  wj('brands.json', q('SELECT data FROM brands').map(r => JSON.parse(r.data)).sort((a, b) => (b.sampleCount || 0) - (a.sampleCount || 0)));
 }
 function scheduleRebuild(delay = 8000) { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(rebuild, delay); }
 function rebuild() {
   if (building) { pending = true; return; }
   building = true; exportData();
   const t = Date.now();
-  const child = spawn(process.execPath, [path.join(ROOT, 'build.mjs')], { env: { ...process.env, API_URL: process.env.API_URL || '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [path.join(ROOT, 'build.mjs')], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV, API_URL: process.env.API_URL || '' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d);
   child.on('close', code => { building = false; setSetting('lastBuild', { at: now(), ok: code === 0, ms: Date.now() - t, log: out.slice(-2000) }); console.log(`[build] ${code === 0 ? 'ok' : 'FAIL'} ${Date.now() - t}ms`); if (code === 0) setTimeout(pingIndexNow, 5000); if (pending) { pending = false; rebuild(); } });
 }
@@ -196,6 +292,8 @@ async function api(req, res, url) {
   if (p === '/listings' && m === 'GET') { if (!need()) return; const rows = q('SELECT data, updatedBy FROM listings ORDER BY updatedAt DESC').map(r => ({ ...JSON.parse(r.data), updatedBy: r.updatedBy })); return json(res, 200, { items: rows }); }
   if (p === '/listings' && m === 'POST') {
     if (!need()) return; const l = body.listing || body; const t = now();
+    // 네트워크 재시도로 같은 등록이 두 번 들어오면 처음 것을 돌려줌
+    if (l.clientKey && /^[\w-]{8,64}$/.test(l.clientKey)) { const ex = q1('SELECT data FROM listings WHERE data LIKE ?', `%"clientKey":"${l.clientKey}"%`); if (ex) return json(res, 200, { item: JSON.parse(ex.data), duplicateOf: null, repeated: true }); } else delete l.clientKey;
     l.id = l.id && !q1('SELECT 1 FROM listings WHERE id=?', String(l.id)) ? String(l.id) : String(Math.max(800000, ...q('SELECT id FROM listings').map(r => Number(r.id) || 0)) + 1);
     if (!me.isAdmin || !l.agentId) l.agentId = me.id;
     const ag = q1('SELECT * FROM agents WHERE id=?', l.agentId); if (ag) { l.agentName = ag.name; l.agentPhone = ag.mobile; }
@@ -211,6 +309,7 @@ async function api(req, res, url) {
     const ag = patch.agentId ? q1('SELECT * FROM agents WHERE id=?', patch.agentId) : null; if (patch.agentId && !ag) return json(res, 400, { error: '없는 담당자' });
     for (const id of ids) {
       const row = q1('SELECT data FROM listings WHERE id=?', id); if (!row) continue; const l = JSON.parse(row.data);
+      snap(id, row.data, 'bulk', me.id);
       if (ag) { l.agentId = ag.id; l.agentName = ag.name; l.agentPhone = ag.mobile; }
       if (patch.status && ['active', 'held', 'done', 'archived'].includes(patch.status)) l.status = patch.status;
       if (patch.verified != null) l.verified = !!patch.verified;
@@ -225,14 +324,36 @@ async function api(req, res, url) {
     if (m === 'GET') { const lock = q1('SELECT * FROM locks WHERE listingId=? AND agentId!=? AND at>?', mm[1], me.id, new Date(Date.now() - 120000).toISOString()); return json(res, 200, { item: cur, lock: lock ? { agentId: lock.agentId, name: (q1('SELECT name FROM agents WHERE id=?', lock.agentId) || {}).name, at: lock.at } : null }); }
     if (!canEdit(me, cur)) return json(res, 403, { error: '본인 담당 매물만 수정할 수 있습니다. 담당자 변경은 관리자에게 요청하세요.' });
     if (m === 'PUT') {
-      const l = body.listing || body;
-      if (body.baseUpdatedAt && body.baseUpdatedAt !== cur.updatedAt) return json(res, 409, { error: `다른 사용자(${row.updatedBy})가 먼저 수정했습니다. 새로고침 후 다시 시도하세요.`, current: cur });
+      let l = body.listing || body; let merged = null;
+      if (body.baseUpdatedAt && body.baseUpdatedAt !== cur.updatedAt) {
+        const by = (q1('SELECT name FROM agents WHERE id=?', row.updatedBy) || {}).name || row.updatedBy;
+        const baseItem = body.baseItem && typeof body.baseItem === 'object' && body.baseItem.updatedAt === body.baseUpdatedAt ? body.baseItem : null;
+        if (!baseItem) return json(res, 409, { error: `${by}님이 먼저 수정했습니다. 새로고침 후 다시 시도하세요.`, current: cur, by });
+        const r = merge3(baseItem, l, cur);
+        if (r.conflicts.length && !body.force) return json(res, 409, { error: `${by}님이 같은 항목을 먼저 고쳤습니다.`, conflicts: r.conflicts.map(k => ({ key: k, mine: l[k], theirs: cur[k] })), current: cur, by });
+        if (body.force) for (const k of r.conflicts) r.out[k] = l[k];
+        l = r.out; merged = { by, theirFields: r.theirChanged, forced: body.force ? r.conflicts : [] };
+      }
       if (!me.isAdmin) l.agentId = cur.agentId; const ag = q1('SELECT * FROM agents WHERE id=?', l.agentId); if (ag) { l.agentName = ag.name; l.agentPhone = ag.mobile; }
       l.id = cur.id; l.createdAt = cur.createdAt; l.createdBy = cur.createdBy; l.source = cur.source; l.legacyAgent = cur.legacyAgent; if (!me.isAdmin) l.verified = cur.verified; l.updatedAt = now();
-      run('UPDATE listings SET data=?,agentId=?,status=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), l.agentId, l.status, l.updatedAt, me.id, l.id); run('DELETE FROM locks WHERE listingId=?', l.id); audit(me.id, 'listing_update', l.id, l.title); scheduleRebuild();
-      return json(res, 200, { item: l });
+      l.clientKey = cur.clientKey; snap(cur.id, row.data, 'update', me.id);
+      run('UPDATE listings SET data=?,agentId=?,status=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), l.agentId, l.status, l.updatedAt, me.id, l.id); run('DELETE FROM locks WHERE listingId=?', l.id); audit(me.id, merged ? 'listing_merge' : 'listing_update', l.id, merged ? `${l.title} (+${merged.by})` : l.title); scheduleRebuild();
+      return json(res, 200, { item: l, merged });
     }
-    if (m === 'DELETE') { cur.status = 'archived'; cur.updatedAt = now(); run('UPDATE listings SET data=?,status=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(cur), 'archived', cur.updatedAt, me.id, cur.id); audit(me.id, 'listing_archive', cur.id); scheduleRebuild(); return json(res, 200, { ok: true }); }
+    if (m === 'DELETE') { snap(cur.id, row.data, 'archive', me.id); cur.status = 'archived'; cur.updatedAt = now(); run('UPDATE listings SET data=?,status=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(cur), 'archived', cur.updatedAt, me.id, cur.id); audit(me.id, 'listing_archive', cur.id); scheduleRebuild(); return json(res, 200, { ok: true }); }
+  }
+  if ((mm = p.match(/^\/listings\/([^/]+)\/history$/)) && m === 'GET') {
+    if (!need()) return; const row = q1('SELECT * FROM listings WHERE id=?', mm[1]); if (!row) return json(res, 404, { error: '없는 매물' });
+    const hs = q('SELECT * FROM listing_history WHERE listingId=? ORDER BY id DESC LIMIT 60', mm[1]); let next = JSON.parse(row.data); const names = Object.fromEntries(q('SELECT id,name FROM agents').map(a => [a.id, a.name]));
+    const items = hs.map(h => { const d = JSON.parse(h.data); const changed = [...new Set([...Object.keys(d), ...Object.keys(next)])].filter(k => !MERGE_SKIP.has(k) && !same(d[k], next[k])); const it = { id: h.id, action: h.action, by: names[h.byId] || h.byId, at: h.at, savedAt: d.updatedAt, changed, before: Object.fromEntries(changed.map(k => [k, d[k]])), after: Object.fromEntries(changed.map(k => [k, next[k]])) }; next = d; return it; });
+    return json(res, 200, { items, current: { updatedAt: row.updatedAt, by: names[row.updatedBy] || row.updatedBy } });
+  }
+  if ((mm = p.match(/^\/listings\/([^/]+)\/history\/(\d+)\/restore$/)) && m === 'POST') {
+    if (!need()) return; const row = q1('SELECT * FROM listings WHERE id=?', mm[1]); if (!row) return json(res, 404, { error: '없는 매물' }); const cur = JSON.parse(row.data); if (!canEdit(me, cur)) return json(res, 403, { error: '본인 담당 매물만 되돌릴 수 있습니다' });
+    const h = q1('SELECT * FROM listing_history WHERE id=? AND listingId=?', Number(mm[2]), mm[1]); if (!h) return json(res, 404, { error: '없는 이력' });
+    const l = JSON.parse(h.data); if (!me.isAdmin) { l.agentId = cur.agentId; l.verified = cur.verified; } const ag = q1('SELECT * FROM agents WHERE id=?', l.agentId); if (ag) { l.agentName = ag.name; l.agentPhone = ag.mobile; }
+    Object.assign(l, { id: cur.id, createdAt: cur.createdAt, createdBy: cur.createdBy, source: cur.source, legacyAgent: cur.legacyAgent, clientKey: cur.clientKey, updatedAt: now() });
+    snap(cur.id, row.data, 'revert', me.id); run('UPDATE listings SET data=?,agentId=?,status=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), l.agentId, l.status, l.updatedAt, me.id, l.id); audit(me.id, 'listing_revert', l.id, `이력 #${h.id}`); scheduleRebuild(); return json(res, 200, { item: l });
   }
   if ((mm = p.match(/^\/listings\/([^/]+)\/lock$/)) && m === 'POST') { if (!need()) return; run('INSERT INTO locks(listingId,agentId,at) VALUES(?,?,?) ON CONFLICT(listingId) DO UPDATE SET agentId=excluded.agentId, at=excluded.at', mm[1], me.id, now()); return json(res, 200, { ok: true }); }
 
@@ -248,7 +369,7 @@ async function api(req, res, url) {
     run('INSERT INTO photos(id,file,thumb,name,agentId,tags,w,h,size,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?)', id, file, file.replace('photos/', 'photos/thumb/'), String(name || '').slice(0, 80), me.id, JSON.stringify(tags), w || 0, h || 0, buf.length, now()); audit(me.id, 'photo_upload', id, name);
     return json(res, 200, { item: { id, file, thumb: file.replace('photos/', 'photos/thumb/'), name, agentId: me.id, tags } });
   }
-  if ((mm = p.match(/^\/photos\/([^/]+)$/)) && m === 'DELETE') { if (!need()) return; const ph = q1('SELECT * FROM photos WHERE id=?', mm[1]); if (!ph) return json(res, 404, {}); if (!me.isAdmin && ph.agentId !== me.id) return json(res, 403, { error: '본인이 올린 사진만 삭제할 수 있습니다' }); const used = q('SELECT id FROM listings WHERE data LIKE ? AND status!=?', `%${ph.file}%`, 'archived'); if (used.length) return json(res, 400, { error: `매물 ${used.map(u => u.id).join(', ')}에서 사용 중입니다` }); run('DELETE FROM photos WHERE id=?', mm[1]); for (const f of [ph.file, ph.thumb]) { try { fs.unlinkSync(path.join(ROOT, 'public', f)); } catch {} } return json(res, 200, { ok: true }); }
+  if ((mm = p.match(/^\/photos\/([^/]+)$/)) && m === 'DELETE') { if (!need()) return; const ph = q1('SELECT * FROM photos WHERE id=?', mm[1]); if (!ph) return json(res, 404, {}); if (!me.isAdmin && ph.agentId !== me.id) return json(res, 403, { error: '본인이 올린 사진만 삭제할 수 있습니다' }); const used = q('SELECT id FROM listings WHERE data LIKE ?', `%${ph.file}%`); if (used.length) return json(res, 400, { error: `매물 ${used.map(u => u.id).join(', ')}에서 사용 중입니다 (삭제됨 매물 포함 — 복구 대비 보관)` }); run('DELETE FROM photos WHERE id=?', mm[1]); audit(me.id, 'photo_delete', mm[1], ph.file); for (const f of [ph.file, ph.thumb]) { const x = path.join(PHOTO_DIR, String(f).replace(/^photos\//, '')); if (x.startsWith(PHOTO_DIR)) try { fs.unlinkSync(x); } catch {} } return json(res, 200, { ok: true }); }
 
   // --- 담당자 ---
   if (p === '/agents' && m === 'GET') { if (!need()) return; return json(res, 200, { items: q('SELECT * FROM agents ORDER BY isAdmin DESC, name').map(pub) }); }
@@ -261,11 +382,11 @@ async function api(req, res, url) {
     const ag = q1('SELECT * FROM agents WHERE id=?', id); for (const r of q('SELECT id,data FROM listings WHERE agentId=?', id)) { const l = JSON.parse(r.data); l.agentName = ag.name; l.agentPhone = ag.mobile; run('UPDATE listings SET data=? WHERE id=?', JSON.stringify(l), r.id); }
     audit(me.id, 'agent_update', id); scheduleRebuild(); return json(res, 200, { item: pub(ag) });
   }
-  if ((mm = p.match(/^\/listings\/([^/]+)\/reassign$/)) && m === 'POST') { if (!needAdmin()) return; const row = q1('SELECT * FROM listings WHERE id=?', mm[1]); if (!row) return json(res, 404, {}); const l = JSON.parse(row.data); const ag = q1('SELECT * FROM agents WHERE id=?', body.agentId); if (!ag) return json(res, 400, { error: '없는 담당자' }); const prev = l.agentId; l.agentId = ag.id; l.agentName = ag.name; l.agentPhone = ag.mobile; l.updatedAt = now(); run('UPDATE listings SET data=?,agentId=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), ag.id, l.updatedAt, me.id, l.id); run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', uid('m'), me.id, ag.id, l.id, `매물 No.${l.id} (${l.title}) 담당이 ${prev}에서 ${ag.name}님으로 변경되었습니다.`, null, now()); if (prev && prev !== ag.id) run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', uid('m'), me.id, prev, l.id, `매물 No.${l.id} (${l.title}) 담당이 ${ag.name}님으로 이관되었습니다.`, null, now()); audit(me.id, 'listing_reassign', l.id, `${prev}→${ag.id}`); scheduleRebuild(); return json(res, 200, { item: l }); }
+  if ((mm = p.match(/^\/listings\/([^/]+)\/reassign$/)) && m === 'POST') { if (!needAdmin()) return; const row = q1('SELECT * FROM listings WHERE id=?', mm[1]); if (!row) return json(res, 404, {}); const l = JSON.parse(row.data); const ag = q1('SELECT * FROM agents WHERE id=?', body.agentId); if (!ag) return json(res, 400, { error: '없는 담당자' }); snap(l.id, row.data, 'reassign', me.id); const prev = l.agentId; l.agentId = ag.id; l.agentName = ag.name; l.agentPhone = ag.mobile; l.updatedAt = now(); run('UPDATE listings SET data=?,agentId=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), ag.id, l.updatedAt, me.id, l.id); run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', uid('m'), me.id, ag.id, l.id, `매물 No.${l.id} (${l.title}) 담당이 ${prev}에서 ${ag.name}님으로 변경되었습니다.`, null, now()); if (prev && prev !== ag.id) run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', uid('m'), me.id, prev, l.id, `매물 No.${l.id} (${l.title}) 담당이 ${ag.name}님으로 이관되었습니다.`, null, now()); audit(me.id, 'listing_reassign', l.id, `${prev}→${ag.id}`); scheduleRebuild(); return json(res, 200, { item: l }); }
 
   if ((mm = p.match(/^\/agents\/([^/]+)\/transfer$/)) && m === 'POST') {
     if (!needAdmin()) return; const from = mm[1]; const to = q1('SELECT * FROM agents WHERE id=?', String(body.toId || '')); if (!to) return json(res, 400, { error: '이관받을 직원을 선택하세요' });
-    const rows = q("SELECT data FROM listings WHERE agentId=? AND status!='archived'", from); for (const r of rows) { const l = JSON.parse(r.data); l.agentId = to.id; l.agentName = to.name; l.agentPhone = to.mobile; l.updatedAt = now(); run('UPDATE listings SET data=?,agentId=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), to.id, l.updatedAt, me.id, l.id); }
+    const rows = q("SELECT data FROM listings WHERE agentId=? AND status!='archived'", from); for (const r of rows) { const l = JSON.parse(r.data); snap(l.id, r.data, 'transfer', me.id); l.agentId = to.id; l.agentName = to.name; l.agentPhone = to.mobile; l.updatedAt = now(); run('UPDATE listings SET data=?,agentId=?,updatedAt=?,updatedBy=? WHERE id=?', JSON.stringify(l), to.id, l.updatedAt, me.id, l.id); }
     run("UPDATE inquiries SET agentId=? WHERE agentId=? AND status IN ('new','contacted')", to.id, from);
     run('INSERT INTO messages(id,fromId,toId,listingId,body,readAt,createdAt) VALUES(?,?,?,?,?,?,?)', uid('m'), me.id, to.id, '', `${from} 직원의 매물 ${rows.length}건과 진행 중 문의가 ${to.name}님에게 이관되었습니다.`, null, now());
     audit(me.id, 'agent_transfer', from, `→${to.id} ${rows.length}건`); scheduleRebuild(); return json(res, 200, { ok: true, n: rows.length });
@@ -284,28 +405,34 @@ async function api(req, res, url) {
 
   // --- 백업·복원 (관리자) ---
   if (p === '/backup' && m === 'GET') {
-    if (!needAdmin()) return; const tables = ['agents', 'listings', 'brands', 'photos', 'inquiries', 'calls', 'messages', 'notices', 'notice_reads', 'settings', 'audit'];
-    const dump = { app: 'changupguide', version: 1, at: now(), tables: Object.fromEntries(tables.map(t => [t, q(`SELECT * FROM ${t}`)])) };
-    audit(me.id, 'backup', ''); res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="changupguide-backup-${now().slice(0, 10)}.json"`, 'Cache-Control': 'no-store' }); return res.end(JSON.stringify(dump));
+    const keyOk = req.headers['x-backup-key'] && crypto.createHash('sha256').update(String(req.headers['x-backup-key'])).digest('hex') === crypto.createHash('sha256').update(backupKey()).digest('hex');
+    if (!keyOk && !needAdmin()) return; const dump = dumpAll();
+    audit(me ? me.id : 'pc-backup', 'backup', ''); res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="changupguide-backup-${now().slice(0, 10)}.json"`, 'Cache-Control': 'no-store' }); return res.end(JSON.stringify(dump));
   }
   if (p === '/restore' && m === 'POST') {
     if (!needAdmin()) return; const d = body.backup || body; const mode = body.mode === 'replace' ? 'replace' : 'merge';
     // 매물 JSON 배열만 올린 경우: 매물 불러오기(같은 번호는 덮어씀)
     const tables = Array.isArray(d) ? { listings: d.map(l => ({ id: String(l.id), data: JSON.stringify({ source: 'import', ...l, id: String(l.id) }), agentId: l.agentId || '', status: l.status || 'active', updatedAt: l.updatedAt || now(), updatedBy: me.id })) } : d.tables;
     if (!tables || typeof tables !== 'object') return json(res, 400, { error: '백업 파일 형식이 아닙니다' });
-    const allow = { agents: 'id', listings: 'id', brands: 'slug', photos: 'id', inquiries: 'id', calls: 'id', messages: 'id', notices: 'id', notice_reads: null, settings: 'key', audit: null };
-    const cnt = {}; db.exec('BEGIN');
-    try {
-      for (const [t, rows] of Object.entries(tables)) {
-        if (!(t in allow) || !Array.isArray(rows)) continue; if (mode === 'replace' && t !== 'agents') db.exec(`DELETE FROM ${t}`);
-        const cols = q(`PRAGMA table_info(${t})`).map(c => c.name).filter(c => !(t === 'audit' && c === 'id')); let n = 0;
-        for (const r of rows) { const use = cols.filter(c => c in r); if (!use.length) continue; run(`INSERT OR REPLACE INTO ${t}(${use.join(',')}) VALUES(${use.map(() => '?').join(',')})`, ...use.map(c => r[c] == null ? null : typeof r[c] === 'object' ? JSON.stringify(r[c]) : r[c])); n++; }
-        cnt[t] = n;
-      }
-      if (!q1('SELECT 1 FROM agents WHERE id=? AND isAdmin=1 AND active=1', me.id)) throw new Error('복원 후 현재 관리자 계정이 사라지거나 비활성화됩니다. 백업 파일을 확인하세요.');
-      db.exec('COMMIT');
-    } catch (e) { db.exec('ROLLBACK'); return json(res, 400, { error: String(e.message || e) }); }
-    audit(me.id, 'restore', mode, cnt); scheduleRebuild(100); return json(res, 200, { ok: true, counts: cnt });
+    const pre = snapshotBackup('prerestore'); let cnt;
+    try { cnt = restoreTables(tables, mode, me, Array.isArray(d) ? null : d.posts); } catch (e) { return json(res, 400, { error: String(e.message || e) }); }
+    audit(me.id, 'restore', mode, { ...cnt, pre }); scheduleRebuild(100); return json(res, 200, { ok: true, counts: cnt, pre });
+  }
+  if (p === '/backups' && m === 'GET') {
+    if (!needAdmin()) return; const files = fs.existsSync(BK_DIR) ? fs.readdirSync(BK_DIR).filter(f => f.endsWith('.json.gz')).map(f => { const st = fs.statSync(path.join(BK_DIR, f)); return { name: f, size: st.size, at: st.mtime.toISOString(), kind: f.split('-')[0] }; }).sort((a, b) => b.at.localeCompare(a.at)) : [];
+    let dbBytes = 0; try { dbBytes = fs.statSync(path.join(DATA_DIR, 'app.db')).size; } catch {}
+    return json(res, 200, { items: files, storage: { persistent: PERSISTENT, railway: ON_RAILWAY, volume: VOLUME, dataDir: DATA_DIR, dbBytes, lastBackup: setting('lastBackup') }, backupKey: process.env.BACKUP_KEY ? '(Railway 변수 BACKUP_KEY 사용 중)' : backupKey() });
+  }
+  if (p === '/backups' && m === 'POST') { if (!needAdmin()) return; const name = snapshotBackup('manual'); audit(me.id, 'backup_snapshot', name || 'fail'); return name ? json(res, 200, { ok: true, name }) : json(res, 500, { error: '백업을 만들지 못했습니다' }); }
+  if ((mm = p.match(/^\/backups\/([\w.-]+\.json\.gz)$/)) && m === 'GET') {
+    if (!needAdmin()) return; const f = path.join(BK_DIR, mm[1]); if (!fs.existsSync(f)) return json(res, 404, { error: '없는 백업' });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="changupguide-${mm[1].replace('.json.gz', '')}.json"`, 'Cache-Control': 'no-store' }); return res.end(zlib.gunzipSync(fs.readFileSync(f)));
+  }
+  if ((mm = p.match(/^\/backups\/([\w.-]+\.json\.gz)\/restore$/)) && m === 'POST') {
+    if (!needAdmin()) return; const f = path.join(BK_DIR, mm[1]); if (!fs.existsSync(f)) return json(res, 404, { error: '없는 백업' });
+    const d = JSON.parse(zlib.gunzipSync(fs.readFileSync(f)).toString('utf-8')); const pre = snapshotBackup('prerestore'); let cnt;
+    try { cnt = restoreTables(d.tables || {}, body.mode === 'merge' ? 'merge' : 'replace', me, d.posts); } catch (e) { return json(res, 400, { error: String(e.message || e) }); }
+    audit(me.id, 'restore', mm[1], { ...cnt, pre }); scheduleRebuild(100); return json(res, 200, { ok: true, counts: cnt, pre });
   }
 
   // --- 문의·통화 ---
@@ -321,9 +448,9 @@ async function api(req, res, url) {
   if ((mm = p.match(/^\/notices\/([^/]+)\/read$/)) && m === 'POST') { if (!need()) return; run('INSERT OR IGNORE INTO notice_reads(noticeId,agentId,readAt) VALUES(?,?,?)', mm[1], me.id, now()); return json(res, 200, { ok: true }); }
 
   // --- 글 발행 ---
-  if (p === '/posts' && m === 'GET') { if (!need()) return; const dir = path.join(ROOT, 'content/posts'); const items = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => { const p2 = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')); return { slug: p2.slug, title: p2.title, date: p2.date, status: p2.status, listingId: p2.listingId, category: p2.category }; }).sort((a, b) => b.date.localeCompare(a.date)) : []; return json(res, 200, { items }); }
-  if (p === '/posts/generate' && m === 'POST') { if (!needAdmin()) return; exportData(); const child = spawn(process.execPath, [path.join(ROOT, 'tools/make_posts.mjs'), '--count', String(body.count || 3), ...(body.force ? ['--force'] : [])], { stdio: ['ignore', 'pipe', 'pipe'] }); let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d); child.on('close', code => { scheduleRebuild(1000); json(res, 200, { ok: code === 0, log: out }); }); return; }
-  if ((mm = p.match(/^\/posts\/([^/]+)$/)) && m === 'PUT') { if (!needAdmin()) return; const f = path.join(ROOT, 'content/posts', mm[1] + '.json'); if (!fs.existsSync(f)) return json(res, 404, {}); const p2 = JSON.parse(fs.readFileSync(f, 'utf-8')); Object.assign(p2, { title: body.title ?? p2.title, status: body.status ?? p2.status, body: body.body ?? p2.body, desc: body.desc ?? p2.desc, updated: now() }); fs.writeFileSync(f, JSON.stringify(p2, null, 1)); scheduleRebuild(); return json(res, 200, { ok: true }); }
+  if (p === '/posts' && m === 'GET') { if (!need()) return; const dir = POSTS_DIR; const items = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => { const p2 = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')); return { slug: p2.slug, title: p2.title, date: p2.date, status: p2.status, listingId: p2.listingId, category: p2.category }; }).sort((a, b) => b.date.localeCompare(a.date)) : []; return json(res, 200, { items }); }
+  if (p === '/posts/generate' && m === 'POST') { if (!needAdmin()) return; exportData(); const child = spawn(process.execPath, [path.join(ROOT, 'tools/make_posts.mjs'), '--count', String(body.count || 3), ...(body.force ? ['--force'] : [])], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV }, stdio: ['ignore', 'pipe', 'pipe'] }); let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d); child.on('close', code => { scheduleRebuild(1000); json(res, 200, { ok: code === 0, log: out }); }); return; }
+  if ((mm = p.match(/^\/posts\/([^/]+)$/)) && m === 'PUT') { if (!needAdmin()) return; if (!/^[^/\\.][^/\\]*$/.test(mm[1])) return json(res, 400, {}); const f = path.join(POSTS_DIR, decodeURIComponent(mm[1]) + '.json'); if (!fs.existsSync(f)) return json(res, 404, {}); const p2 = JSON.parse(fs.readFileSync(f, 'utf-8')); Object.assign(p2, { title: body.title ?? p2.title, status: body.status ?? p2.status, body: body.body ?? p2.body, desc: body.desc ?? p2.desc, updated: now() }); fs.writeFileSync(f, JSON.stringify(p2, null, 1)); scheduleRebuild(); return json(res, 200, { ok: true }); }
 
   // --- 설정·운영 ---
   if (p === '/settings' && m === 'GET') { if (!needAdmin()) return; const s = setting('sms') || {}; return json(res, 200, { sms: { ...s, aligoKey: s.aligoKey ? '••••' + String(s.aligoKey).slice(-4) : '', solapiSecret: s.solapiSecret ? '••••' : '' }, notifyAdmin: !!setting('notifyAdmin'), site: setting('site') || {}, lastBuild: setting('lastBuild'), siteUrl: process.env.SITE_URL || '', base: BASE }); }
@@ -331,7 +458,7 @@ async function api(req, res, url) {
   if (p === '/settings/test-sms' && m === 'POST') { if (!needAdmin()) return; const r = await sendSms(body.to || me.mobile, '[창업가이드] 문자 발송 테스트입니다.'); return json(res, 200, r); }
   if (p === '/rebuild' && m === 'POST') { if (!needAdmin()) return; scheduleRebuild(100); return json(res, 200, { ok: true }); }
   if (p === '/audit' && m === 'GET') { if (!needAdmin()) return; return json(res, 200, { items: q('SELECT * FROM audit ORDER BY id DESC LIMIT 300') }); }
-  if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild') }); }
+  if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild'), storage: me.isAdmin ? { persistent: PERSISTENT, lastBackup: setting('lastBackup') } : undefined }); }
   json(res, 404, { error: 'not found' });
 }
 
@@ -351,7 +478,7 @@ function serveStatic(req, res, url) {
   fs.createReadStream(file).pipe(res);
 }
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const apiPath = BASE && url.pathname.startsWith(BASE + '/api') ? url.pathname.slice(BASE.length) : url.pathname;
   if (apiPath.startsWith('/api/')) {
@@ -363,3 +490,4 @@ http.createServer(async (req, res) => {
   }
   serveStatic(req, res, url);
 }).listen(PORT, () => console.log(`창업가이드 ${STATIC_ONLY ? '정적 미리보기' : 'API+정적'} 서버: http://localhost:${PORT}${BASE}/  (dist: ${fs.existsSync(DIST) ? 'ok' : '없음 — node build.mjs 먼저'})`));
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { console.log(`[server] ${sig} — DB 정리 후 종료`); server.close(); try { if (db) { db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); db.close(); } } catch {} process.exit(0); });

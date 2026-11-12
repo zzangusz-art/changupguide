@@ -35,9 +35,10 @@ async function render() {
   try { const m = await api.me(); unread = m.unread; const b = $('[data-unread]'); if (b) b.textContent = unread || ''; if (b) b.classList.toggle('hide', !unread); } catch {}
 }
 window.addEventListener('hashchange', render);
+window.addEventListener('cu-retry', e => toast(`서버 응답을 기다리는 중… 자동으로 다시 시도합니다 (${e.detail})`, '', 2500));
 
 function shell(active) {
-  const nav = [['dashboard', '대시보드'], ['listings', '매물 관리'], ['my', '내가 등록한 매물'], ['brands', '브랜드 관리'], ['photos', '사진 라이브러리'], ['inbox', '문의함'], ['calls', '통화 알림'], ['messages', '메시지·공지'], ['posts', '발행 글'], ['help', '사용 안내'], ...(me.isAdmin ? [['agents', '직원 계정'], ['settings', '설정·백업']] : [['profile', '내 정보']])];
+  const nav = [['dashboard', '대시보드'], ['listings', '매물 관리'], ['my', '내가 등록한 매물'], ['brands', '브랜드 관리'], ['photos', '사진 라이브러리'], ['inbox', '문의함'], ['calls', '통화 알림'], ['messages', '메시지·공지'], ['posts', '발행 글'], ['help', '사용 매뉴얼'], ...(me.isAdmin ? [['agents', '직원 계정'], ['settings', '설정·백업']] : [['profile', '내 정보']])];
   return `<div class="shell"><aside class="side" id="side">
     <a class="logo" href="#/dashboard"><svg viewBox="0 0 40 40"><rect width="40" height="40" rx="10" fill="#FFCC00"/><path d="M11.5 28.5 27 13M16.5 13H27v10.5" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>창업<b>가이드</b></a>
     ${nav.map(([k, n]) => `<a class="nav ${active === k ? 'is-on' : ''}" href="#/${k}">${n}${k === 'messages' ? `<span class="cnt ${unread ? '' : 'hide'}" data-unread>${unread || ''}</span>` : ''}</a>`).join('')}
@@ -64,7 +65,7 @@ function renderLogin() {
     <label for="liPass">비밀번호</label><input id="liPass" name="password" type="password" required autocomplete="current-password">
     <button type="submit">로그인</button>
     ${api.demo ? '<div class="login-demo">데모: <code>admin</code>(관리자) · <code>staff1</code>(직원) / 비밀번호 <code>1234</code></div>' : ''}
-    <div class="login-note">무단 접근 및 자료 외부 유출을 금지합니다.</div>
+    <div class="login-note">무단 접근 및 자료 외부 유출을 금지합니다. · <a href="manual.html" target="_blank" style="color:inherit;text-decoration:underline">사용 매뉴얼</a></div>
   </form></div>`;
   $('#loginForm').addEventListener('submit', async e => { e.preventDefault(); const f = new FormData(e.target); try { const r = await api.login(f.get('id').trim(), f.get('password')); me = r.user; toast(`${me.name}님 환영합니다`, 'ok'); location.hash = '#/dashboard'; render(); } catch (err) { fail(err); } });
 }
@@ -72,7 +73,7 @@ function renderLogin() {
 // ---------- 대시보드 ----------
 function startGuide() {
   try { if (localStorage.getItem('cu-guide-off')) return ''; } catch {}
-  return `<div class="card guide" style="margin-bottom:14px"><h2>처음 사용하시나요? 3단계면 됩니다 <button class="btn btn--sm btn--ghost" data-guide-off>닫기</button></h2><div class="guide__steps"><a href="#/listings/new"><b>1</b><span><strong>매물 등록</strong>지역·브랜드·월매출·권리금만 넣으면 제목과 지출이 자동으로 채워집니다</span></a><a href="#/my"><b>2</b><span><strong>사진 올리기</strong>매물 화면에서 "사진 올리기"로 휴대폰 사진을 바로 추가하세요</span></a><a href="#/my"><b>3</b><span><strong>상태 바꾸기</strong>거래가 끝나면 목록에서 상태를 "거래완료"로 바꾸면 끝</span></a></div><p class="muted" style="font-size:.8rem;margin-top:8px">자세한 방법은 왼쪽 메뉴 <a href="#/help" style="text-decoration:underline">사용 안내</a>에 있습니다.</p></div>`;
+  return `<div class="card guide" style="margin-bottom:14px"><h2>처음 사용하시나요? 3단계면 됩니다 <button class="btn btn--sm btn--ghost" data-guide-off>닫기</button></h2><div class="guide__steps"><a href="#/listings/new"><b>1</b><span><strong>매물 등록</strong>지역·브랜드·월매출·권리금만 넣으면 제목과 지출이 자동으로 채워집니다</span></a><a href="#/my"><b>2</b><span><strong>사진 올리기</strong>매물 화면에서 "사진 올리기"로 휴대폰 사진을 바로 추가하세요</span></a><a href="#/my"><b>3</b><span><strong>상태 바꾸기</strong>거래가 끝나면 목록에서 상태를 "거래완료"로 바꾸면 끝</span></a></div><p class="muted" style="font-size:.8rem;margin-top:8px">자세한 방법은 왼쪽 메뉴 <a href="#/help" style="text-decoration:underline">사용 매뉴얼</a>에 있습니다.</p></div>`;
 }
 async function todoBoard() {
   const L = cache.listings || (cache.listings = await api.listings()); const mine = l => me.isAdmin ? !l.sample : (l.agentId === me.id || l.createdBy === me.id);
@@ -95,7 +96,8 @@ route('dashboard', async view => {
   setTitle('대시보드', `<a class="btn btn--red" href="#/listings/new">+ 매물 등록</a>`);
   const [s, inq, calls, notices, msgs] = await Promise.all([api.stats(), api.inquiries(), api.calls(), api.notices(), api.messages()]);
   const newInq = inq.filter(i => i.status === 'new').slice(0, 6); const recentCalls = calls.slice(0, 6); const un = msgs.filter(m => m.toId === me.id && !m.readAt);
-  view.innerHTML = `${startGuide()}${await todoBoard()}<div class="grid4">
+  const stg = s.storage; const stWarn = stg && !stg.persistent ? '<div class="alert err">⚠ 데이터 저장소(Railway 볼륨)가 연결되지 않았습니다. 이 상태로 재배포하면 등록한 매물이 사라집니다. Railway → changupguide → Volumes 에서 /app/data 볼륨을 확인하세요.</div>' : stg?.lastBackup && !stg.lastBackup.ok ? `<div class="alert err">⚠ 자동 백업이 실패했습니다: ${esc(stg.lastBackup.error || '')} — 설정 → 백업에서 확인하세요.</div>` : '';
+  view.innerHTML = `${stWarn}${startGuide()}${await todoBoard()}<div class="grid4">
     <div class="stat"><b>${s.listings}</b><span>공개 매물${me.isAdmin ? ' (전체)' : ' (내 담당)'}</span></div><div class="stat ink"><b>${s.held}</b><span>보류 매물</span></div><div class="stat"><b>${s.newInquiries}</b><span>새 문의</span></div><div class="stat blue"><b>${s.callsToday}</b><span>24시간 내 통화 연결</span></div></div>
     <div class="grid2" style="margin-top:14px">
       <div class="card"><h2>새 문의 <a class="btn btn--sm" href="#/inbox">전체</a></h2>${newInq.length ? `<table class="table">${newInq.map(i => `<tr><td><span class="badge ${INQ_STATUS[i.status][1]}">${{ sms: '문자상담', buy: '창업의뢰', sell: '양도의뢰' }[i.type] || i.type}</span></td><td><b>${esc(i.name)}</b><br><a href="tel:${esc(i.phone)}">${esc(i.phone)}</a></td><td class="muted">${esc((i.message || '').slice(0, 40))}${i.listingId ? `<br><a href="#/listings/${i.listingId}">No.${i.listingId}</a>` : ''}</td><td class="muted nowrap">${fmtDate(i.createdAt)}</td></tr>`).join('')}</table>` : '<p class="muted">새 문의가 없습니다.</p>'}</div>
@@ -186,21 +188,43 @@ function findBrand(name) {
 }
 const EB_KEYS = ['재료비', '인건비', '월비용(세전)', '관리비', '기타경비'];
 
+// ---------- 동시 수정·변경 이력 공통 ----------
+const FIELD_LABEL = { title: '제목', titleManual: '제목 직접입력', status: '상태', sido: '시·도', gugun: '구·군', brand: '브랜드', brandSlug: '브랜드', kind1: '업종', kind2: '세부 업종', code: '업종 코드', kindCode: '업종 코드', theme: '테마', newTown: '신도시', sales: '월매출', expense: '월지출', profit: '월수익', monthlyCost: '월세', premium: '권리금', deposit: '보증금', areaM2: '면적', floor: '층', salesBasis: '매출 기준', expenseBreakdown: '지출 내역', summary: '한 줄 요약', description: '상세 설명', tags: '태그', images: '사진', agentId: '담당자', verified: '검증', sample: '예시 표시', kindLabel: '업종 표시' };
+const fmtDT = t => t ? new Date(t).toLocaleString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '-';
+const showFld = (k, v) => k === 'status' && STATUS[v] ? STATUS[v][0] : k === 'agentId' ? agentName(v) : showVal(v);
+const showVal = v => v == null || v === '' ? '(비어 있음)' : Array.isArray(v) ? (v.length ? `${v.length}개` : '(없음)') : typeof v === 'object' ? '(세부 내역)' : String(v).length > 40 ? String(v).slice(0, 40) + '…' : String(v);
+const ACTION_LABEL = { update: '수정', archive: '삭제(보관)', bulk: '일괄 변경', reassign: '담당 변경', transfer: '직원 이관', revert: '되돌리기', restore: '백업 복원' };
+async function historyModal(id, canEdit) {
+  const m = document.createElement('div'); m.className = 'modal is-open'; m.innerHTML = '<div class="modal__bg" data-close></div><div class="modal__panel"><h2 style="margin-top:0">변경 이력 <span class="muted" style="font-size:.85rem">No.' + esc(id) + '</span></h2><div data-body class="muted">불러오는 중…</div><div style="text-align:right;margin-top:12px"><button class="btn" data-close>닫기</button></div></div>';
+  document.body.appendChild(m); m.addEventListener('click', e => { if (e.target.closest('[data-close]')) m.remove(); });
+  try {
+    const r = await api.listingHistory(id); const body = $('[data-body]', m);
+    if (!r.items.length) { body.textContent = '아직 변경 이력이 없습니다. 수정·삭제·담당 변경을 하면 직전 상태가 여기에 보관됩니다 (매물당 최근 60개).'; return; }
+    body.innerHTML = `<p class="muted" style="font-size:.84rem">각 줄은 <b>그 변경이 일어나기 직전</b> 상태입니다. "이 상태로 되돌리기"를 누르면 현재 내용도 이력에 남으므로 언제든 다시 바꿀 수 있습니다.</p><table class="table" style="font-size:.84rem">${r.items.map(h => `<tr><td class="nowrap">${esc(fmtDT(h.at))}</td><td><b>${esc(h.by || '-')}</b><br><span class="badge c">${esc(ACTION_LABEL[h.action] || h.action)}</span></td><td>${h.changed.length ? h.changed.slice(0, 8).map(k => `<div>${esc(FIELD_LABEL[k] || k)}: <span class="muted">${esc(showFld(k, h.before[k]))}</span> → ${esc(showFld(k, h.after[k]))}</div>`).join('') : '<span class="muted">변경 항목 없음</span>'}</td><td>${canEdit ? `<button class="btn btn--sm" data-revert="${h.id}">이 상태로 되돌리기</button>` : ''}</td></tr>`).join('')}</table>`;
+    $$('[data-revert]', body).forEach(b => b.addEventListener('click', async () => { if (!confirm('이 매물을 선택한 시점의 상태로 되돌릴까요? 지금 내용은 이력에 보관됩니다.')) return; try { await api.revertListing(id, b.dataset.revert); try { localStorage.removeItem(`cu-edit-${me.id}-${id}`); } catch {} toast('되돌렸습니다. 사이트에는 잠시 후 반영됩니다.', 'ok'); cache.listings = null; m.remove(); render(); } catch (e) { fail(e); } }));
+  } catch (e) { $('[data-body]', m).textContent = e.message; }
+}
+
 // ---------- 매물 등록/수정 폼 (간소화: 지역·브랜드·숫자 3개면 등록) ----------
 async function listingForm(view, id, copyFrom) {
-  let l, base = null, lock = null;
+  let l, base = null, lock = null, orig = null; const clientKey = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const EKEY = id ? `cu-edit-${me.id}-${id}` : '';
   if (!cache.brands) cache.brands = await api.brands().catch(() => []);
-  if (id) { const r = await api.getListing(id); l = structuredClone(r.item); base = l.updatedAt; lock = r.lock; api.lock(id).catch(() => {}); }
+  if (id) { const r = await api.getListing(id); l = structuredClone(r.item); orig = structuredClone(r.item); base = l.updatedAt; lock = r.lock; api.lock(id).catch(() => {});
+    // 저장하지 못한 수정 내용 불러오기 → 저장할 때 다른 직원의 변경과 자동으로 합쳐짐
+    if (sessionStorage.getItem('cu-edit-load') === String(id)) { sessionStorage.removeItem('cu-edit-load'); try { const dr = JSON.parse(localStorage.getItem(EKEY)); if (dr?.d && dr.orig) { l = { ...dr.d, id: l.id }; orig = dr.orig; base = dr.orig.updatedAt; } } catch {} }
+    // 편집 중 표시 유지 (1분마다) — 화면을 떠나면 멈춤
+    const here = location.hash; const hb = setInterval(() => { if (location.hash !== here) return clearInterval(hb); api.lock(id).catch(() => {}); }, 60000); }
   else if (copyFrom) { const r = await api.getListing(copyFrom); l = structuredClone(r.item); for (const k of ['id', 'createdAt', 'updatedAt', 'updatedBy', 'createdBy', 'legacyId', 'legacyAgent', 'titleRaw', 'verified', 'duplicateOf', 'canonicalId']) delete l[k]; Object.assign(l, { source: 'own', images: [], status: 'active', titleManual: false, agentId: me.id, agentName: me.name, agentPhone: me.mobile }); }
   else if (sessionStorage.getItem('cu-draft-load')) { sessionStorage.removeItem('cu-draft-load'); l = JSON.parse(localStorage.getItem(`cu-draft-${me.id}`) || '{}').d || {}; l.agentId = me.id; l.agentName = me.name; l.agentPhone = me.mobile; }
   else { const last = JSON.parse(sessionStorage.getItem('cu-last-region') || 'null') || {}; l = { status: 'active', sido: last.sido || '', gugun: last.gugun || '', brand: '', brandSlug: '', kind1: '', kind2: '', code: null, kindCode: null, theme: '', newTown: '', sales: null, expense: null, profit: null, monthlyCost: null, premium: null, areaM2: null, floor: '', salesBasis: 1, expenseBreakdown: {}, summary: '', description: '', tags: [], images: [], agentId: me.id, agentName: me.name, agentPhone: me.mobile, title: '', titleManual: false }; }
   const canEdit = !id || me.isAdmin || l.agentId === me.id || (l.createdBy === me.id && !l.agentId);
   const isLegacy = l.source === LEGACY_SRC;
-  setTitle(id ? `매물 수정 No.${id}` : copyFrom ? `매물 등록 (No.${copyFrom} 복제)` : '매물 등록', `<a class="btn" href="#/listings">목록</a>${id ? ` <a class="btn btn--ghost" href="#/listings/new/${id}">복제해서 새로 등록</a> <a class="btn btn--ghost" href="../listing/${id}/" target="_blank">사이트에서 보기 ↗</a>` : ''}`);
+  setTitle(id ? `매물 수정 No.${id}` : copyFrom ? `매물 등록 (No.${copyFrom} 복제)` : '매물 등록', `<a class="btn" href="#/listings">목록</a>${id ? ` <a class="btn btn--ghost" href="#/listings/new/${id}">복제해서 새로 등록</a> <a class="btn btn--ghost" href="../listing/${id}/" target="_blank">사이트에서 보기 ↗</a> <button class="btn btn--ghost" type="button" data-history>변경 이력</button>` : ''}`);
   const eb = l.expenseBreakdown || {};
   const num = (name, label, val, hint = '', req = false) => `<label class="field ${req ? 'req' : ''}"><span>${label}</span><input name="${name}" inputmode="numeric" value="${val ?? ''}" placeholder="만원 단위"><span class="hint" data-hint="${name}">${hint}</span></label>`;
   const brandOpts = [...new Map([...(cache.brands || []).map(b => [b.name, b]), ...BRAND_LIST.map(b => [b.name, b])]).keys()];
-  view.innerHTML = `${!canEdit ? `<div class="alert err">이 매물은 ${l.agentId ? `${esc(l.agentName)} 담당` : '담당 미배정'}입니다. 본인 담당·본인 등록 매물만 수정할 수 있으며, 담당 변경은 관리자에게 메시지로 요청하세요.</div>` : ''}${lock ? `<div class="lock-banner">⚠ ${esc(lock.name || lock.agentId)}님이 ${new Date(lock.at).toLocaleTimeString('ko-KR', { hour12: false })}부터 이 매물을 편집 중입니다. 동시에 저장하면 나중 저장이 거부됩니다.</div>` : ''}${isLegacy ? `<div class="alert ${l.verified ? 'info' : 'err'}">외부(창업미디어) 수집 매물입니다. ${l.verified ? '검증 완료로 표시되어 있습니다.' : '연락처·담당자·금액·소유/권리 관계를 확인하기 전에는 정식 오픈 시 사이트에 공개되지 않습니다.'}${l.legacyAgent?.name ? ` <span class="muted">원 담당자(외부): ${esc(l.legacyAgent.name)} ${esc(l.legacyAgent.phone || '')}</span>` : ''}</div>` : ''}
+  view.innerHTML = `${!canEdit ? `<div class="alert err">이 매물은 ${l.agentId ? `${esc(l.agentName)} 담당` : '담당 미배정'}입니다. 본인 담당·본인 등록 매물만 수정할 수 있으며, 담당 변경은 관리자에게 메시지로 요청하세요.</div>` : ''}${lock ? `<div class="lock-banner">⚠ ${esc(lock.name || lock.agentId)}님이 ${new Date(lock.at).toLocaleTimeString('ko-KR', { hour12: false })}부터 이 매물을 편집 중입니다. 같이 저장해도 서로 다른 항목은 자동으로 합쳐지고, 같은 항목을 고친 경우에만 어느 값을 쓸지 묻습니다.</div>` : ''}${isLegacy ? `<div class="alert ${l.verified ? 'info' : 'err'}">외부(창업미디어) 수집 매물입니다. ${l.verified ? '검증 완료로 표시되어 있습니다.' : '연락처·담당자·금액·소유/권리 관계를 확인하기 전에는 정식 오픈 시 사이트에 공개되지 않습니다.'}${l.legacyAgent?.name ? ` <span class="muted">원 담당자(외부): ${esc(l.legacyAgent.name)} ${esc(l.legacyAgent.phone || '')}</span>` : ''}</div>` : ''}
   <form id="lf" ${!canEdit ? 'inert' : ''} autocomplete="off">
   <div class="fsec"><h3><span class="num">1</span>필수 정보 <span class="muted" style="font-weight:500;font-size:.82rem">지역·브랜드를 고르면 업종·지출 비율·제목이 자동으로 채워집니다</span></h3><div class="grid4">
     <label class="field req" style="grid-column:span 2"><span>지역 (시·구 검색)</span><input name="region" list="regions" value="${esc([l.sido, l.gugun].filter(Boolean).join(' '))}" placeholder="예) 양천 → 서울 양천구"><datalist id="regions">${REGIONS.map(r => `<option value="${r}">`).join('')}</datalist><span class="hint" data-hint="region">구·시 이름 일부만 입력해도 됩니다</span></label>
@@ -275,7 +299,7 @@ async function listingForm(view, id, copyFrom) {
   drawPhotos();
   // 임시저장: 새 매물 작성 중 내용이 브라우저에 자동 보관됨 (저장하면 삭제)
   const DKEY = `cu-draft-${me.id}`; let draftT;
-  const saveDraft = () => { if (id) return; clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem(DKEY, JSON.stringify({ at: new Date().toISOString(), d: read() })); } catch {} }, 600); };
+  const saveDraft = () => { clearTimeout(draftT); draftT = setTimeout(() => { try { if (id) { if (canEdit) localStorage.setItem(EKEY, JSON.stringify({ at: new Date().toISOString(), d: read(), orig })); } else localStorage.setItem(DKEY, JSON.stringify({ at: new Date().toISOString(), d: read() })); } catch {} }, 600); };
   const sync = () => {
     const d = read();
     if (!titleManual) { f.title.value = ''; f.title.placeholder = d.title; }
@@ -291,21 +315,33 @@ async function listingForm(view, id, copyFrom) {
   $('[data-title-auto]', f).addEventListener('click', () => { titleManual = false; f.title.value = ''; $('[data-title-auto]', f).hidden = true; sync(); });
   $$('[data-tag]', f).forEach(c => c.addEventListener('click', () => { c.classList.toggle('is-on'); sync(); }));
   applyBrand(!!id || !!copyFrom); if (!id) recalc(); sync();
+  if (id && canEdit) { let dr = null; try { dr = JSON.parse(localStorage.getItem(EKEY) || 'null'); } catch {} if (dr?.d && dr.orig && JSON.stringify(dr.d) !== JSON.stringify(read())) { const bn = document.createElement('div'); bn.className = 'alert warn'; bn.innerHTML = `저장하지 못한 수정 내용이 있습니다 (${esc(fmtDT(dr.at))}) <button class="btn btn--sm btn--yellow" type="button" data-edit-load>불러오기</button> <button class="btn btn--sm btn--ghost" type="button" data-edit-drop>버리기</button> <span class="muted" style="font-weight:500">불러와서 저장하면 그사이 다른 직원이 바꾼 항목과 자동으로 합쳐집니다</span>`; view.prepend(bn); $('[data-edit-drop]', bn).addEventListener('click', () => { localStorage.removeItem(EKEY); bn.remove(); }); $('[data-edit-load]', bn).addEventListener('click', () => { sessionStorage.setItem('cu-edit-load', String(id)); render(); }); } }
   if (!id && !copyFrom) { let dr = null; try { dr = JSON.parse(localStorage.getItem(DKEY) || 'null'); } catch {} if (dr?.d && (dr.d.sales || dr.d.brand || dr.d.images?.length)) { const bn = document.createElement('div'); bn.className = 'alert warn'; bn.innerHTML = `작성 중이던 매물이 있습니다 (${esc(new Date(dr.at).toLocaleString('ko-KR', { hour12: false }).slice(0, 17))} · ${esc(dr.d.title || '')}) <button class="btn btn--sm btn--yellow" type="button" data-draft-load>이어서 작성</button> <button class="btn btn--sm btn--ghost" type="button" data-draft-drop>버리기</button>`; view.prepend(bn); $('[data-draft-drop]', bn).addEventListener('click', () => { localStorage.removeItem(DKEY); bn.remove(); }); $('[data-draft-load]', bn).addEventListener('click', () => { sessionStorage.setItem('cu-draft-load', '1'); render(); }); } }
   $$('[data-save]').forEach(btn => btn.addEventListener('click', async () => {
     const d = read(); const errs = [];
     if (!d.sido) errs.push('지역'); if (!d.kind1 || !d.kind2) errs.push('업종 (브랜드를 고르면 자동)'); if (!d.profit && !d.sales) errs.push('월매출 또는 월수익');
     if (errs.length) return toast('입력 확인: ' + errs.join(', '), 'err', 4500);
     $$('[data-save]').forEach(b => b.disabled = true);
+    const doSave = force => id ? api.updateListing(d, base, orig, force) : api.createListing({ ...d, clientKey });
     try {
-      const r = id ? await api.updateListing(d, base) : await api.createListing(d);
+      let r;
+      try { r = await doSave(false); }
+      catch (e) {
+        if (e.status !== 409 || !e.data?.conflicts) throw e;
+        const lines = e.data.conflicts.map(c => `· ${FIELD_LABEL[c.key] || c.key}: ${e.data.by}님 값 「${showFld(c.key, c.theirs)}」 / 내 값 「${showFld(c.key, c.mine)}」`).join('\n');
+        if (!confirm(`${e.message}\n\n${lines}\n\n[확인] 내 값으로 저장 (다른 항목은 자동으로 합쳐짐)\n[취소] 저장하지 않고 그대로 두기`)) { $$('[data-save]').forEach(b => b.disabled = false); return; }
+        r = await doSave(true);
+      }
+      if (r.merged) toast(`${r.merged.by}님이 먼저 바꾼 ${r.merged.theirFields.map(k => FIELD_LABEL[k] || k).slice(0, 5).join('·') || '내용'}과 합쳐서 저장했습니다`, 'ok', 6000);
+      if (id) try { localStorage.removeItem(EKEY); } catch {}
       if (r.duplicateOf) toast(`주의: 같은 조건의 매물 No.${r.duplicateOf}이 이미 있습니다 (등록은 완료)`, 'err', 6000);
       if (!id) try { localStorage.removeItem(`cu-draft-${me.id}`); } catch {}
       toast(id ? '저장했습니다. 사이트에는 잠시 후 반영됩니다.' : `등록했습니다 (No.${r.item.id}). 사이트에는 잠시 후 반영됩니다.`, 'ok'); cache.listings = null;
       if (btn.dataset.save === 'more') { sessionStorage.setItem('cu-last-region', JSON.stringify({ sido: d.sido, gugun: d.gugun })); if (location.hash === '#/listings/new') render(); else location.hash = '#/listings/new'; }
       else location.hash = id ? '#/listings' : '#/my';
-    } catch (e) { if (e.status === 409) { if (confirm(e.message + '\n\n지금 화면의 내용을 버리고 최신 내용을 불러올까요?')) render(); } else fail(e); $$('[data-save]').forEach(b => b.disabled = false); }
+    } catch (e) { if (e.status === 409) { if (confirm(e.message + '\n\n지금 화면의 내용을 버리고 최신 내용을 불러올까요? (취소하면 화면 내용이 그대로 남습니다)')) { try { localStorage.removeItem(EKEY); } catch {} render(); } } else fail(e); $$('[data-save]').forEach(b => b.disabled = false); }
   }));
+  $('[data-history]')?.addEventListener('click', () => historyModal(id, canEdit));
   $('[data-archive]')?.addEventListener('click', async () => { if (!confirm('이 매물을 삭제(보관)할까요? 사이트에서 내려가며 목록의 "삭제됨"에서 복구할 수 있습니다.')) return; try { await api.archiveListing(id); toast('삭제(보관)했습니다', 'ok'); cache.listings = null; location.hash = '#/listings'; } catch (e) { fail(e); } });
 }
 
@@ -482,7 +518,8 @@ route('settings', async view => {
     <div><div class="card"><h2>사이트 반영</h2><p class="muted">매물·담당자 변경은 저장 후 약 10초 뒤 자동으로 사이트에 반영됩니다. 바로 반영하려면 아래 버튼.</p>${s.lastBuild ? `<p>마지막 반영: <b>${s.lastBuild.ok ? '정상' : '실패'}</b> · ${new Date(s.lastBuild.at).toLocaleString('ko-KR', { hour12: false })}${s.lastBuild.ms ? ` · ${(s.lastBuild.ms / 1000).toFixed(1)}초` : ''}</p>${!s.lastBuild.ok ? `<pre style="white-space:pre-wrap;font-size:.75rem;background:var(--cream-2);padding:8px;border-radius:8px">${esc(s.lastBuild.log || '')}</pre>` : ''}` : ''}<button class="btn btn--yellow" data-rebuild>지금 사이트 반영</button></div>
     <div class="card" style="margin-top:14px"><h2>사이트 정보</h2><p class="muted" style="font-size:.84rem">여기서 바꾸면 사이트 전체(상단·하단·문의 버튼)에 반영됩니다. 대표번호를 비워 두면 전화 버튼 대신 문의 버튼이 나옵니다.</p><form data-site style="display:grid;gap:10px;margin-top:8px"><div class="grid2"><label class="field"><span>대표번호</span><input name="phone" value="${esc(s.site?.phone || '')}" placeholder="예) 02-000-0000 (비우면 숨김)"></label><label class="field"><span>대표 이메일</span><input name="email" value="${esc(s.site?.email || '')}" placeholder="비우면 숨김"></label><label class="field" style="grid-column:1/-1"><span>상담 시간 안내</span><input name="hours" value="${esc(s.site?.hours || '')}" placeholder="예) 평일 09:00~18:00 · 온라인 문의 24시간"></label></div>
       <p style="font-weight:900;margin:8px 0 0">방문 분석 · 검색엔진 연결 <span class="muted" style="font-weight:500;font-size:.8rem">ID만 넣으면 사이트 모든 페이지에 자동 삽입됩니다</span></p><div class="grid2">${[['gaId', 'GA4 측정 ID', 'G-XXXXXXXXXX'], ['gtmId', '구글 태그 매니저 ID', 'GTM-XXXXXXX'], ['naverWa', '네이버 애널리틱스 사이트 ID', '예) a1b2c3d4e5f6'], ['clarityId', 'MS Clarity 프로젝트 ID (히트맵)', '예) abcd1234ef'], ['googleVerification', '구글 서치콘솔 확인 코드', 'meta content 값'], ['naverVerification', '네이버 서치어드바이저 확인 코드', 'meta content 값'], ['bingVerification', '빙 웹마스터 확인 코드', 'msvalidate.01 content 값']].map(([k, t, ph]) => `<label class="field"><span>${t}</span><input name="${k}" value="${esc(s.site?.[k] || '')}" placeholder="${ph}"></label>`).join('')}</div><div><button class="btn btn--red" type="submit">사이트 정보 저장</button></div></form><p class="muted" style="font-size:.78rem;margin-top:8px">상호·대표·사업자번호·주소는 사업자등록증 기준으로 고정되어 있습니다. 사이트 주소: <a href="${esc(s.siteUrl || '../')}" target="_blank">${esc(s.siteUrl || '(미설정)')}</a></p></div>
-    <div class="card" style="margin-top:14px"><h2>백업 · 복원 · 데이터 불러오기</h2><p class="muted" style="font-size:.84rem">백업 파일(JSON)에는 매물·브랜드·직원 계정·문의·설정이 모두 들어갑니다. 주 1회 이상 내려받아 안전한 곳에 보관하세요.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn btn--yellow" data-backup>백업 내려받기</button><label class="btn">백업 파일로 복원 / 매물 불러오기<input type="file" accept="application/json,.json" hidden data-restore></label><select data-restore-mode><option value="merge">합치기 (같은 번호는 덮어씀)</option><option value="replace">전체 교체 (주의)</option></select></div><p class="muted" style="font-size:.78rem;margin-top:6px">매물만 담긴 JSON 배열을 올리면 "매물 불러오기"로 처리합니다.</p></div>
+    <div class="card" style="margin-top:14px"><h2>자동 백업 · 데이터 안전</h2><div data-backups class="muted">불러오는 중…</div></div>
+    <div class="card" style="margin-top:14px"><h2>백업 파일 · 복원 · 데이터 불러오기</h2><p class="muted" style="font-size:.84rem">백업 파일(JSON)에는 매물·변경 이력·브랜드·직원 계정·문의·설정·글이 모두 들어갑니다. 서버가 자동으로도 백업하지만, 월 1회 정도는 내려받아 PC에도 보관하세요. 복원하기 직전 상태는 자동으로 백업됩니다.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn btn--yellow" data-backup>백업 내려받기</button><label class="btn">백업 파일로 복원 / 매물 불러오기<input type="file" accept="application/json,.json" hidden data-restore></label><select data-restore-mode><option value="merge">합치기 (같은 번호는 덮어씀)</option><option value="replace">전체 교체 (주의)</option></select></div><p class="muted" style="font-size:.78rem;margin-top:6px">매물만 담긴 JSON 배열을 올리면 "매물 불러오기"로 처리합니다.</p></div>
     <div class="card" style="margin-top:14px"><h2>활동 기록</h2><div data-audit class="muted">불러오는 중…</div></div></div></div>`;
   $('[data-sms]', view).addEventListener('submit', async e => { e.preventDefault(); const fd = Object.fromEntries(new FormData(e.target).entries()); try { await api.saveSettings({ sms: { provider: fd.provider, sender: fd.sender, aligoKey: fd.aligoKey, aligoUser: fd.aligoUser, solapiKey: fd.solapiKey, solapiSecret: fd.solapiSecret }, notifyAdmin: !!e.target.notifyAdmin.checked }); toast('저장했습니다', 'ok'); } catch (err) { fail(err); } });
   $('[data-test]', view).addEventListener('click', async () => { try { const r = await api.testSms(me.mobile); toast(r.ok ? '테스트 문자를 보냈습니다' : '발송 실패: ' + r.detail, r.ok ? 'ok' : 'err', 5000); } catch (e) { fail(e); } });
@@ -490,18 +527,31 @@ route('settings', async view => {
   $('[data-site]', view).addEventListener('submit', async e => { e.preventDefault(); const fd = Object.fromEntries(new FormData(e.target).entries()); try { await api.saveSettings({ site: Object.fromEntries(['phone', 'email', 'hours', 'gaId', 'gtmId', 'naverWa', 'clarityId', 'googleVerification', 'naverVerification', 'bingVerification'].map(k => [k, String(fd[k] || '').trim()])) }); toast('저장했습니다. 사이트에는 1분 안에 반영됩니다.', 'ok'); } catch (err) { fail(err); } });
   $('[data-backup]', view).addEventListener('click', async () => { try { const blob = await api.backup(); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `changupguide-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('백업 파일을 내려받았습니다', 'ok'); } catch (e) { fail(e); } });
   $('[data-restore]', view).addEventListener('change', async e => { const file = e.target.files[0]; if (!file) return; const mode = $('[data-restore-mode]', view).value; try { const data = JSON.parse(await file.text()); const n = Array.isArray(data) ? data.length : Object.values(data.tables || {}).reduce((s, r) => s + (Array.isArray(r) ? r.length : 0), 0); if (!confirm(`${file.name} (${n}건)을 ${mode === 'replace' ? '전체 교체' : '합치기'} 방식으로 복원할까요?${mode === 'replace' ? '\n\n현재 데이터가 백업 내용으로 바뀝니다.' : ''}`)) return; const r = await api.restore(data, mode); toast('복원 완료: ' + Object.entries(r.counts || {}).map(([k, v]) => `${k} ${v}`).join(', '), 'ok', 6000); cache = {}; } catch (err) { fail(err); } e.target.value = ''; });
+  const drawBackups = async () => { const box = $('[data-backups]', view); try {
+    const b = await api.backups(); const st = b.storage || {}; const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+    const KIND = { boot: '배포·재시작 때', hourly: '1시간마다 (변경 있을 때)', daily: '매일', prerestore: '복원 직전', manual: '직접 만든 백업' };
+    box.innerHTML = `<p style="margin:0 0 6px">${st.persistent ? '<span class="badge g">안전</span> 데이터가 Railway 볼륨에 저장되어 코드 업데이트·재배포 때 지워지지 않습니다.' : '<span class="badge r">위험</span> 볼륨이 연결되지 않았습니다 — 재배포 시 데이터가 사라집니다.'}</p>
+      <p class="muted" style="font-size:.82rem;margin:0 0 8px">자동 백업: 배포·재시작 때, 변경이 있으면 1시간마다, 매일 1회, 복원 직전. DB ${st.dbBytes ? kb(st.dbBytes) : '-'} · 마지막 백업 ${st.lastBackup?.at ? fmtDT(st.lastBackup.at) + (st.lastBackup.ok ? '' : ' (실패)') : '-'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><button class="btn btn--yellow btn--sm" data-mk-backup>지금 백업 만들기</button></div>
+      ${(b.items || []).length ? `<div style="max-height:260px;overflow:auto"><table class="table" style="font-size:.8rem">${b.items.slice(0, 60).map(x => `<tr><td class="nowrap">${esc(fmtDT(x.at))}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td class="muted">${kb(x.size)}</td><td class="nowrap"><a class="btn btn--sm" href="${esc(api.backupUrl(x.name))}">내려받기</a> <button class="btn btn--sm btn--ghost" data-bk-restore="${esc(x.name)}">이 시점으로 되돌리기</button></td></tr>`).join('')}</table></div>` : '<p class="muted">아직 백업이 없습니다.</p>'}
+      ${b.backupKey ? `<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:.82rem">PC 자동 백업 키 (deploy.bat 이 배포 때마다 PC에 백업을 내려받는 데 사용)</summary><p style="font-size:.8rem;word-break:break-all;margin:6px 0"><code>${esc(b.backupKey)}</code></p></details>` : ''}`;
+    $('[data-mk-backup]', box)?.addEventListener('click', async () => { try { const r = await api.makeBackup(); toast('백업을 만들었습니다: ' + r.name, 'ok'); drawBackups(); } catch (e) { fail(e); } });
+    $$('[data-bk-restore]', box).forEach(btn => btn.addEventListener('click', async () => { if (!confirm(`${btn.dataset.bkRestore} 시점으로 전체 데이터를 되돌릴까요?\n\n그 이후에 등록·수정한 내용은 사라집니다. (지금 상태는 "복원 직전" 백업으로 자동 보관되어 다시 되돌릴 수 있습니다)`)) return; try { const r = await api.restoreBackup(btn.dataset.bkRestore, 'replace'); toast('되돌렸습니다: ' + Object.entries(r.counts || {}).map(([k, v]) => `${k} ${v}`).join(', '), 'ok', 7000); cache = {}; drawBackups(); } catch (e) { fail(e); } }));
+  } catch (e) { box.textContent = e.message; } };
+  drawBackups();
   try { const a = await api.audit(); $('[data-audit]', view).innerHTML = `<table class="table" style="font-size:.8rem">${a.slice(0, 40).map(x => `<tr><td class="nowrap">${new Date(x.at).toLocaleString('ko-KR', { hour12: false }).slice(0, 17)}</td><td>${esc(agentName(x.agentId))}</td><td>${esc(x.action)}</td><td>${esc(x.target)} ${esc(String(x.detail || '').slice(0, 40))}</td></tr>`).join('')}</table>`; } catch { $('[data-audit]', view).textContent = '-'; }
 });
 
 // ---------- 사용 안내 ----------
 route('help', async view => {
-  setTitle('사용 안내');
+  setTitle('사용 매뉴얼', '<a class="btn btn--red" href="manual.html" target="_blank">전체 매뉴얼 열기 · 인쇄</a>');
   const box = (t, items) => `<div class="card"><h2>${t}</h2><ol class="help-list">${items.map(x => `<li>${x}</li>`).join('')}</ol></div>`;
   view.innerHTML = `<div class="grid2" style="align-items:start">
     ${box('매물 등록 (1분)', ['왼쪽 <b>매물 관리</b> → 오른쪽 위 <b>+ 매물 등록</b>', '<b>지역</b>: 구 이름 일부만 입력 (예: "양천" → 서울 양천구)', '<b>브랜드</b>: 목록에서 고르면 업종·지출 비율이 자동으로 들어갑니다. 개인 매장이면 비워 두세요', '<b>월매출·권리금</b>: 만원 단위 숫자 (3500 = 3,500만원, "1억2천"도 됨). 월수익은 자동 계산되며 직접 고쳐도 됩니다', '<b>등록</b> 또는 여러 건이면 <b>등록 후 계속</b>. 쓰다가 닫혀도 다음에 "이어서 작성"으로 복구됩니다'])}
     ${box('사진', ['매물 화면 2번 칸의 <b>📷 사진 올리기</b> → 휴대폰이면 바로 촬영 가능', '컴퓨터에서는 사진 파일을 칸 위로 끌어다 놓아도 됩니다', '첫 번째 사진이 대표 사진입니다. ‹ › 버튼으로 순서를 바꿉니다', '정확한 위치가 드러나는 간판·주소 사진은 피해주세요'])}
     ${box('수정·상태 변경', ['<b>내가 등록한 매물</b>에서 제목을 누르면 수정 화면이 열립니다', '거래가 끝났거나 잠시 내릴 때는 목록의 상태 칸에서 바로 <b>거래완료 / 보류</b>로 바꾸세요', '비슷한 매물은 <b>복제</b>로 만든 뒤 숫자만 고치면 빠릅니다', '저장하면 사이트에는 1분 안에 반영됩니다'])}
-    ${box('직원 · 관리자', ['다른 직원 담당 매물은 수정할 수 없습니다. 담당 변경은 <b>메시지</b>로 관리자에게 요청', '관리자: <b>직원 계정</b>에서 직원 추가·퇴사 처리·매물 이관', '관리자: <b>브랜드 관리</b>에서 업종·평균 지출 비율을 고치면 다음 등록부터 적용', '관리자: <b>설정·백업</b>에서 대표번호 등 사이트 정보 수정, 주 1회 백업 내려받기'])}
+    ${box('여러 명이 함께 써도 안전', ['같은 매물을 둘이 동시에 고쳐도 <b>서로 다른 칸은 자동으로 합쳐</b> 저장됩니다', '같은 칸을 다르게 고친 경우에만 두 값을 보여 주고 어느 쪽을 쓸지 묻습니다', '인터넷이 끊기거나 서버가 업데이트 중이면 <b>자동으로 다시 시도</b>합니다. 입력 내용은 화면에 그대로 남습니다', '수정하다 창이 닫혀도 그 매물을 다시 열면 <b>불러오기</b>로 이어서 저장할 수 있습니다', '모든 수정·삭제는 <b>변경 이력</b>에 남습니다. 매물 수정 화면 위 "변경 이력"에서 언제든 되돌리세요'])}
+    ${box('직원 · 관리자', ['다른 직원 담당 매물은 수정할 수 없습니다. 담당 변경은 <b>메시지</b>로 관리자에게 요청', '관리자: <b>직원 계정</b>에서 직원 추가·퇴사 처리·매물 이관', '관리자: <b>브랜드 관리</b>에서 업종·평균 지출 비율을 고치면 다음 등록부터 적용', '관리자: <b>설정·백업</b>에서 사이트 정보 수정, 자동 백업 확인·시점 되돌리기, 월 1회 백업 내려받기'])}
   </div>`;
 });
 

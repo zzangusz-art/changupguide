@@ -6,7 +6,7 @@ import { layout, esc, u, abs, ICONS, ILLO, listingCard, breadcrumb, faqBlock, ct
 import { fmtDate } from '../lib/text.mjs';
 
 export function loadPosts() {
-  const dir = path.resolve('content/posts'); if (!fs.existsSync(dir)) return [];
+  const dir = path.resolve(process.env.CU_POSTS_DIR || 'content/posts'); if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')))
     .filter(p => p.status !== 'draft').sort((a, b) => String(b.date).localeCompare(String(a.date)));
 }

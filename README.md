@@ -57,3 +57,16 @@ GitHub 저장소 Settings → Variables 에 `SITE_URL=https://changupguide.co.kr
 - 초기 관리자 계정: `admin` / 비밀번호는 Railway → Deployments → 첫 배포 Deploy Logs의 `[seed] admin 초기 비밀번호` 줄 (로그인 후 즉시 변경)
 - `changupguide.co.kr`(www 없음)은 Cloudflare에서 www로 301 리다이렉트 필요 (Railway 플랜의 커스텀 도메인 1개 제한)
 - 배포: `deploy.bat` 실행(또는 Claude Code 작업 종료 시 자동) → 커밋·푸시 → Railway·GitHub Pages 재배포
+
+## 데이터 안전 · 여러 직원 동시 사용 (2026-11-12)
+- 운영 데이터는 전부 Railway 볼륨(`DATA_DIR=/app/data`) 안에만 있습니다: `app.db`(매물·계정·문의·변경 이력), `photos/`, `posts/`(인사이트 글), `export/`(빌드용 JSON), `backups/`(자동 백업). 코드 배포로 지워지지 않습니다.
+- 서버는 저장소의 `src/data`·`content/posts`를 **덮어쓰지 않습니다**(빌드는 `CU_DATA_DIR`·`CU_POSTS_DIR` 사용). 로컬에서 서버를 돌려도 테스트 데이터가 커밋되지 않습니다.
+- 저장소 → 운영 반영(양방향의 반대쪽): 배포 때 저장소에 **새로 생긴** 매물 번호·브랜드·글·비어 있던 사이트 설정만 DB에 추가합니다. 직원이 고친 값은 덮어쓰지 않고, 한 번 가져온 항목은 `repoSeen`에 기록해 관리자가 지운 것이 되살아나지 않습니다.
+- 동시 수정: 저장 시 원본(baseItem)과 비교해 서로 다른 칸은 자동 합치기, 같은 칸 충돌만 선택 창. 편집 중 표시 1분마다 갱신. 수정 중 내용은 브라우저에 임시 보관.
+- 재시도: 관리자 화면은 끊김·502/503/504 때 약 30초간 자동 재시도, 매물 등록은 `clientKey`로 중복 등록 방지.
+- 변경 이력: 수정·삭제·일괄변경·담당 변경·이관·복원 직전 상태를 `listing_history`에 보관(매물당 60개), 관리자 화면 "변경 이력"에서 되돌리기.
+- 자동 백업(`backups/*.json.gz`): 부팅 때 10개, 1시간마다(변경 있을 때) 48개, 매일 45개, 복원 직전 10개, 수동 20개. 설정·백업 화면에서 내려받기·시점 되돌리기.
+- PC 백업: `deploy.bat`이 배포 전에 `tools/pc-backup.ps1`로 운영 백업을 `7. 창업미디어/backups/`(저장소 밖)에 저장(최근 60개). 키 파일 `backups/backup-key.txt` = Railway 변수 `BACKUP_KEY`.
+- 관리자 비밀번호 분실: Railway 변수 `ADMIN_RESET_PASSWORD`(8자 이상) → 재배포 시 admin 비밀번호 변경(같은 값은 한 번만 적용).
+- 사용 매뉴얼: `/admin/manual.html` (관리자 왼쪽 메뉴 "사용 매뉴얼", 로그인 화면 링크, 인쇄·PDF 가능).
+- GitHub Pages 미리보기의 관리자(github.io)는 정식 관리자로 자동 이동합니다(`?demo`를 붙이면 데모).
