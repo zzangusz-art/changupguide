@@ -28,7 +28,7 @@ def og():
     except Exception as e:
         d.text((90, 86), '창업가이드', font=font(96), fill=INK)
     d.text((92, 236), '창업전문포털  ·  창업 컨설팅', font=font(30), fill=(107, 104, 128))
-    d.text((90, 270), '양도양수 창업 매물', font=font(76), fill=INK)
+    d.text((90, 270), '양도양수 창업 매장', font=font(76), fill=INK)
     d.text((90, 360), '지역 · 브랜드 · 예산별 비교', font=font(60), fill=RED)
     # 스티커
     for (x, y, t, col, fc) in [(760, 440, '월매출 공개', RED, 'w'), (940, 400, '권리금 공개', BLUE, 'w'), (820, 510, '담당자 바로 통화', INK, 'y')]:

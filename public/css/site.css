@@ -303,7 +303,7 @@ dl,dd,dt{margin:0}
 .crumb li+li::before{content:"/";margin-right:6px;color:var(--line)}
 .crumb a:hover{color:var(--ink)}
 
-/* ---------- 매물 상세 ---------- */
+/* ---------- 매장 상세 ---------- */
 .detail{padding:10px 0 80px}
 .detail__head{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:start}
 .gallery{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#fff}

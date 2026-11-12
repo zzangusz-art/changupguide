@@ -187,8 +187,8 @@ function initCall() {
     const payload = { listingId, agentId, phone, title, url: location.href.split('#')[0], ua: navigator.userAgent, at: new Date().toISOString() };
     store.push('calls', payload, 100);
     const sent = beacon('/api/call-events', payload);
-    if (sent) toast('담당자에게 지금 보신 매물 링크를 문자로 보냈습니다. 바로 연결됩니다.', 'ok', 2500);
-    else if (!CU.api) toast('담당자에게 바로 연결합니다. (서버 연결 시 매물 링크가 자동 문자 발송됩니다)', '', 2500);
+    if (sent) toast('담당자에게 지금 보신 매장 링크를 문자로 보냈습니다. 바로 연결됩니다.', 'ok', 2500);
+    else if (!CU.api) toast('담당자에게 바로 연결합니다. (서버 연결 시 매장 링크가 자동 문자 발송됩니다)', '', 2500);
     // 데스크톱에서 tel: 링크가 동작하지 않을 때 번호 안내
     if (!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) && phone) { e.preventDefault(); copy(phone); toast(`담당자 번호 ${phone} 를 복사했습니다. 모바일에서는 바로 통화됩니다.`, 'ok', 3500); }
   });
@@ -201,7 +201,7 @@ function initSms() {
     const b = e.target.closest('[data-sms]'); if (!b) return; e.preventDefault();
     const f = $('#modal-sms form'); if (!f) return;
     f.listingId.value = b.dataset.sms || ''; f.agentId.value = b.dataset.agent || '';
-    const ctx = $('[data-sms-ctx]', f); ctx.textContent = b.dataset.title ? `문의 매물: No.${b.dataset.sms} ${b.dataset.title}` : (b.dataset.agentName ? `담당: ${b.dataset.agentName} 창업전문가` : '');
+    const ctx = $('[data-sms-ctx]', f); ctx.textContent = b.dataset.title ? `문의 매장: No.${b.dataset.sms} ${b.dataset.title}` : (b.dataset.agentName ? `담당: ${b.dataset.agentName} 창업전문가` : '');
     openModal('modal-sms');
   });
   $$('[data-presets] button').forEach(p => p.addEventListener('click', () => { const ta = p.closest('label').querySelector('textarea'); ta.value = ta.value ? ta.value + ' ' + p.textContent : p.textContent; ta.focus(); }));
@@ -287,7 +287,7 @@ function initRegionMap() {
   root.addEventListener('click', e => { const a = e.target.closest('.kmap a, .chips--sido .chip[data-sido]'); if (!a || !matchMedia('(hover:none)').matches) return; const sido = (a.dataset.sido ?? $('.kmap__sido', a)?.dataset.sido) || ''; if (!sido) return; if (last !== sido) { e.preventDefault(); last = sido; go(sido); } });
 }
 
-// ---------- 최근 본 매물 ----------
+// ---------- 최근 본 매장 ----------
 function trackRecent() {
   const d = document.body.dataset; if (!d.listingId) return;
   const a = store.get('recent', []).filter(x => x.id !== d.listingId);

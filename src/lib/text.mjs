@@ -163,7 +163,7 @@ export function makeTitle(l) {
 }
 export function makeSeoTitle(l) {
   const t = l.titleManual && l.title ? l.title : makeTitle(l);
-  return `${t} | 창업가이드 양도양수 매물 No.${l.id}`;
+  return `${t} | 창업가이드 양도양수 매장 No.${l.id}`;
 }
 export function makeDesc(l) {
   const loc = [l.sido, l.gugun].filter(Boolean).join(' ');
@@ -173,7 +173,7 @@ export function makeDesc(l) {
   if (l.profit) bits.push(`월수익(세전) ${fmtMan(l.profit)}`);
   bits.push(l.premium ? `권리금 ${fmtWon(l.premium)}` : '권리금 협의');
   if (l.areaM2) bits.push(`면적 ${l.areaM2}㎡`);
-  return `${loc} ${b} 양도양수 창업 매물. ${bits.join(', ')}. 담당 창업전문가 ${l.agentName || ''}에게 바로 전화 연결. 임대보증금 별도, 정확한 위치는 상담 후 안내.`;
+  return `${loc} ${b} 양도양수 창업 매장. ${bits.join(', ')}. 담당 창업전문가 ${l.agentName || ''}에게 바로 전화 연결. 임대보증금 별도, 정확한 위치는 상담 후 안내.`;
 }
 
 // 제목에서 셀링포인트 태그 추출 → 스티커 배지
@@ -227,7 +227,7 @@ export function parseQuery(q) {
   return { raw, regions, brands, budgetMin, budgetMax, terms };
 }
 
-// 매물 검색 인덱스 1건 (빌더가 search-index.json으로 저장)
+// 매장 검색 인덱스 1건 (빌더가 search-index.json으로 저장)
 export function indexEntry(l) {
   return {
     id: l.id, t: l.title, r: l.titleRaw ? cleanRawTitle(l.titleRaw) : '', s: l.sido || '', g: l.gugun || '', b: l.brand || '', bs: l.brandSlug || '',

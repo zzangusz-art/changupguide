@@ -1,4 +1,4 @@
-// 성향별 추천 기준과 테마 상세 문구. 모든 기준은 등록 매물의 숫자·태그로만 계산한다.
+// 성향별 추천 기준과 테마 상세 문구. 모든 기준은 등록 매장의 숫자·태그로만 계산한다.
 import { paybackMonths } from './text.mjs';
 
 export const photoFirst = arr => { const a = arr.filter(l => !l.noPhoto); return a.length === arr.length ? arr : [...a, ...arr.filter(l => l.noPhoto)]; };
@@ -20,7 +20,7 @@ export const PICKS = [
 
 export const pickItems = (p, listings) => photoFirst(listings.filter(p.fn).sort(p.sort));
 
-// 테마 상세·목록 공용 집계 (byTheme + 조건 매물)
+// 테마 상세·목록 공용 집계 (byTheme + 조건 매장)
 export function themeItems(t, { listings, byTheme }) {
   let items = byTheme[t.name] || [];
   if (t.slug === 'profit') items = [...new Set([...items, ...listings.filter(l => hasTag(l, '풀오토', '오토운영', '투잡'))])];

@@ -24,7 +24,7 @@ export function vizPanel(title, body, { note = '', cls = '', wide = false } = {}
 
 /** 가로 막대 차트: rows = [{ label, value, href?, sub? }] */
 export function hBars(rows, { unit = '건', max: mx, color = '#111', top = 10, valueFmt = n, labelW = 112 } = {}) {
-  rows = rows.slice(0, top); if (!rows.length) return '<p class="viz__empty">집계할 매물이 없습니다.</p>';
+  rows = rows.slice(0, top); if (!rows.length) return '<p class="viz__empty">집계할 매장이 없습니다.</p>';
   const m = mx || Math.max(...rows.map(r => r.value)) || 1;
   return `<ul class="hbars" style="--label-w:${labelW}px">${rows.map((r, i) => {
     const pct = Math.max(2, Math.round(r.value / m * 100));
@@ -35,7 +35,7 @@ export function hBars(rows, { unit = '건', max: mx, color = '#111', top = 10, v
 
 /** 세로 막대(히스토그램): rows = [{ label, value, href? }] */
 export function vBars(rows, { unit = '건', height = 170, color = '#111', highlight = -1 } = {}) {
-  if (!rows.length || !rows.some(r => r.value)) return '<p class="viz__empty">집계할 매물이 없습니다.</p>';
+  if (!rows.length || !rows.some(r => r.value)) return '<p class="viz__empty">집계할 매장이 없습니다.</p>';
   const m = Math.max(...rows.map(r => r.value)) || 1;
   return `<div class="vbars" style="--h:${height}px">${rows.map((r, i) => {
     const h = r.value / m;
@@ -46,7 +46,7 @@ export function vBars(rows, { unit = '건', height = 170, color = '#111', highli
 
 /** 도넛 차트: rows = [{ label, value, href? }] */
 export function donut(rows, { top = 6, unit = '건', size = 150 } = {}) {
-  const total = rows.reduce((s, r) => s + r.value, 0); if (!total) return '<p class="viz__empty">집계할 매물이 없습니다.</p>';
+  const total = rows.reduce((s, r) => s + r.value, 0); if (!total) return '<p class="viz__empty">집계할 매장이 없습니다.</p>';
   const head = rows.slice(0, top); const rest = rows.slice(top).reduce((s, r) => s + r.value, 0);
   const segs = rest ? [...head, { label: '기타', value: rest }] : head;
   const r = 60, c = 2 * Math.PI * r; let off = 0;
@@ -62,7 +62,7 @@ export function rangeBars(items) {
     { k: 'profit', label: '월수익(세전)', fmt: fmtMan, color: '#E0282E' },
     { k: 'premium', label: '권리금', fmt: fmtWon, color: '#282864' },
   ].map(r => ({ ...r, min: minOf(items, r.k), avg: avgOf(items, r.k), med: medOf(items, r.k), max: maxOf(items, r.k), cnt: items.filter(l => l[r.k]).length })).filter(r => r.cnt);
-  if (!rows.length) return '<p class="viz__empty">집계할 매물이 없습니다.</p>';
+  if (!rows.length) return '<p class="viz__empty">집계할 매장이 없습니다.</p>';
   return `<div class="ranges">${rows.map(r => {
     const span = r.max - r.min || 1; const p = v => Math.round((v - r.min) / span * 100);
     return `<div class="range"><div class="range__head"><strong>${r.label}</strong><small>${r.cnt}건 기준</small></div>
@@ -88,7 +88,7 @@ export function profitHistogram(items) {
 
 /** 데이터 표: cols = [{ key, label, align?, fmt? }], rows = objects */
 export function dataTable(cols, rows, { caption = '', cls = '' } = {}) {
-  if (!rows.length) return '<p class="viz__empty">집계할 매물이 없습니다.</p>';
+  if (!rows.length) return '<p class="viz__empty">집계할 매장이 없습니다.</p>';
   return `<div class="tbl-wrap"><table class="tbl ${cls}">${caption ? `<caption>${esc(caption)}</caption>` : ''}<thead><tr>${cols.map(c => `<th${c.align ? ` style="text-align:${c.align}"` : ''}>${esc(c.label)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(r => `<tr>${cols.map(c => { const v = c.fmt ? c.fmt(r[c.key], r) : r[c.key]; return `<td${c.align ? ` style="text-align:${c.align}"` : ''}>${v == null || v === '' ? '-' : v}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
@@ -99,7 +99,7 @@ export function summaryRows(groups, hrefOf) {
 }
 export const SUMMARY_COLS = [
   { key: 'name', label: '구분', fmt: (v, r) => r.href ? `<a href="${r.href}">${esc(v)}</a>` : esc(v) },
-  { key: 'n', label: '매물', align: 'right', fmt: v => `${n(v)}건` },
+  { key: 'n', label: '매장', align: 'right', fmt: v => `${n(v)}건` },
   { key: 'sales', label: '평균 월매출', align: 'right', fmt: v => v ? esc(fmtMan(v)) : '-' },
   { key: 'profit', label: '평균 월수익', align: 'right', fmt: v => v ? `<span class="hot">${esc(fmtMan(v))}</span>` : '-' },
   { key: 'ratio', label: '수익률', align: 'right', fmt: v => v ? `${v}%` : '-' },

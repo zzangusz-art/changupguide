@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""기존 사이트 매물 사진 수집·리사이즈.
+"""기존 사이트 매장 사진 수집·리사이즈.
 usage: python -I -X utf8 tools/photos.py <parsed.json> <raw_dir> <out_dir> <map_out.json>
  - raw_dir : 원본 다운로드 캐시 (한 번 받은 파일은 다시 받지 않음)
  - out_dir : public/photos (1200px JPEG q82) + public/photos/thumb (480px)

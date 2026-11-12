@@ -1,5 +1,5 @@
-// 예시(샘플) 매물 12건 생성 → src/data/listings.json
-// 실제 매물은 관리자에서 직접 등록합니다. 예시는 화면 구성 확인용이며 모든 페이지에 "예시"로 표시됩니다.
+// 예시(샘플) 매장 12건 생성 → src/data/listings.json
+// 실제 매장은 관리자에서 직접 등록합니다. 예시는 화면 구성 확인용이며 모든 페이지에 "예시"로 표시됩니다.
 // usage: node tools/make_sample_listings.mjs
 import fs from 'node:fs';
 import { CATEGORIES } from '../src/data.mjs';
@@ -33,7 +33,7 @@ const out = ROWS.map(([sido, gugun, brandName, kind1, kind2, sales, premium, are
     id: String(900001 + i), status: 'active', sample: true, source: 'sample', sido, gugun, brand: b ? b.name : '', brandSlug: b ? b.slug : '', kindLabel: '', brandsAll: b ? [b.name] : [],
     kind1, kind2, code: c.code, kindCode, theme, newTown, sales, expense, profit: sales - expense, monthlyCost: eb['월비용(세전)'].amount, premium, premiumLabel: '권리', areaM2, floor: '1',
     sizeRange: '', salesBasis: 1, expenseBreakdown: eb, titleRaw: '', summary: `[예시] ${summary}`,
-    description: `※ 화면 구성을 보여드리기 위한 예시 매물입니다. 실제 매물이 아니며, 관리자에서 매물을 등록하면 이 자리에 실제 정보가 표시됩니다.\n\n▶ 매장 특징\nㆍ${summary.split(' · ').join('\nㆍ')}\n\n▶ 운영 정보 (예시)\nㆍ면적 약 ${areaM2}㎡ (${Math.round(areaM2 / 3.3)}평), 1층\nㆍ월매출 ${sales.toLocaleString()}만원 기준, 재료비·인건비 등 지출 내역은 상단 표 참고\n\n▶ 상담 안내\n정확한 위치와 상호는 양도인 보안을 위해 상담 후 안내합니다.`,
+    description: `※ 화면 구성을 보여드리기 위한 예시 매장입니다. 실제 매장이 아니며, 관리자에서 매장을 등록하면 이 자리에 실제 정보가 표시됩니다.\n\n▶ 매장 특징\nㆍ${summary.split(' · ').join('\nㆍ')}\n\n▶ 운영 정보 (예시)\nㆍ면적 약 ${areaM2}㎡ (${Math.round(areaM2 / 3.3)}평), 1층\nㆍ월매출 ${sales.toLocaleString()}만원 기준, 재료비·인건비 등 지출 내역은 상단 표 참고\n\n▶ 상담 안내\n정확한 위치와 상호는 양도인 보안을 위해 상담 후 안내합니다.`,
     tags, images: [`img/sample/${img}.jpg`], agentId: '', agentName: '', agentPhone: '', createdAt: now, updatedAt: now,
   };
   l.title = makeTitle(l); return l;

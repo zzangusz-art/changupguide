@@ -32,10 +32,10 @@ export function listingPage(l, ctx) {
   ].filter(Boolean);
 
   const faq = [
-    { q: `${loc} ${l.brand || l.kind2 || l.kind1} 매물의 권리금 외에 필요한 비용은 무엇인가요?`, a: `표시된 권리금 ${l.premium ? fmtWon(l.premium) : '(협의)'}은 임대보증금을 제외한 금액입니다. 보증금·월세·관리비, 프랜차이즈 본사 양수 승인 비용(교육비 등)은 담당자 ${agent.name}이 상담 시 세부 내역을 안내합니다.` },
+    { q: `${loc} ${l.brand || l.kind2 || l.kind1} 매장의 권리금 외에 필요한 비용은 무엇인가요?`, a: `표시된 권리금 ${l.premium ? fmtWon(l.premium) : '(협의)'}은 임대보증금을 제외한 금액입니다. 보증금·월세·관리비, 프랜차이즈 본사 양수 승인 비용(교육비 등)은 담당자 ${agent.name}이 상담 시 세부 내역을 안내합니다.` },
     { q: '이 매장의 정확한 위치와 상호를 알 수 있나요?', a: `양도인이 영업 중인 매장의 보안을 위해 사이트에는 ${loc}까지만 표시합니다. 상담 후 담당자가 정확한 위치를 안내하고 현장 답사에 동행합니다.` },
     { q: '월수익은 어떻게 계산된 금액인가요?', a: `월수익(세전)은 월매출에서 재료비·인건비·월비용·관리비·기타경비를 뺀 금액입니다. 점주 본인의 인건비는 월지출에 포함되지 않으며, 세금 공제 전 금액입니다.${l.salesBasis ? ` 매출 근거: ${SALES_BASIS[l.salesBasis] || '담당자 확인'}.` : ''}` },
-    { q: '상담은 어떻게 하나요?', a: agent.mobile ? `페이지의 "담당자 전화 연결" 버튼을 누르면 ${agent.name} 창업전문가(${agent.mobile})에게 바로 연결되고, 어떤 매물을 보셨는지 담당자에게 자동으로 전달됩니다. 문자 상담 신청도 가능합니다.` : '페이지의 "문자 상담 신청"에 연락처를 남기시면 담당 창업전문가가 이 매물 자료를 준비해 연락드립니다.' },
+    { q: '상담은 어떻게 하나요?', a: agent.mobile ? `페이지의 "담당자 전화 연결" 버튼을 누르면 ${agent.name} 창업전문가(${agent.mobile})에게 바로 연결되고, 어떤 매장을 보셨는지 담당자에게 자동으로 전달됩니다. 문자 상담 신청도 가능합니다.` : '페이지의 "문자 상담 신청"에 연락처를 남기시면 담당 창업전문가가 이 매장 자료를 준비해 연락드립니다.' },
   ];
 
   const gallery = images.length ? `<div class="gallery">
@@ -60,7 +60,7 @@ export function listingPage(l, ctx) {
     <div><dt>테마</dt><dd>${theme ? `<a href="${u(`/theme/${theme.slug}/`)}">${esc(theme.name)}</a>` : esc(l.theme || '-')}</dd></div>
     <div><dt>신도시 상권</dt><dd>${esc(l.newTown || '해당 없음')}</dd></div>
     <div><dt>예산 구간</dt><dd>${budget ? `<a href="${u(`/budget/${budget.slug}/`)}">${esc(budget.name)}</a>` : '협의'}</dd></div>
-    <div><dt>매물번호</dt><dd>No.${esc(l.id)}</dd></div>
+    <div><dt>매장번호</dt><dd>No.${esc(l.id)}</dd></div>
   </dl>`;
 
   const agentBox = `<div class="agent-box">${starburst(agent.mobile ? '담당자 직통' : '상담 무료', 'red', 10)}
@@ -86,13 +86,13 @@ export function listingPage(l, ctx) {
   </div></section>` : '';
 
   const descHtml = l.description ? l.description.split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('') : '';
-  const detailSec = `<section class="d-sec"><h2 class="h2">이 매물 핵심 정리</h2>
+  const detailSec = `<section class="d-sec"><h2 class="h2">이 매장 핵심 정리</h2>
     <div class="summary-box"><h2>${esc(l.title)}</h2><ul>${summaryItems.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>
     <div class="prose">
-      <p class="lead">${esc(loc)}에서 운영 중인 ${esc(l.brand || l.kind2 || l.kind1)} 매장을 권리금 ${l.premium ? esc(fmtWon(l.premium)) : '협의'}에 인수하는 양도양수 창업 매물입니다.${l.sales ? ` 현재 월매출 ${esc(fmtMan(l.sales))}${l.profit ? `, 세전 월수익 ${esc(fmtMan(l.profit))}` : ''} 규모로 운영되고 있습니다.` : ''}</p>
+      <p class="lead">${esc(loc)}에서 운영 중인 ${esc(l.brand || l.kind2 || l.kind1)} 매장을 권리금 ${l.premium ? esc(fmtWon(l.premium)) : '협의'}에 인수하는 양도양수 창업 매장입니다.${l.sales ? ` 현재 월매출 ${esc(fmtMan(l.sales))}${l.profit ? `, 세전 월수익 ${esc(fmtMan(l.profit))}` : ''} 규모로 운영되고 있습니다.` : ''}</p>
       ${l.summary ? `<h3>담당자 한줄 요약</h3><p>${esc(l.summary)}</p>` : ''}
       <h3>이런 분께 맞습니다</h3><ul>
-        ${theme ? `<li>${esc(theme.name)} 테마 매물 — ${esc(theme.desc.split('.')[0])}.</li>` : ''}
+        ${theme ? `<li>${esc(theme.name)} 테마 매장 — ${esc(theme.desc.split('.')[0])}.</li>` : ''}
         ${l.tags.includes('풀오토') || l.tags.includes('오토운영') ? '<li>매장 상주가 어려운 투자형·부업형 창업자 (오토 운영 구조)</li>' : ''}
         ${l.brand ? `<li>${esc(l.brand)} 가맹점을 신규 오픈 비용 없이 운영 중인 매장으로 시작하려는 분</li>` : `<li>${esc(l.kind2 || l.kind1)} 업종 경험이 있거나, 담당자 교육으로 시작하려는 분</li>`}
         ${budget ? `<li>권리금 예산 ${esc(budget.name)} 범위에서 ${esc(loc)} 상권을 찾는 분</li>` : ''}
@@ -106,15 +106,15 @@ export function listingPage(l, ctx) {
       ${descHtml ? `<h3>담당 전문가의 안내</h3>${descHtml}` : ''}
     </div></section>`;
 
-  const relatedSec = (related.length || nearby.length) ? `<section class="related">${related.length ? `<div class="sec__head"><h2 class="h2">${esc(l.brand)} 다른 매물</h2><a class="more" href="${u(`/brand/${l.brandSlug}/`)}">전체 ${ICONS.arrow}</a></div><div class="grid grid--4">${related.map(x => listingCard(x)).join('')}</div>` : ''}${nearby.length ? `<div class="sec__head" style="margin-top:30px"><h2 class="h2">${esc(loc)} 주변 매물</h2><a class="more" href="${u(`/region/${encodeURIComponent(l.sido)}/${encodeURIComponent(l.gugun)}/`)}">전체 ${ICONS.arrow}</a></div><div class="grid grid--4">${nearby.map(x => listingCard(x)).join('')}</div>` : ''}</section>` : '';
+  const relatedSec = (related.length || nearby.length) ? `<section class="related">${related.length ? `<div class="sec__head"><h2 class="h2">${esc(l.brand)} 다른 매장</h2><a class="more" href="${u(`/brand/${l.brandSlug}/`)}">전체 ${ICONS.arrow}</a></div><div class="grid grid--4">${related.map(x => listingCard(x)).join('')}</div>` : ''}${nearby.length ? `<div class="sec__head" style="margin-top:30px"><h2 class="h2">${esc(loc)} 주변 매장</h2><a class="more" href="${u(`/region/${encodeURIComponent(l.sido)}/${encodeURIComponent(l.gugun)}/`)}">전체 ${ICONS.arrow}</a></div><div class="grid grid--4">${nearby.map(x => listingCard(x)).join('')}</div>` : ''}</section>` : '';
 
   const body = `<div class="wrap detail">
-    ${breadcrumb([{ name: '홈', href: '/' }, { name: '매물 검색', href: '/listings/' }, ...(l.sido ? [{ name: l.sido, href: `/region/${encodeURIComponent(l.sido)}/` }] : []), ...(l.gugun ? [{ name: l.gugun, href: `/region/${encodeURIComponent(l.sido)}/${encodeURIComponent(l.gugun)}/` }] : []), { name: `No.${l.id}`, href: `/listing/${l.id}/` }])}
+    ${breadcrumb([{ name: '홈', href: '/' }, { name: '매장 검색', href: '/listings/' }, ...(l.sido ? [{ name: l.sido, href: `/region/${encodeURIComponent(l.sido)}/` }] : []), ...(l.gugun ? [{ name: l.gugun, href: `/region/${encodeURIComponent(l.sido)}/${encodeURIComponent(l.gugun)}/` }] : []), { name: `No.${l.id}`, href: `/listing/${l.id}/` }])}
     <div class="detail__head">
       <div>${gallery}</div>
       <div>
         <div class="d-meta">${badge(`No.${l.id}`, 'ink')}${l.brand ? badge(l.brand, 'yellow') : ''}${badge(l.kind2 || l.kind1, 'cream')}${theme ? badge(theme.name, 'blue') : ''}${budget ? badge(budget.name, 'red') : ''}</div>
-        ${l.sample ? '<p class="sample-note"><b>예시 매물</b> 화면 구성을 보여드리기 위한 샘플입니다. 실제 매물이 아닙니다.</p>' : ''}
+        ${l.sample ? '<p class="sample-note"><b>예시 매장</b> 화면 구성을 보여드리기 위한 샘플입니다. 실제 매장이 아닙니다.</p>' : ''}
         <h1 class="d-title">${esc(l.title)}</h1>
         ${l.summary ? `<p class="d-raw">${esc(l.summary)}</p>` : ''}
         ${keynums}${spec}${agentBox}
@@ -122,9 +122,9 @@ export function listingPage(l, ctx) {
       </div>
     </div>
     ${detailSec}${salesSec}
-    <section class="d-sec">${faqBlock(faq, { title: '이 매물에 대해 자주 묻는 질문' })}</section>
+    <section class="d-sec">${faqBlock(faq, { title: '이 매장에 대해 자주 묻는 질문' })}</section>
     ${relatedSec}
-    <section class="sec sec--tight"><p class="eyebrow">최근 본 매물</p><div class="chips" data-recent></div></section>
+    <section class="sec sec--tight"><p class="eyebrow">최근 본 매장</p><div class="chips" data-recent></div></section>
   </div>
   <div class="sticky-bar glass">${agent.mobile ? `<a class="btn btn--red" href="tel:${esc(phoneTel(agent.mobile))}" data-call="${esc(l.id)}" data-agent="${esc(agent.id || '')}" data-phone="${esc(agent.mobile)}" data-title="${esc(l.title)}">${ICONS.phone}담당자 통화</a>` : `<a class="btn btn--red" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰</a>`}<button class="btn btn--yellow" type="button" data-sms="${esc(l.id)}" data-agent="${esc(agent.id || '')}" data-title="${esc(l.title)}">${ICONS.sms}문자 상담</button></div>`;
 

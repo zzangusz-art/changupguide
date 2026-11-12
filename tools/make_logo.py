@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # 기본 공유 이미지 og.png
     W, H = 1200, 630; bg = stage(W, H, seed=7, split=.72).convert('RGBA'); d = ImageDraw.Draw(bg)
     wm = wordmark(132); bg.paste(wm, ((W - wm.width) // 2, 170), wm)
-    f = font(38, 500); t = '검증된 양도양수 창업 매물 · 담당 전문가 직접 상담'
+    f = font(38, 500); t = '검증된 양도양수 창업 매장 · 담당 전문가 직접 상담'
     d.text(((W - d.textlength(t, font=f)) / 2, 350), t, font=f, fill=(60, 48, 28))
     f = font(30, 700); t = '서울 · 경기 · 인천 창업 컨설팅'
     d.text(((W - d.textlength(t, font=f)) / 2, 420), t, font=f, fill=(128, 92, 20))

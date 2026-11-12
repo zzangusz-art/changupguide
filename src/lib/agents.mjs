@@ -1,4 +1,4 @@
-// 담당 창업전문가 프로필 — 매물 데이터로 전문 분야·담당 지역·실적을 계산하고 소개문을 정돈합니다.
+// 담당 창업전문가 프로필 — 매장 데이터로 전문 분야·담당 지역·실적을 계산하고 소개문을 정돈합니다.
 import { esc, u, ICONS, img, imgPath } from './html.mjs';
 import { fmtMan, fmtWon, phoneTel } from './text.mjs';
 
@@ -31,7 +31,7 @@ export function agentProfile(a, ctx) {
   const career = (a.intro || '').match(/(\d{1,2})\s*년\s*차/);
   const specialties = [...new Set([...brands.slice(0, 2).map(b => b.k), ...kinds.slice(0, 2).map(k => k.k)])].slice(0, 4);
   const summary = [
-    specialties.length ? `${specialties.join('·')} 등을 중심으로 양도양수 매물을 담당합니다.` : '양도양수 매물을 담당합니다.',
+    specialties.length ? `${specialties.join('·')} 등을 중심으로 양도양수 매장을 담당합니다.` : '양도양수 매장을 담당합니다.',
     regions.length ? `주요 담당 지역은 ${regions.map(r => r.k).join('·')}이며, ${sidos.map(s => s.k).join('·')} 전역 상권을 다룹니다.` : '',
     '',
     '매출 자료 확인, 현장 답사 동행, 조건 협의와 계약, 프랜차이즈 본사 승인 절차까지 직접 진행합니다.',

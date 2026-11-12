@@ -1,4 +1,4 @@
-// 브랜드 기본값 초기 데이터 생성: 브랜드 사전 + 기존 매물 통계(업종·테마 최빈값, 지출 항목별 평균 비율)
+// 브랜드 기본값 초기 데이터 생성: 브랜드 사전 + 기존 매장 통계(업종·테마 최빈값, 지출 항목별 평균 비율)
 // usage: node tools/make_brands.mjs   → src/data/brands.json (이미 있으면 관리자가 고친 값은 유지하고 빈 칸만 채움)
 import fs from 'node:fs';
 import { BRAND_LIST } from '../src/lib/text.mjs';

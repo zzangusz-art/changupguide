@@ -174,3 +174,8 @@ body{background:var(--bg-gray)}
 .table th{background:#F8FAFC}
 .topbar h1{color:var(--navy)}
 @media (max-width:900px){.side{box-shadow:0 0 40px rgba(16,24,40,.18)}}
+/* 일괄 변경 바: 흰 선택 상자 글자·어두운 바 위 보조 버튼이 보이도록 */
+.bulkbar select{color:#14121F;background:#fff;border:1px solid #fff}
+.bulkbar .btn--ghost{color:#fff;border-color:rgba(255,255,255,.45);background:transparent}
+/* 휴대폰: 칸 합치기(span) 때문에 생기던 좁은 칸 방지 — 한 줄에 하나씩 */
+@media (max-width:560px){.grid2>*,.grid3>*,.grid4>*{grid-column:auto!important;min-width:0}}

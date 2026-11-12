@@ -1,4 +1,4 @@
-// 매물 검색 페이지 — search-index.json을 받아 브라우저에서 필터·정렬·페이지네이션
+// 매장 검색 페이지 — search-index.json을 받아 브라우저에서 필터·정렬·페이지네이션
 import { searchIndex, fmtWon, fmtMan, phoneTel } from './lib/text.mjs';
 import { CATEGORIES, THEMES, BUDGETS } from './data.mjs';
 const CU = window.CU || { base: '' };
@@ -81,7 +81,7 @@ function run() {
   $('[data-clear]')?.addEventListener('click', () => { $('[data-reset]').click(); });
   const grid = $('#results');
   if (!total) {
-    grid.innerHTML = `<div class="results__empty" style="grid-column:1/-1"><svg viewBox="0 0 120 120"><path d="M20 40l8-18h64l8 18z" fill="#FF3D2E" stroke="#14121F" stroke-width="5" stroke-linejoin="round"/><path d="M20 40h80v8a10 10 0 0 1-20 0 10 10 0 0 1-20 0 10 10 0 0 1-20 0 10 10 0 0 1-20 0z" fill="#FFCC00" stroke="#14121F" stroke-width="5"/><rect x="28" y="56" width="64" height="44" fill="#fff" stroke="#14121F" stroke-width="5"/></svg><h2 class="h3">조건에 맞는 매물이 아직 없습니다</h2><p class="muted">조건을 줄이거나, 창업 의뢰를 남기시면 담당자가 조건에 맞는 매장이 나올 때 바로 연락드립니다.</p><a class="btn btn--red btn--lg" href="${CU.base}/inquiry/">창업 의뢰 남기기</a></div>`;
+    grid.innerHTML = `<div class="results__empty" style="grid-column:1/-1"><svg viewBox="0 0 120 120"><path d="M20 40l8-18h64l8 18z" fill="#FF3D2E" stroke="#14121F" stroke-width="5" stroke-linejoin="round"/><path d="M20 40h80v8a10 10 0 0 1-20 0 10 10 0 0 1-20 0 10 10 0 0 1-20 0 10 10 0 0 1-20 0z" fill="#FFCC00" stroke="#14121F" stroke-width="5"/><rect x="28" y="56" width="64" height="44" fill="#fff" stroke="#14121F" stroke-width="5"/></svg><h2 class="h3">조건에 맞는 매장이 아직 없습니다</h2><p class="muted">조건을 줄이거나, 창업 의뢰를 남기시면 담당자가 조건에 맞는 매장이 나올 때 바로 연락드립니다.</p><a class="btn btn--red btn--lg" href="${CU.base}/inquiry/">창업 의뢰 남기기</a></div>`;
   } else grid.innerHTML = slice.map(card).join('');
   const pager = $('#pager'); const btns = [];
   const from = Math.max(1, state.page - 3), to = Math.min(pages, from + 6);
@@ -90,7 +90,7 @@ function run() {
   if (state.page < pages) btns.push(`<button type="button" data-p="${state.page + 1}">›</button>`);
   pager.innerHTML = pages > 1 ? btns.join('') : '';
   $$('button', pager).forEach(b => b.addEventListener('click', () => { state.page = Number(b.dataset.p); run(); $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
-  document.title = `${state.q ? state.q + ' 창업 매물 ' : ''}매물 검색 (${total.toLocaleString()}건) | 창업가이드`;
+  document.title = `${state.q ? state.q + ' 창업 매장 ' : ''}매장 검색 (${total.toLocaleString()}건) | 창업가이드`;
 }
 
 async function init() {

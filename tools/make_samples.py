@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 예시(샘플) 매물 이미지 생성 — 실제 매장 사진이 아님을 이미지 안에 표시
+# 예시(샘플) 매장 이미지 생성 — 실제 매장 사진이 아님을 이미지 안에 표시
 # 사용: OG_FONT=NotoSansKR[wght].ttf python tools/make_samples.py   → public/img/sample/*.jpg
 import os, sys, math
 from PIL import Image, ImageDraw, ImageFont, ImageFilter

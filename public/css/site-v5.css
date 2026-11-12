@@ -488,7 +488,7 @@ h1,h2,h3,h4{letter-spacing:-.015em}
 .logo__lockup--white .logo__word{font-size:1.5rem}
 @media (max-width:640px){.logo__mark{width:30px;height:30px}.logo__word{font-size:1.2rem}}
 
-/* v17 예시 매물 표시 */
+/* v17 예시 매장 표시 */
 .card__sample{position:absolute;right:10px;top:10px;z-index:3;background:#111;color:#FFCC00;font-size:.7rem;font-weight:800;padding:4px 9px;border-radius:999px;letter-spacing:-.01em}
 .sample-note{margin:6px 0 10px;padding:9px 12px;border-radius:10px;background:#FFF7CC;border:1px dashed #C9A800;font-size:.84rem;color:#4a3b00}
 .sample-note b{background:#111;color:#FFCC00;border-radius:999px;padding:2px 8px;font-size:.74rem;margin-right:6px}
