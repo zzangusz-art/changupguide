@@ -154,6 +154,7 @@ export function makeTitle(l) {
   const parts = [];
   if (l.sido) parts.push(l.sido);
   if (l.gugun) parts.push(l.gugun);
+  if (l.dong) parts.push(l.dong);
   const brand = l.brand || l.kindLabel || (l.kind2 ? l.kind2.split('/')[0] : '') || l.kind1 || '';
   if (brand) parts.push(brand);
   if (l.sales) parts.push(`월매출 ${fmtMan(l.sales)}`);
@@ -166,7 +167,7 @@ export function makeSeoTitle(l) {
   return `${t} | 창업가이드 양도양수 매장 No.${l.id}`;
 }
 export function makeDesc(l) {
-  const loc = [l.sido, l.gugun].filter(Boolean).join(' ');
+  const loc = [l.sido, l.gugun, l.dong].filter(Boolean).join(' ');
   const b = l.brand || l.kindLabel || l.kind2 || l.kind1 || '매장';
   const bits = [];
   if (l.sales) bits.push(`월매출 ${fmtMan(l.sales)}`);
@@ -233,7 +234,7 @@ export function indexEntry(l) {
     id: l.id, t: l.title, r: l.titleRaw ? cleanRawTitle(l.titleRaw) : '', s: l.sido || '', g: l.gugun || '', b: l.brand || '', bs: l.brandSlug || '',
     k1: l.kind1 || '', k2: l.kind2 || '', th: l.theme || '', sales: l.sales ?? null, profit: l.profit ?? null, premium: l.premium ?? null, cost: l.monthlyCost ?? null,
     area: l.areaM2 ?? null, img: l.images && l.images[0] ? l.images[0] : '', ph: l.noPhoto ? 0 : 1, tags: l.tags || [], a: l.agentName || '', ai: l.agentId || '', ap: l.agentPhone || '', d: l.updatedAt || l.createdAt || '',
-    x: canon([l.sido, l.gugun, l.brand, l.kind1, l.kind2, l.title, l.titleRaw, l.theme, (l.tags || []).join(' '), l.agentName].join(' ')),
+    x: canon([l.sido, l.gugun, l.dong, l.brand, l.kind1, l.kind2, l.title, l.titleRaw, l.theme, (l.tags || []).join(' '), l.agentName].join(' ')),
   };
 }
 

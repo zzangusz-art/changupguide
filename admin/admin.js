@@ -168,9 +168,27 @@ async function listingList(view, my) {
 }
 
 // ---------- 지역·브랜드 자동완성 ----------
+const canonName = s => String(s || '').replace(/\s/g, '').toLowerCase();
 const SIDO_ALIAS = { 서울특별시: '서울', 서울시: '서울', 경기도: '경기', 인천광역시: '인천', 인천시: '인천', 부산광역시: '부산', 대구광역시: '대구', 대전광역시: '대전', 광주광역시: '광주', 울산광역시: '울산', 세종특별자치시: '세종' };
 const REGIONS = SIDO_ORDER.flatMap(s => (GUGUN[s] || []).length ? GUGUN[s].map(g => `${s} ${g}`) : [s]);
+// 구별 동 목록 (행정동 2026-10 기준, public/js/dong.json) — 개편된 구(인천 제물포구 등)도 지역 목록에 추가
+let DONG = null;
+const loadDong = () => DONG ? Promise.resolve(DONG) : fetch('../js/dong.json').then(r => r.json()).then(j => { DONG = j; for (const k of Object.keys(j)) { const [s, g] = k.split('|'); const r = g ? `${s} ${g}` : s; if (!REGIONS.includes(r)) REGIONS.push(r); } return j; }).catch(() => (DONG = {}));
+loadDong();
+const dongsOf = (s, g) => (DONG && (DONG[`${s}|${g || ''}`] || DONG[`${s}|`])) || [];
 function parseRegion(v) {
+  let t = String(v || '').trim().replace(/\s+/g, ' '); if (!t) return null;
+  for (const [k, a] of Object.entries(SIDO_ALIAS)) if (t.startsWith(k)) t = a + t.slice(k.length);
+  const tok = t.split(' ');
+  const fixDong = (r, rest) => { let dg = rest.trim(); if (!dg) return r; const ds = dongsOf(r.sido, r.gugun); if (!ds.includes(dg) && ds.includes(dg + '동')) dg += '동'; return { ...r, dong: dg }; };
+  for (let i = tok.length; i >= 1; i--) { const r = parseGu(tok.slice(0, i).join(' ')); if (r && !r.ambiguous && (i === tok.length || r.gugun || !(GUGUN[r.sido] || []).length)) return fixDong(r, tok.slice(i).join(' ')); }
+  // 동 이름만 (예: "신길동", "서울 신길동", "영등포 신길")
+  if (DONG) { const last = tok[tok.length - 1], pre = canonName(tok.slice(0, -1).join('')); const keys = Object.entries(DONG).filter(([k, ds]) => (ds.includes(last) || ds.includes(last + '동')) && (!pre || canonName(k.replace('|', '')).includes(pre))).map(([k]) => k);
+    if (keys.length === 1) { const [s0, g0] = keys[0].split('|'); return fixDong({ sido: s0, gugun: g0 }, last); }
+    if (keys.length > 1) return { ambiguous: keys.slice(0, 6).map(k => `${k.replace('|', ' ')} ${DONG[k].includes(last) ? last : last + '동'}`) }; }
+  return parseGu(t);
+}
+function parseGu(v) {
   let t = String(v || '').trim().replace(/\s+/g, ' '); if (!t) return null;
   for (const [k, a] of Object.entries(SIDO_ALIAS)) if (t.startsWith(k)) t = a + t.slice(k.length);
   if (REGIONS.includes(t)) { const [s, ...g] = t.split(' '); return { sido: s, gugun: g.join(' ') }; }
@@ -179,7 +197,6 @@ function parseRegion(v) {
   const s0 = t.split(' ')[0]; if (SIDO_ORDER.includes(s0) && !(GUGUN[s0] || []).length) return { sido: s0, gugun: t.split(' ').slice(1).join(' ') };
   return hits.length ? { ambiguous: hits.slice(0, 6) } : null;
 }
-const canonName = s => String(s || '').replace(/\s/g, '').toLowerCase();
 function findBrand(name) {
   const c = canonName(name); if (!c) return null; const list = cache.brands || [];
   const hit = list.find(b => canonName(b.name) === c || (b.aliases || []).some(a => canonName(a) === c));
@@ -228,7 +245,7 @@ async function listingForm(view, id, copyFrom) {
   view.innerHTML = `${!canEdit ? `<div class="alert err">이 매장은 ${l.agentId ? `${esc(l.agentName)} 담당` : '담당 미배정'}입니다. 본인 담당·본인 등록 매장만 수정할 수 있으며, 담당 변경은 관리자에게 메시지로 요청하세요.</div>` : ''}${lock ? `<div class="lock-banner">⚠ ${esc(lock.name || lock.agentId)}님이 ${new Date(lock.at).toLocaleTimeString('ko-KR', { hour12: false })}부터 이 매장을 편집 중입니다. 같이 저장해도 서로 다른 항목은 자동으로 합쳐지고, 같은 항목을 고친 경우에만 어느 값을 쓸지 묻습니다.</div>` : ''}${isLegacy ? `<div class="alert ${l.verified ? 'info' : 'err'}">외부(창업미디어) 수집 매장입니다. ${l.verified ? '검증 완료로 표시되어 있습니다.' : '연락처·담당자·금액·소유/권리 관계를 확인하기 전에는 정식 오픈 시 사이트에 공개되지 않습니다.'}${l.legacyAgent?.name ? ` <span class="muted">원 담당자(외부): ${esc(l.legacyAgent.name)} ${esc(l.legacyAgent.phone || '')}</span>` : ''}</div>` : ''}
   <form id="lf" ${!canEdit ? 'inert' : ''} autocomplete="off">
   <div class="fsec"><h3><span class="num">1</span>필수 정보 <span class="muted" style="font-weight:500;font-size:.82rem">지역·브랜드를 고르면 업종·지출 비율·제목이 자동으로 채워집니다</span></h3><div class="grid4">
-    <label class="field req" style="grid-column:span 2"><span>지역 (시·구 검색)</span><input name="region" list="regions" value="${esc([l.sido, l.gugun].filter(Boolean).join(' '))}" placeholder="예) 양천 → 서울 양천구"><datalist id="regions">${REGIONS.map(r => `<option value="${r}">`).join('')}</datalist><span class="hint" data-hint="region">구·시 이름 일부만 입력해도 됩니다</span></label>
+    <label class="field req" style="grid-column:span 2"><span>지역 (시·구 검색)</span><input name="region" list="regions" value="${esc([l.sido, l.gugun, l.dong].filter(Boolean).join(' '))}" placeholder="예) 영등포 신길 → 서울 영등포구 신길동"><datalist id="regions">${REGIONS.map(r => `<option value="${r}">`).join('')}</datalist><span class="hint" data-hint="region">구·시 이름 일부만 입력해도 됩니다</span></label>
     <label class="field" style="grid-column:span 2"><span>브랜드 (프랜차이즈명)</span><input name="brand" list="brands" value="${esc(l.brand)}" placeholder="예) 메가커피 — 개인 매장이면 비움"><datalist id="brands">${brandOpts.map(n => `<option value="${esc(n)}">`).join('')}</datalist><span class="hint" data-hint="brand">브랜드 관리에 등록된 기본값이 자동 적용됩니다</span></label>
     <label class="field req"><span>업종 (대분류)</span><select name="kind1"><option value="">선택</option>${CATEGORIES.map(c => `<option ${c.name === l.kind1 ? 'selected' : ''}>${c.name}</option>`).join('')}</select></label>
     <label class="field req"><span>업종 (소분류)</span><select name="kind2"></select></label>
@@ -283,7 +300,7 @@ async function listingForm(view, id, copyFrom) {
   };
   const read = () => {
     const d = { ...l };
-    const r = parseRegion(f.region.value); d.sido = r && !r.ambiguous ? r.sido : ''; d.gugun = r && !r.ambiguous ? r.gugun : '';
+    const r = parseRegion(f.region.value); d.sido = r && !r.ambiguous ? r.sido : ''; d.gugun = r && !r.ambiguous ? r.gugun : ''; d.dong = r && !r.ambiguous ? (r.dong || '') : '';
     d.brand = f.brand.value.trim(); const b = findBrand(d.brand); d.brand = b ? b.name : d.brand; d.brandSlug = b ? b.slug : '';
     d.theme = f.theme.value; d.kind1 = f.kind1.value; d.kind2 = f.kind2.value; const c = CATEGORIES.find(c => c.name === d.kind1); d.code = c ? c.code : null; d.kindCode = c ? (c.kinds.find(k => k[1] === d.kind2) || [null])[0] : null; d.newTown = f.newTown.value.trim(); d.status = f.status.value;
     d.sales = parseWon(f.sales.value); d.expense = parseWon(f.expense.value); d.profit = parseWon(f.profit.value) ?? (d.sales && d.expense ? d.sales - d.expense : null); d.monthlyCost = parseWon(f.monthlyCost.value); d.premium = parseWon(f.premium.value); d.areaM2 = f.areaM2.value ? Number(f.areaM2.value) : null; d.floor = f.floor.value.trim(); d.salesBasis = Number(f.salesBasis.value);
@@ -304,13 +321,19 @@ async function listingForm(view, id, copyFrom) {
   const sync = () => {
     const d = read();
     if (!titleManual) { f.title.value = ''; f.title.placeholder = d.title; }
-    const r = parseRegion(f.region.value); $('[data-hint=region]', f).innerHTML = !f.region.value.trim() ? '구·시 이름 일부만 입력해도 됩니다' : r && !r.ambiguous ? `✔ ${esc(r.sido)} ${esc(r.gugun)}` : r?.ambiguous ? `여러 곳이 맞습니다: ${r.ambiguous.map(esc).join(', ')}` : '<span style="color:var(--red)">목록에서 지역을 고르세요</span>';
+    const r = parseRegion(f.region.value); $('[data-hint=region]', f).innerHTML = !f.region.value.trim() ? '구·시 이름 일부만 입력해도 됩니다. 뒤에 동을 붙이면 제목에 함께 들어갑니다' : r && !r.ambiguous ? `✔ ${esc([r.sido, r.gugun, r.dong].filter(Boolean).join(' '))}${!r.dong && dongsOf(r.sido, r.gugun).length ? ' <span class="muted">· 한 칸 띄우고 동을 고르면 제목에 동까지 들어갑니다</span>' : ''}` : r?.ambiguous ? `여러 곳이 맞습니다: ${r.ambiguous.map(esc).join(', ')}` : '<span style="color:var(--red)">목록에서 지역을 고르세요</span>';
     for (const [k, fmt, base] of [['sales', fmtMan, '예) 3500 → 3,500만원'], ['profit', fmtMan, '비우면 월매출 − 월지출로 자동 계산'], ['premium', fmtWon, '임대보증금 제외. 비우면 "협의"']]) { const h = $(`[data-hint=${k}]`, f); if (h) h.innerHTML = d[k] != null && f[k].value.trim() ? `<b style="color:var(--ink)">= ${esc(fmt(d[k]))}</b>` : base; }
     const rows = Object.entries(d.expenseBreakdown); $('[data-bars]', f).innerHTML = rows.map(([k, v]) => `<div class="bar"><span>${k}</span><div class="track"><div class="fill" style="width:${Math.min(100, v.pct)}%"></div></div><span>${fmtNum(v.amount)}만 · ${v.pct}%</span></div>`).join('');
   };
   f.addEventListener('input', e => { const n = e.target.name; if (n === 'title') { titleManual = !!e.target.value.trim(); $('[data-title-auto]', f).hidden = !titleManual; } else if (n && (n.startsWith('eb_') || n === 'expense' || n === 'profit')) { touched.add(n); e.target.classList.remove('is-auto'); } if (n === 'sales' || (n && n.startsWith('eb_')) || n === 'expense') recalc(); sync(); });
   f.addEventListener('change', sync); f.addEventListener('input', saveDraft); f.addEventListener('change', saveDraft);
-  f.region.addEventListener('change', () => { const r = parseRegion(f.region.value); if (r && !r.ambiguous) f.region.value = [r.sido, r.gugun].filter(Boolean).join(' '); sync(); });
+  f.region.addEventListener('change', () => { const r = parseRegion(f.region.value); if (r && !r.ambiguous) f.region.value = [r.sido, r.gugun, r.dong].filter(Boolean).join(' '); regionList(); sync(); });
+  // 자동완성: 구가 정해지면 그 구의 동 목록, 아니면 시·구 목록 + 입력과 맞는 동
+  const regionList = () => { const dl = $('#regions'); if (!dl) return; const v = f.region.value.trim(); const r = parseRegion(v); let opts;
+    if (r && !r.ambiguous && r.gugun !== undefined && dongsOf(r.sido, r.gugun).length) opts = dongsOf(r.sido, r.gugun).map(d => [r.sido, r.gugun, d].filter(Boolean).join(' '));
+    else { const c = canonName(v); const dm = c.length >= 2 && DONG ? Object.entries(DONG).flatMap(([k, ds]) => ds.filter(d => canonName(d).startsWith(c.replace(/동$/, ''))).map(d => `${k.replace('|', ' ').trim()} ${d}`)).slice(0, 40) : []; opts = [...(r?.ambiguous || []), ...dm, ...REGIONS]; }
+    dl.innerHTML = [...new Set(opts)].slice(0, 400).map(o => `<option value="${esc(o)}">`).join(''); };
+  f.region.addEventListener('input', regionList); f.region.addEventListener('focus', () => loadDong().then(regionList));
   f.kind1.addEventListener('change', () => { fillKind2(''); sync(); });
   f.brand.addEventListener('change', () => { brandRec = findBrand(f.brand.value); if (brandRec && brandRec.name !== f.brand.value.trim()) { f.brand.value = brandRec.name; } applyBrand(); recalc(); sync(); });
   $('[data-title-auto]', f).addEventListener('click', () => { titleManual = false; f.title.value = ''; $('[data-title-auto]', f).hidden = true; sync(); });
