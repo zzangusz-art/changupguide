@@ -1,4 +1,4 @@
-import { SITE, PRICE_NOTICE, CATEGORIES, THEMES } from '../data.mjs';
+import { SITE, CATEGORIES, THEMES } from '../data.mjs';
 import { layout, esc, u, abs, ICONS, ILLO, sticker, starburst, badge, listingCard, breadcrumb, faqBlock, img, imgPath, jsonld } from '../lib/html.mjs';
 import { fmtWon, fmtMan, fmtNum, phoneTel, makeSeoTitle, makeDesc, fmtDate, budgetOf, themeByName } from '../lib/text.mjs';
 import { agentProfile } from '../lib/agents.mjs';
@@ -13,7 +13,6 @@ export function listingPage(l, ctx) {
   const theme = themeByName(l.theme);
   const budget = budgetOf(l.premium);
   const rate = l.sales && l.profit ? Math.round(l.profit / l.sales * 1000) / 10 : null;
-  const payback = l.premium && l.profit ? Math.round(l.premium / l.profit * 10) / 10 : null;
   const eb = l.expenseBreakdown || {};
   const ebRows = ['재료비', '인건비', '월비용(세전)', '관리비', '기타경비'].filter(k => eb[k]).map(k => ({ k, ...eb[k] }));
   const related = (ctx.byBrand[l.brandSlug] || []).filter(x => x.id !== l.id).slice(0, 4);
@@ -26,13 +25,12 @@ export function listingPage(l, ctx) {
     `업종·브랜드: ${l.brand ? l.brand + ' ' : (l.kindLabel ? l.kindLabel + ' ' : '')}${l.kind1}${l.kind2 ? ` (${l.kind2})` : ''}`,
     `예산: 권리금 ${l.premium ? fmtWon(l.premium) : '협의'}${l.monthlyCost ? ` · 월비용(임대료 등) ${fmtMan(l.monthlyCost)}` : ''} — 임대보증금 별도`,
     l.sales ? `매출: 월매출 ${fmtMan(l.sales)}${l.expense ? ` · 월지출 ${fmtMan(l.expense)}` : ''}${l.profit ? ` · 월수익(세전) ${fmtMan(l.profit)}` : ''}` : (l.profit ? `월수익(세전) ${fmtMan(l.profit)}` : '매출·수익: 담당자 문의'),
-    rate != null ? `수익률(월수익 ÷ 월매출): 약 ${rate}%${payback ? ` · 권리금 회수 기간: 단순 계산 약 ${payback}개월` : ''}` : null,
     l.areaM2 ? `규모: ${l.areaM2}㎡ (약 ${Math.round(l.areaM2 / 3.3058)}평)${l.floor ? ` · ${l.floor}층` : ''}` : (l.sizeRange ? `규모: ${l.sizeRange}` : null),
     `담당: ${agent.name} ${agent.role || '창업전문가'}${agent.mobile ? ` (${agent.mobile})` : ''}`,
   ].filter(Boolean);
 
   const faq = [
-    { q: `${loc} ${l.brand || l.kind2 || l.kind1} 매장의 권리금 외에 필요한 비용은 무엇인가요?`, a: `표시된 권리금 ${l.premium ? fmtWon(l.premium) : '(협의)'}은 임대보증금을 제외한 금액입니다. 보증금·월세·관리비, 프랜차이즈 본사 양수 승인 비용(교육비 등)은 담당자 ${agent.name}이 상담 시 세부 내역을 안내합니다.` },
+    { q: `${loc} ${l.brand || l.kind2 || l.kind1} 매장의 창업비용 외에 필요한 비용은 무엇인가요?`, a: `표시된 창업비용 ${l.premium ? fmtWon(l.premium) : '(협의)'}은 임대보증금을 제외한 금액입니다. 보증금·월세·관리비, 프랜차이즈 본사 양수 승인 비용(교육비 등)은 담당자 ${agent.name}이 상담 시 세부 내역을 안내합니다.` },
     { q: '이 매장의 정확한 위치와 상호를 알 수 있나요?', a: `양도인이 영업 중인 매장의 보안을 위해 사이트에는 ${loc}까지만 표시합니다. 상담 후 담당자가 정확한 위치를 안내하고 현장 답사에 동행합니다.` },
     { q: '월수익은 어떻게 계산된 금액인가요?', a: `월수익(세전)은 월매출에서 재료비·인건비·월비용·관리비·기타경비를 뺀 금액입니다. 점주 본인의 인건비는 월지출에 포함되지 않으며, 세금 공제 전 금액입니다.${l.salesBasis ? ` 매출 근거: ${SALES_BASIS[l.salesBasis] || '담당자 확인'}.` : ''}` },
     { q: '상담은 어떻게 하나요?', a: agent.mobile ? `페이지의 "담당자 전화 연결" 버튼을 누르면 ${agent.name} 창업전문가(${agent.mobile})에게 바로 연결되고, 어떤 매장을 보셨는지 담당자에게 자동으로 전달됩니다. 문자 상담 신청도 가능합니다.` : '페이지의 "문자 상담 신청"에 연락처를 남기시면 담당 창업전문가가 이 매장 자료를 준비해 연락드립니다.' },
@@ -70,7 +68,6 @@ export function listingPage(l, ctx) {
       ${agent.mobile ? `<a class="btn btn--red btn--lg" href="tel:${esc(phoneTel(agent.mobile))}" data-call="${esc(l.id)}" data-agent="${esc(agent.id || '')}" data-phone="${esc(agent.mobile)}" data-title="${esc(l.title)}">${ICONS.phone}담당자 전화 연결</a>` : `<a class="btn btn--red btn--lg" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰 남기기</a>`}
       <button class="btn btn--yellow btn--lg" type="button" data-sms="${esc(l.id)}" data-agent="${esc(agent.id || '')}" data-title="${esc(l.title)}">${ICONS.sms}문자 상담 신청</button>
     </div>
-    <p class="notice-line" style="grid-column:1/-1">${esc(PRICE_NOTICE)}</p>
   </div>`;
 
   const salesSec = (l.sales || l.profit || ebRows.length) ? `<section class="d-sec"><h2 class="h2">매출 내역과 월지출 구조</h2><div class="sales">
@@ -79,9 +76,8 @@ export function listingPage(l, ctx) {
       <div><span>월지출</span><strong>${l.expense ? esc(fmtMan(l.expense)) : '문의'}</strong></div>
       <div class="hot"><span>월수익 (세전)</span><strong>${l.profit ? esc(fmtMan(l.profit)) : '문의'}</strong></div>
       ${rate != null ? `<div><span>수익률</span><strong>${rate}%</strong></div>` : ''}
-      ${payback ? `<div><span>권리금 회수 (단순 계산)</span><strong>약 ${payback}개월</strong></div>` : ''}
       <div><span>매출 근거</span><strong style="font-size:.9rem">${esc(SALES_BASIS[l.salesBasis] || '담당자 확인')}</strong></div>
-    </div><p class="muted" style="font-size:.82rem;margin-top:10px">* 월지출 내역에서 점주의 인건비는 불포함. 세금 공제 전 금액.</p></div>
+    </div></div>
     <div class="sales__box"><h3>월지출 세부 내역</h3>${ebRows.length ? `<div class="bars">${ebRows.map(r => `<div class="bar"><span>${esc(r.k)}</span><div class="bar__track"><div class="bar__fill" data-w="${Math.min(100, r.pct)}"></div></div><span class="bar__pct">${r.amount != null ? esc(fmtNum(r.amount)) + '만 · ' : ''}${r.pct}%</span></div>`).join('')}</div>` : '<p class="muted">세부 내역은 담당자에게 문의해 주세요.</p>'}</div>
   </div></section>` : '';
 
