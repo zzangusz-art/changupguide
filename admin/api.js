@@ -38,6 +38,7 @@ export class RemoteApi {
   photos() { return this.req('/photos').then(r => r.items); }
   uploadPhoto(p) { return this.req('/photos', 'POST', p).then(r => r.item); }
   deletePhoto(id) { return this.req(`/photos/${id}`, 'DELETE'); }
+  updatePhoto(id, patch) { return this.req(`/photos/${id}`, 'PUT', patch); }
   agents() { return this.req('/agents').then(r => r.items); }
   createAgent(a) { return this.req('/agents', 'POST', a); }
   updateAgent(id, a) { return this.req(`/agents/${id}`, 'PUT', a); }
@@ -113,7 +114,8 @@ export class LocalApi {
   async restoreBackup() { throw new Error('데모 모드에서는 지원하지 않습니다'); }
   backupUrl() { return '#'; }
   async photos() { this.need(); return [...this.db.photos].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))); }
-  async uploadPhoto(p) { const u = this.need(); const it = { id: uid('p'), file: p.data, thumb: p.thumb || p.data, name: p.name, agentId: u.id, tags: p.tags || [], w: p.w, h: p.h, createdAt: now(), inline: true }; this.db.photos.unshift(it); this.log('photo_upload', it.id, p.name); this.save(); return it; }
+  async uploadPhoto(p) { const u = this.need(); const it = { id: uid('p'), file: p.data, thumb: p.thumb || p.data, name: p.name, agentId: u.id, tags: p.tags || [], folder: p.folder || '', w: p.w, h: p.h, createdAt: now(), inline: true }; this.db.photos.unshift(it); this.log('photo_upload', it.id, p.name); this.save(); return it; }
+  async updatePhoto(id, patch) { this.need(); const ph = this.db.photos.find(p => p.id === id); if (ph) ph.folder = String(patch.folder || ''); this.save(); return { ok: true }; }
   async deletePhoto(id) { const u = this.need(); const ph = this.db.photos.find(p => p.id === id); if (!ph) return {}; if (!u.isAdmin && ph.agentId !== u.id) throw new Error('본인이 올린 사진만 삭제할 수 있습니다'); const used = this.db.listings.filter(l => l.status !== 'archived' && (l.images || []).includes(ph.file)); if (used.length) throw new Error(`매장 ${used.map(l => l.id).join(', ')}에서 사용 중입니다`); this.db.photos = this.db.photos.filter(p => p.id !== id); this.save(); return { ok: true }; }
   async agents() { this.need(); return this.db.agents; }
   async createAgent(a) { this.admin(); if (!/^[a-z0-9_]{3,20}$/i.test(a.id || '')) throw new Error('아이디는 영문·숫자 3~20자'); if (this.db.agents.some(x => x.id === a.id)) throw new Error('이미 있는 아이디'); const it = { id: a.id, name: a.name, role: a.role || '창업전문가', mobile: a.mobile, tel: a.tel || '', kakao: a.kakao || '', email: a.email || '', photo: a.photo || '', intro: a.intro || '', active: true, isAdmin: !!a.isAdmin, createdAt: now() }; this.db.agents.push(it); this.log('agent_create', a.id); this.save(); return { item: it }; }

@@ -110,6 +110,14 @@ function syncFromRepo() {
   } catch (e) { console.log('[sync] skip', e.message); }
 }
 
+// ---------- 사진 폴더(브랜드별) 칸 추가 — 기존 사진은 첫 태그(브랜드)를 폴더로 ----------
+function migratePhotoFolder() {
+  try {
+    if (!q('PRAGMA table_info(photos)').some(c => c.name === 'folder')) db.exec('ALTER TABLE photos ADD COLUMN folder TEXT');
+    for (const r of q('SELECT id,tags FROM photos WHERE folder IS NULL')) { let t = []; try { t = JSON.parse(r.tags || '[]'); } catch {} run('UPDATE photos SET folder=? WHERE id=?', String(t[0] || '').slice(0, 40), r.id); }
+  } catch (e) { console.log('[photos] folder migrate skip', e.message); }
+}
+
 // ---------- 1회 용어 정리: 운영 데이터 안의 '매물' → '매장' (2026-11-12 업체 요청) ----------
 function migrateWords() {
   if (setting('wordMigration') >= 1) return;
@@ -194,7 +202,7 @@ function seedBrands() {
 }
 
 // 시작 순서 (아래 상수 정의 뒤에 실행): 부팅 백업 → 시드 → 저장소 새 항목 동기화 → 비밀번호 재설정 → 재빌드, 이후 20분마다 백업 점검
-if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
 
 // ---------- 데이터 내보내기 + 재빌드 ----------
 let rebuildTimer = null, building = false, pending = false;
@@ -373,15 +381,16 @@ async function api(req, res, url) {
   // --- 사진 ---
   if (p === '/photos' && m === 'GET') { if (!need()) return; return json(res, 200, { items: q('SELECT * FROM photos ORDER BY createdAt DESC').map(r => ({ ...r, tags: JSON.parse(r.tags || '[]') })) }); }
   if (p === '/photos' && m === 'POST') {
-    if (!need()) return; const { name, data, tags = [], w, h } = body; const mt = String(data || '').match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/); if (!mt) return json(res, 400, { error: '이미지 데이터가 올바르지 않습니다' });
+    if (!need()) return; const { name, data, tags = [], w, h } = body; const folder = String(body.folder || '').trim().replace(/[<>"'`]/g, '').slice(0, 40); const mt = String(data || '').match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/); if (!mt) return json(res, 400, { error: '이미지 데이터가 올바르지 않습니다' });
     const buf = Buffer.from(mt[3], 'base64'); if (buf.length > 8e6) return json(res, 400, { error: '8MB 이하로 올려주세요' });
     const id = uid('p'); const ext = mt[2] === 'jpeg' ? 'jpg' : mt[2]; const file = `photos/u_${id}.${ext}`;
     fs.mkdirSync(path.join(PHOTO_DIR, 'thumb'), { recursive: true }); fs.writeFileSync(path.join(PHOTO_DIR, `u_${id}.${ext}`), buf);
     // 썸네일: 클라이언트가 보낸 thumb(data URL) 우선, 없으면 원본 복사
     const th = String(body.thumb || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); fs.writeFileSync(path.join(PHOTO_DIR, 'thumb', `u_${id}.${ext}`), th ? Buffer.from(th[2], 'base64') : buf);
-    run('INSERT INTO photos(id,file,thumb,name,agentId,tags,w,h,size,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?)', id, file, file.replace('photos/', 'photos/thumb/'), String(name || '').slice(0, 80), me.id, JSON.stringify(tags), w || 0, h || 0, buf.length, now()); audit(me.id, 'photo_upload', id, name);
-    return json(res, 200, { item: { id, file, thumb: file.replace('photos/', 'photos/thumb/'), name, agentId: me.id, tags } });
+    run('INSERT INTO photos(id,file,thumb,name,agentId,tags,w,h,size,createdAt,folder) VALUES(?,?,?,?,?,?,?,?,?,?,?)', id, file, file.replace('photos/', 'photos/thumb/'), String(name || '').slice(0, 80), me.id, JSON.stringify(tags), w || 0, h || 0, buf.length, now(), folder); audit(me.id, 'photo_upload', id, name);
+    return json(res, 200, { item: { id, file, thumb: file.replace('photos/', 'photos/thumb/'), name, agentId: me.id, tags, folder, createdAt: now() } });
   }
+  if ((mm = p.match(/^\/photos\/([^/]+)$/)) && m === 'PUT') { if (!need()) return; const ph = q1('SELECT * FROM photos WHERE id=?', mm[1]); if (!ph) return json(res, 404, { error: '없는 사진' }); const folder = String(body.folder ?? ph.folder ?? '').trim().replace(/[<>"'`]/g, '').slice(0, 40); run('UPDATE photos SET folder=? WHERE id=?', folder, mm[1]); audit(me.id, 'photo_move', mm[1], folder); return json(res, 200, { ok: true, folder }); }
   if ((mm = p.match(/^\/photos\/([^/]+)$/)) && m === 'DELETE') { if (!need()) return; const ph = q1('SELECT * FROM photos WHERE id=?', mm[1]); if (!ph) return json(res, 404, {}); if (!me.isAdmin && ph.agentId !== me.id) return json(res, 403, { error: '본인이 올린 사진만 삭제할 수 있습니다' }); const used = q('SELECT id FROM listings WHERE data LIKE ?', `%${ph.file}%`); if (used.length) return json(res, 400, { error: `매장 ${used.map(u => u.id).join(', ')}에서 사용 중입니다 (삭제됨 매장 포함 — 복구 대비 보관)` }); run('DELETE FROM photos WHERE id=?', mm[1]); audit(me.id, 'photo_delete', mm[1], ph.file); for (const f of [ph.file, ph.thumb]) { const x = path.join(PHOTO_DIR, String(f).replace(/^photos\//, '')); if (x.startsWith(PHOTO_DIR)) try { fs.unlinkSync(x); } catch {} } return json(res, 200, { ok: true }); }
 
   // --- 담당자 ---

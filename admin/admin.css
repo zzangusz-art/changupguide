@@ -179,3 +179,17 @@ body{background:var(--bg-gray)}
 .bulkbar .btn--ghost{color:#fff;border-color:rgba(255,255,255,.45);background:transparent}
 /* 휴대폰: 칸 합치기(span) 때문에 생기던 좁은 칸 방지 — 한 줄에 하나씩 */
 @media (max-width:560px){.grid2>*,.grid3>*,.grid4>*{grid-column:auto!important;min-width:0}}
+
+/* 사진 라이브러리: 브랜드별 폴더 · 팀 공유 · 더블클릭/끌어놓기 업로드 */
+.lib-wrap{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start}
+.folders{background:#fff;border:1px solid #E3E1DA;border-radius:12px;padding:8px;position:sticky;top:10px;max-height:calc(100vh - 120px);overflow:auto}
+.folders .f{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;border:0;background:none;padding:7px 8px;border-radius:8px;font:inherit;font-size:.86rem;font-weight:700;text-align:left;cursor:pointer;user-select:none}
+.folders .f:hover{background:#F4F6F8}.folders .f.is-on{background:#FFCC00}
+.folders .f span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.folders .f em{font-style:normal;font-weight:500;color:#6B6778;font-size:.78rem}
+.lib--drop{min-height:260px;border:2px dashed transparent;border-radius:12px;padding:4px;transition:border-color .15s}
+.lib--drop.is-drag{border-color:#1D5BF0;background:#EEF3FF}
+.lib-empty{grid-column:1/-1;border:2px dashed #D9D5C9;border-radius:12px;padding:48px 16px;text-align:center;color:#6B6778;cursor:pointer;user-select:none}
+.lib .it .fd{position:absolute;top:4px;left:4px;max-width:70%;background:#FFCC00;color:#14121F;font-size:.66rem;font-weight:800;border-radius:6px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib .it .mv{position:absolute;top:4px;right:30px;width:22px;height:22px;border-radius:50%;border:1px solid #D9D5C9;background:#fff;padding:0;font-size:.7rem;line-height:20px}
+.btn--del{color:#E5402F!important}
+@media (max-width:900px){.lib-wrap{grid-template-columns:1fr}.folders{position:static;max-height:none;display:flex;gap:4px;overflow-x:auto;padding:6px}.folders>b{display:none!important}.folders .f{width:auto;flex:none;white-space:nowrap}.folders [data-newf]{width:auto!important;flex:none;margin:0!important}}
