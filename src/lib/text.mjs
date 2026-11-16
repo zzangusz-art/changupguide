@@ -149,7 +149,7 @@ export function budgetOf(premium) {
 }
 
 // ---------- 자동 제목 ----------
-// 요청 형식: "인천 미추홀구 메가커피 월매출 3500만원 수익 900만원" + 예산(권리금)
+// 요청 형식: "인천 미추홀구 메가커피 월매출 3500만원 수익 900만원" + 예산(창업비용)
 export function makeTitle(l) {
   const parts = [];
   if (l.sido) parts.push(l.sido);
@@ -159,7 +159,7 @@ export function makeTitle(l) {
   if (brand) parts.push(brand);
   if (l.sales) parts.push(`월매출 ${fmtMan(l.sales)}`);
   if (l.profit) parts.push(`수익 ${fmtMan(l.profit)}`);
-  parts.push(l.premium ? `권리금 ${fmtWon(l.premium)}` : '권리금 협의');
+  parts.push(l.premium ? `창업비용 ${fmtWon(l.premium)}` : '창업비용 협의');
   return parts.join(' ');
 }
 export function makeSeoTitle(l) {
@@ -172,7 +172,7 @@ export function makeDesc(l) {
   const bits = [];
   if (l.sales) bits.push(`월매출 ${fmtMan(l.sales)}`);
   if (l.profit) bits.push(`월수익(세전) ${fmtMan(l.profit)}`);
-  bits.push(l.premium ? `권리금 ${fmtWon(l.premium)}` : '권리금 협의');
+  bits.push(l.premium ? `창업비용 ${fmtWon(l.premium)}` : '창업비용 협의');
   if (l.areaM2) bits.push(`면적 ${l.areaM2}㎡`);
   return `${loc} ${b} 양도양수 창업 매장. ${bits.join(', ')}. 담당 창업전문가 ${l.agentName || ''}에게 바로 전화 연결. 임대보증금 별도, 정확한 위치는 상담 후 안내.`;
 }

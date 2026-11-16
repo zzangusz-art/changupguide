@@ -13,7 +13,7 @@ export function leadForm({ preset = {}, title = '조건만 남기면 담당자�
   const budgetOpts = BUDGETS.map(b => opt('budget', b.name.replace(' 이상 ~ ', '~').replace('억 미만', '억 미만'), P.budget === b.slug, `data-min="${b.min}" data-max="${b.max === Infinity ? 1e12 : b.max}"`)).join('') + opt('budget', '정하지 못했어요', false);
   const catOpts = CATEGORIES.map(c => opt('category', c.name, P.category === c.name)).join('') + opt('category', '추천받고 싶어요', false);
   const steps = [
-    ['금액별', '권리금 예산은 어느 정도인가요?', '임대보증금을 뺀 권리금 기준입니다.', `<div class="lead__opts">${budgetOpts}</div>`],
+    ['금액별', '창업비용 예산은 어느 정도인가요?', '임대보증금을 뺀 창업비용 기준입니다.', `<div class="lead__opts">${budgetOpts}</div>`],
     ['업종별', '어떤 업종을 찾으세요?', '', `<div class="lead__opts">${catOpts}</div>`],
     ['상권별', '원하는 상권과 지역을 골라 주세요', '여러 개 선택할 수 있습니다.', `<div class="lead__opts" data-multi>${AREAS.map(a => opt('area', a, false)).join('')}</div>
       <div class="lead__row"><label>지역<select name="sido" data-lead-sido>${['', '서울', '경기', '인천', '기타'].map(s => `<option value="${s}" ${P.sido === s ? 'selected' : ''}>${s || '지역 선택'}</option>`).join('')}</select></label><label>구·시 (선택)<input name="gugun" placeholder="예) 강남구, 수원시" value="${esc(P.gugun || '')}" autocomplete="off"></label></div>`],

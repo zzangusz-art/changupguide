@@ -23,7 +23,7 @@ export function listingPage(l, ctx) {
   const summaryItems = [
     `지역: ${loc}${l.newTown ? ` (${l.newTown})` : ''} — 정확한 위치는 상담 후 안내`,
     `업종·브랜드: ${l.brand ? l.brand + ' ' : (l.kindLabel ? l.kindLabel + ' ' : '')}${l.kind1}${l.kind2 ? ` (${l.kind2})` : ''}`,
-    `예산: 권리금 ${l.premium ? fmtWon(l.premium) : '협의'}${l.monthlyCost ? ` · 월비용(임대료 등) ${fmtMan(l.monthlyCost)}` : ''} — 임대보증금 별도`,
+    `예산: 창업비용 ${l.premium ? fmtWon(l.premium) : '협의'}${l.monthlyCost ? ` · 월비용(임대료 등) ${fmtMan(l.monthlyCost)}` : ''} — 임대보증금 별도`,
     l.sales ? `매출: 월매출 ${fmtMan(l.sales)}${l.expense ? ` · 월지출 ${fmtMan(l.expense)}` : ''}${l.profit ? ` · 월수익(세전) ${fmtMan(l.profit)}` : ''}` : (l.profit ? `월수익(세전) ${fmtMan(l.profit)}` : '매출·수익: 담당자 문의'),
     l.areaM2 ? `규모: ${l.areaM2}㎡ (약 ${Math.round(l.areaM2 / 3.3058)}평)${l.floor ? ` · ${l.floor}층` : ''}` : (l.sizeRange ? `규모: ${l.sizeRange}` : null),
     `담당: ${agent.name} ${agent.role || '창업전문가'}${agent.mobile ? ` (${agent.mobile})` : ''}`,
@@ -44,7 +44,7 @@ export function listingPage(l, ctx) {
     </div>` : `<div class="gallery"><div class="gallery__main"><div class="img-empty">${ILLO.shop}</div></div></div>`;
 
   const keynums = `<dl class="keynums">
-    <div class="keynum keynum--yellow"><dt>권리금 (보증금 별도)</dt><dd>${l.premium ? esc(fmtWon(l.premium)) : '협의'}</dd></div>
+    <div class="keynum keynum--yellow"><dt>창업비용 (보증금 별도)</dt><dd>${l.premium ? esc(fmtWon(l.premium)) : '협의'}</dd></div>
     <div class="keynum"><dt>월매출</dt><dd>${l.sales ? esc(fmtMan(l.sales)) : '<span class="muted">담당자 문의</span>'}</dd></div>
     <div class="keynum keynum--red"><dt>월수익 (세전)</dt><dd>${l.profit ? esc(fmtMan(l.profit)) : '<span class="muted">담당자 문의</span>'}</dd></div>
   </dl>`;
@@ -85,13 +85,13 @@ export function listingPage(l, ctx) {
   const detailSec = `<section class="d-sec"><h2 class="h2">이 매장 핵심 정리</h2>
     <div class="summary-box"><h2>${esc(l.title)}</h2><ul>${summaryItems.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>
     <div class="prose">
-      <p class="lead">${esc(loc)}에서 운영 중인 ${esc(l.brand || l.kind2 || l.kind1)} 매장을 권리금 ${l.premium ? esc(fmtWon(l.premium)) : '협의'}에 인수하는 양도양수 창업 매장입니다.${l.sales ? ` 현재 월매출 ${esc(fmtMan(l.sales))}${l.profit ? `, 세전 월수익 ${esc(fmtMan(l.profit))}` : ''} 규모로 운영되고 있습니다.` : ''}</p>
+      <p class="lead">${esc(loc)}에서 운영 중인 ${esc(l.brand || l.kind2 || l.kind1)} 매장을 창업비용 ${l.premium ? esc(fmtWon(l.premium)) : '협의'}에 인수하는 양도양수 창업 매장입니다.${l.sales ? ` 현재 월매출 ${esc(fmtMan(l.sales))}${l.profit ? `, 세전 월수익 ${esc(fmtMan(l.profit))}` : ''} 규모로 운영되고 있습니다.` : ''}</p>
       ${l.summary ? `<h3>담당자 한줄 요약</h3><p>${esc(l.summary)}</p>` : ''}
       <h3>이런 분께 맞습니다</h3><ul>
         ${theme ? `<li>${esc(theme.name)} 테마 매장 — ${esc(theme.desc.split('.')[0])}.</li>` : ''}
         ${l.tags.includes('풀오토') || l.tags.includes('오토운영') ? '<li>매장 상주가 어려운 투자형·부업형 창업자 (오토 운영 구조)</li>' : ''}
         ${l.brand ? `<li>${esc(l.brand)} 가맹점을 신규 오픈 비용 없이 운영 중인 매장으로 시작하려는 분</li>` : `<li>${esc(l.kind2 || l.kind1)} 업종 경험이 있거나, 담당자 교육으로 시작하려는 분</li>`}
-        ${budget ? `<li>권리금 예산 ${esc(budget.name)} 범위에서 ${esc(loc)} 상권을 찾는 분</li>` : ''}
+        ${budget ? `<li>창업비용 예산 ${esc(budget.name)} 범위에서 ${esc(loc)} 상권을 찾는 분</li>` : ''}
       </ul>
       <h3>확인해야 할 사항</h3><ul>
         <li>임대 조건(보증금·월세·계약 잔여기간)과 건물주 승인 여부</li>
@@ -128,7 +128,7 @@ export function listingPage(l, ctx) {
     '@context': 'https://schema.org', '@type': 'Product', '@id': abs(`/listing/${l.id}/#product`), name: l.title, sku: l.id, description: desc,
     image: images.map(i => (/^https?:/.test(i) ? i : abs('/' + i))), category: `${l.kind1}${l.kind2 ? ' > ' + l.kind2 : ''}`,
     brand: l.brand ? { '@type': 'Brand', name: l.brand } : undefined,
-    offers: { '@type': 'Offer', url: abs(`/listing/${l.id}/`), priceCurrency: 'KRW', price: l.premium ? l.premium * 10000 : undefined, priceSpecification: l.premium ? { '@type': 'PriceSpecification', price: l.premium * 10000, priceCurrency: 'KRW', description: '권리금 (임대보증금 별도)' } : undefined, availability: 'https://schema.org/InStock', seller: { '@id': abs('/#org') }, areaServed: loc },
+    offers: { '@type': 'Offer', url: abs(`/listing/${l.id}/`), priceCurrency: 'KRW', price: l.premium ? l.premium * 10000 : undefined, priceSpecification: l.premium ? { '@type': 'PriceSpecification', price: l.premium * 10000, priceCurrency: 'KRW', description: '창업비용 (임대보증금 별도)' } : undefined, availability: 'https://schema.org/InStock', seller: { '@id': abs('/#org') }, areaServed: loc },
     additionalProperty: [
       l.sales ? { '@type': 'PropertyValue', name: '월매출', value: l.sales * 10000, unitText: 'KRW' } : null,
       l.profit ? { '@type': 'PropertyValue', name: '월수익(세전)', value: l.profit * 10000, unitText: 'KRW' } : null,
@@ -137,6 +137,6 @@ export function listingPage(l, ctx) {
       { '@type': 'PropertyValue', name: '지역', value: loc }, { '@type': 'PropertyValue', name: '담당자', value: `${agent.name} ${agent.role || '창업전문가'}` },
     ].filter(Boolean),
   }];
-  return layout({ title, desc, path: `/listing/${l.id}/`, noindex: !!l.sample, canonicalPath: l.canonicalId ? `/listing/${l.canonicalId}/` : undefined, body, active: 'listings', ld, type: 'product', og: images[0] ? (/^https?:/.test(images[0]) ? images[0] : abs('/' + images[0])) : undefined, bodyClass: 'is-listing', keywords: [loc, l.brand, l.kind2, `${l.gugun} ${l.brand || l.kind2} 창업`, '양도양수', '권리금'].filter(Boolean),
+  return layout({ title, desc, path: `/listing/${l.id}/`, noindex: !!l.sample, canonicalPath: l.canonicalId ? `/listing/${l.canonicalId}/` : undefined, body, active: 'listings', ld, type: 'product', og: images[0] ? (/^https?:/.test(images[0]) ? images[0] : abs('/' + images[0])) : undefined, bodyClass: 'is-listing', keywords: [loc, l.brand, l.kind2, `${l.gugun} ${l.brand || l.kind2} 창업`, '양도양수', '창업비용'].filter(Boolean),
     extraHead: `<meta name="listing-id" content="${esc(l.id)}">` }).replace('<body class="is-listing">', `<body class="is-listing" data-listing-id="${esc(l.id)}" data-listing-title="${esc(l.title)}" data-listing-img="${esc(thumbs[0] ? (/^https?:/.test(thumbs[0]) ? thumbs[0] : u('/' + thumbs[0])) : '')}">`);
 }

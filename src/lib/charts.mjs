@@ -55,12 +55,12 @@ export function donut(rows, { top = 6, unit = '건', size = 150 } = {}) {
     <ol class="donut__legend">${segs.map((s, i) => `<li><i style="background:${PALETTE[i % PALETTE.length]}"></i>${s.href ? `<a href="${s.href}">${esc(s.label)}</a>` : esc(s.label)}<b>${Math.round(s.value / total * 100)}%</b><small>${n(s.value)}${unit}</small></li>`).join('')}</ol></div>`;
 }
 
-/** 범위 막대: 최소·평균·최대 (월매출/월수익/권리금) */
+/** 범위 막대: 최소·평균·최대 (월매출/월수익/창업비용) */
 export function rangeBars(items) {
   const rows = [
     { k: 'sales', label: '월매출', fmt: fmtMan, color: '#111' },
     { k: 'profit', label: '월수익(세전)', fmt: fmtMan, color: '#E0282E' },
-    { k: 'premium', label: '권리금', fmt: fmtWon, color: '#282864' },
+    { k: 'premium', label: '창업비용', fmt: fmtWon, color: '#282864' },
   ].map(r => ({ ...r, min: minOf(items, r.k), avg: avgOf(items, r.k), med: medOf(items, r.k), max: maxOf(items, r.k), cnt: items.filter(l => l[r.k]).length })).filter(r => r.cnt);
   if (!rows.length) return '<p class="viz__empty">집계할 매장이 없습니다.</p>';
   return `<div class="ranges">${rows.map(r => {
@@ -73,11 +73,11 @@ export function rangeBars(items) {
 
 export const budgetShort = b => b.max === Infinity ? '6억 이상' : b.min === 0 ? '1억 미만' : `${b.min / 10000}~${b.max / 10000}억`;
 
-/** 권리금 구간 분포 (예산 허브 기준과 동일 구간) */
+/** 창업비용 구간 분포 (예산 허브 기준과 동일 구간) */
 export function premiumHistogram(items, { highlight = '', linkBase = '/budget/' } = {}) {
   const rows = BUDGETS.map(b => ({ label: budgetShort(b), value: items.filter(l => l.premium != null && l.premium >= b.min && l.premium < b.max).length, href: u(`${linkBase}${b.slug}/`) }));
   const none = items.filter(l => l.premium == null).length;
-  return vBars(rows, { highlight: BUDGETS.findIndex(b => b.slug === highlight) }) + (none ? `<p class="viz__foot">권리금 협의 ${none}건은 분포에서 제외</p>` : '');
+  return vBars(rows, { highlight: BUDGETS.findIndex(b => b.slug === highlight) }) + (none ? `<p class="viz__foot">창업비용 협의 ${none}건은 분포에서 제외</p>` : '');
 }
 
 /** 월수익 구간 분포 */
@@ -93,7 +93,7 @@ export function dataTable(cols, rows, { caption = '', cls = '' } = {}) {
     <tbody>${rows.map(r => `<tr>${cols.map(c => { const v = c.fmt ? c.fmt(r[c.key], r) : r[c.key]; return `<td${c.align ? ` style="text-align:${c.align}"` : ''}>${v == null || v === '' ? '-' : v}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-/** 공통: 그룹 요약 표 행 생성 (이름, 건수, 평균 월매출, 평균 월수익, 최저 권리금) */
+/** 공통: 그룹 요약 표 행 생성 (이름, 건수, 평균 월매출, 평균 월수익, 최저 창업비용) */
 export function summaryRows(groups, hrefOf) {
   return groups.map(([name, arr]) => ({ name, href: hrefOf ? hrefOf(name, arr) : '', n: arr.length, sales: avgOf(arr, 'sales'), profit: avgOf(arr, 'profit'), premium: minOf(arr, 'premium'), ratio: avgOf(arr, 'sales') ? Math.round(avgOf(arr, 'profit') / avgOf(arr, 'sales') * 100) : 0 }));
 }
@@ -103,7 +103,7 @@ export const SUMMARY_COLS = [
   { key: 'sales', label: '평균 월매출', align: 'right', fmt: v => v ? esc(fmtMan(v)) : '-' },
   { key: 'profit', label: '평균 월수익', align: 'right', fmt: v => v ? `<span class="hot">${esc(fmtMan(v))}</span>` : '-' },
   { key: 'ratio', label: '수익률', align: 'right', fmt: v => v ? `${v}%` : '-' },
-  { key: 'premium', label: '최저 권리금', align: 'right', fmt: v => v ? `<span class="cool">${esc(fmtWon(v))}</span>` : '협의' },
+  { key: 'premium', label: '최저 창업비용', align: 'right', fmt: v => v ? `<span class="cool">${esc(fmtWon(v))}</span>` : '협의' },
 ];
 
 /** 스파크 막대(인라인, 표 셀용) */

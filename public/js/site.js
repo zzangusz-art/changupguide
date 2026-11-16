@@ -135,7 +135,7 @@ function initLead() {
     function sync() {
       for (const n of ['budget', 'category', 'area', 'style', 'timing']) f.elements[n].value = val(n).join(', ');
       const v = (k, t) => t ? `${k}: ${t}` : '';
-      msg.value = [v('권리금', val('budget').join(', ')), v('업종', val('category').join(', ')), v('상권', val('area').join(', ')), v('지역', [f.elements.sido.value, f.elements.gugun.value].filter(Boolean).join(' ')), v('운영', val('style').join(', ')), v('시기', val('timing').join(', ')), v('희망 브랜드', f.elements.brandWish.value), v('유입', document.title.split('|')[0].trim())].filter(Boolean).join(' / ');
+      msg.value = [v('창업비용', val('budget').join(', ')), v('업종', val('category').join(', ')), v('상권', val('area').join(', ')), v('지역', [f.elements.sido.value, f.elements.gugun.value].filter(Boolean).join(' ')), v('운영', val('style').join(', ')), v('시기', val('timing').join(', ')), v('희망 브랜드', f.elements.brandWish.value), v('유입', document.title.split('|')[0].trim())].filter(Boolean).join(' / ');
       tally();
     }
     function show(k) { i = Math.max(0, Math.min(steps.length - 1, k)); steps.forEach((s, n) => s.classList.toggle('is-on', n === i)); no.textContent = i + 1; label.textContent = steps[i].dataset.label; bar.style.width = `${(i + 1) / steps.length * 100}%`; prev.style.visibility = i ? 'visible' : 'hidden'; next.hidden = i === steps.length - 1; submit.hidden = i !== steps.length - 1; }

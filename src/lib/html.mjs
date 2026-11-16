@@ -86,7 +86,7 @@ export function listingCard(l, { eager = false, size = '' } = {}) {
     ${tags.length ? `<div class="card__stickers">${tags.map((t, i) => sticker(t, { tone: ['yellow', 'red', 'blue'][i % 3], rot: [-6, 5, -3][i % 3], size: 'sm' })).join('')}</div>` : ''}
     ${l.sample ? '<span class="card__sample">예시 매장</span>' : ''}
     ${l.brand ? `<span class="card__brand">${esc(l.brand)}</span>` : ''}
-    ${(m => m != null && m <= 18 ? `<span class="card__payback" title="권리금 ÷ 월수익(세전) 단순 계산, 점주 인건비 제외">회수 약 ${Math.max(1, Math.round(m))}개월</span>` : '')(paybackMonths(l))}
+    
   </a>
   <div class="card__body">
     <div class="card__loc">${ICONS.pin}<span>${esc([l.sido, l.gugun].filter(Boolean).join(' '))}</span><span class="dot">·</span><span>${esc(l.kind2 || l.kind1 || '')}</span></div>
@@ -94,7 +94,7 @@ export function listingCard(l, { eager = false, size = '' } = {}) {
     <dl class="card__nums">
       <div><dt>월매출</dt><dd>${l.sales ? esc(fmtMan(l.sales)) : '<span class="muted">담당자 문의</span>'}</dd></div>
       <div><dt>월수익</dt><dd class="hot">${l.profit ? esc(fmtMan(l.profit)) : '<span class="muted">문의</span>'}</dd></div>
-      <div><dt>권리금</dt><dd class="cool">${esc(premium)}</dd></div>
+      <div><dt>창업비용</dt><dd class="cool">${esc(premium)}</dd></div>
     </dl>
     <div class="card__foot">
       <span class="card__agent">${l.agentId ? `${esc(l.agentName || '담당자')} 창업전문가` : esc(l.agentName || '창업가이드 상담센터')}</span>
@@ -199,7 +199,7 @@ export function footer() {
       </div>
     </div>
     <div class="ftr__notice"><h4>창업가이드에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
-    <div class="ftr__info"><p>상호 ${esc(SITE.company)} · 대표 ${esc(SITE.ceo)} · 사업자등록번호 ${esc(SITE.bizNo)} · 업태/종목 ${esc(SITE.bizType)}</p><p>주소 ${esc(SITE.address)}${SITE.phone ? ` · 창업상담 <a href="tel:${SITE.phoneTel}">${esc(SITE.phone)}</a>` : ''}${SITE.email ? ` · ${esc(SITE.email)}` : ''}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
+    <div class="ftr__info"><p>상호 ${esc(SITE.company)} · 사업자등록번호 ${esc(SITE.bizNo)} · 업태/종목 ${esc(SITE.bizType)}</p><p>주소 ${esc(SITE.address)}${SITE.phone ? ` · 창업상담 <a href="tel:${SITE.phoneTel}">${esc(SITE.phone)}</a>` : ''}${SITE.email ? ` · ${esc(SITE.email)}` : ''}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
   </div>
 </footer>
 <div class="float-cta" id="floatCta"><a class="btn btn--red btn--lg glass-red" href="${u('/inquiry/')}">${ICONS.bolt}<span>문의하기</span></a>${SITE.phone ? `<a class="btn btn--yellow btn--lg" href="tel:${SITE.phoneTel}">${ICONS.phone}<span>전화</span></a>` : ''}<button type="button" class="btn btn--ink btn--icon" data-scroll-top aria-label="맨 위로">${ICONS.chevron}</button></div>

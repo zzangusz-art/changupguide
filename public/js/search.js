@@ -23,10 +23,10 @@ const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const tones = ['yellow', 'red', 'blue'], rots = [-6, 5, -3];
 function card(e) {
   const img = e.img ? `<img src="${CU.base}/${e.img.includes('/thumb/') ? e.img : e.img.replace('photos/', 'photos/thumb/')}" alt="${esc(e.t)} 매장 사진" loading="lazy" decoding="async" class="card__img" width="480" height="360">` : '<div class="img-empty" aria-hidden="true"></div>';
-  return `<article class="card" data-id="${e.id}"><a class="card__media" href="${CU.base}/listing/${e.id}/">${img}${e.tags.length ? `<div class="card__stickers">${e.tags.slice(0, 3).map((t, i) => `<span class="sticker sticker--${tones[i % 3]} sm" style="--rot:${rots[i % 3]}deg">${esc(t)}</span>`).join('')}</div>` : ''}${e.b ? `<span class="card__brand">${esc(e.b)}</span>` : ''}${e.premium > 0 && e.profit > 0 && e.premium / e.profit <= 18 ? `<span class="card__payback" title="권리금 ÷ 월수익(세전) 단순 계산, 점주 인건비 제외">회수 약 ${Math.max(1, Math.round(e.premium / e.profit))}개월</span>` : ''}</a>
+  return `<article class="card" data-id="${e.id}"><a class="card__media" href="${CU.base}/listing/${e.id}/">${img}${e.tags.length ? `<div class="card__stickers">${e.tags.slice(0, 3).map((t, i) => `<span class="sticker sticker--${tones[i % 3]} sm" style="--rot:${rots[i % 3]}deg">${esc(t)}</span>`).join('')}</div>` : ''}${e.b ? `<span class="card__brand">${esc(e.b)}</span>` : ''}</a>
   <div class="card__body"><div class="card__loc">${ICON_PIN}<span>${esc([e.s, e.g].filter(Boolean).join(' '))}</span><span class="dot">·</span><span>${esc(e.k2 || e.k1)}</span></div>
   <h3 class="card__title"><a href="${CU.base}/listing/${e.id}/">${esc(e.t)}</a></h3>
-  <dl class="card__nums"><div><dt>월매출</dt><dd>${e.sales ? fmtMan(e.sales) : '<span class="muted">문의</span>'}</dd></div><div><dt>월수익</dt><dd class="hot">${e.profit ? fmtMan(e.profit) : '<span class="muted">문의</span>'}</dd></div><div><dt>권리금</dt><dd class="cool">${e.premium ? fmtWon(e.premium) : '협의'}</dd></div></dl>
+  <dl class="card__nums"><div><dt>월매출</dt><dd>${e.sales ? fmtMan(e.sales) : '<span class="muted">문의</span>'}</dd></div><div><dt>월수익</dt><dd class="hot">${e.profit ? fmtMan(e.profit) : '<span class="muted">문의</span>'}</dd></div><div><dt>창업비용</dt><dd class="cool">${e.premium ? fmtWon(e.premium) : '협의'}</dd></div></dl>
   <div class="card__foot"><span class="card__agent">${esc(e.a || '담당자')} 창업전문가</span><a class="btn btn--call btn--sm" href="tel:${phoneTel(e.ap || '')}" data-call="${e.id}" data-agent="${esc(e.ai)}" data-phone="${esc(e.ap || '')}" data-title="${esc(e.t)}">${ICON_PHONE}<span>전화</span></a></div></div></article>`;
 }
 
@@ -40,7 +40,7 @@ function renderFilters() {
     <div class="chips" data-f="gugun">${(state.sido ? META.regions[state.sido] : []).map(g => `<button type="button" class="chip ${state.gugun === g.name ? 'is-on' : ''}" data-v="${g.name}">${g.name}<small>${g.n}</small></button>`).join('')}</div></details>
   <details open><summary>브랜드 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></summary>
     <div class="chips" data-f="brandSlug">${META.brands.slice(0, 40).map(b => `<button type="button" class="chip ${state.brandSlug === b.slug ? 'is-on' : ''}" data-v="${b.slug}">${esc(b.name)}<small>${b.n}</small></button>`).join('')}</div></details>
-  <details open><summary>예산(권리금) <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <details open><summary>예산(창업비용) <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></summary>
     <div class="chips" data-f="budget">${BUDGETS.map(b => `<button type="button" class="chip chip--red ${state.budget === b.slug ? 'is-on' : ''}" data-v="${b.slug}">${b.name}</button>`).join('')}</div>
     <div class="range"><label>최소 월수익 <output>${state.minProfit ? fmtMan(state.minProfit) + ' 이상' : '전체'}</output></label><input type="range" min="0" max="3000" step="100" value="${state.minProfit}" data-f="minProfit"></div></details>
   <details><summary>업종 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -72,8 +72,8 @@ function run() {
   if (state.q) chips.push(`<span class="badge badge--yellow">검색어: ${esc(state.q)}</span>`);
   parsed.regions.forEach(r => chips.push(`<span class="badge badge--blue">지역 인식: ${esc([r.sido, r.gugun].filter(Boolean).join(' '))}</span>`));
   parsed.brands.forEach(b => chips.push(`<span class="badge badge--red">${b.generic ? '업종' : '브랜드'} 인식: ${esc(b.name)}</span>`));
-  if (parsed.budgetMax) chips.push(`<span class="badge">권리금 ${fmtWon(parsed.budgetMax)} 이하</span>`);
-  if (parsed.budgetMin) chips.push(`<span class="badge">권리금 ${fmtWon(parsed.budgetMin)} 이상</span>`);
+  if (parsed.budgetMax) chips.push(`<span class="badge">창업비용 ${fmtWon(parsed.budgetMax)} 이하</span>`);
+  if (parsed.budgetMin) chips.push(`<span class="badge">창업비용 ${fmtWon(parsed.budgetMin)} 이상</span>`);
   parsed.terms.forEach(t => chips.push(`<span class="badge badge--cream">키워드: ${esc(t)}</span>`));
   for (const [k, label] of [['sido', '지역'], ['gugun', ''], ['budget', '예산'], ['theme', '테마']]) if (state[k]) chips.push(`<span class="badge badge--cream">${label ? label + ': ' : ''}${esc(k === 'budget' ? BUDGETS.find(b => b.slug === state[k])?.name : state[k])}</span>`);
   if (state.brandSlug) chips.push(`<span class="badge badge--cream">브랜드: ${esc(META.brands.find(b => b.slug === state.brandSlug)?.name || state.brandSlug)}</span>`);

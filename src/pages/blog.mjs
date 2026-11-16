@@ -39,7 +39,7 @@ export function blogPages(ctx) {
       <div class="chips" style="margin-bottom:22px"><a class="chip ${!crumbName ? 'is-on' : ''}" href="${u('/blog/')}">전체 ${posts.length}</a>${cats.map(c => `<a class="chip ${crumbName === c ? 'is-on' : ''}" href="${u(`/blog/category/${encodeURIComponent(c)}/`)}">${esc(c)} ${posts.filter(p => p.category === c).length}</a>`).join('')}</div>
       ${items.length ? `<div class="post-grid">${items.map(p => `<a class="post-card reveal" href="${u(`/blog/${p.slug}/`)}"><div class="post-card__cover">${p.cover ? img(p.cover, p.title, { w: 600, h: 338 }) : ILLO.shop}</div><div class="post-card__body">${p.category ? badge(p.category, 'yellow') : ''}<h3>${esc(p.title)}</h3><p class="muted" style="font-size:.9rem">${esc(p.desc)}</p><div class="post-card__meta"><span>${esc(fmtDate(p.date))}</span><span>·</span><span>${esc(p.author || '창업가이드 편집팀')}</span></div></div></a>`).join('')}</div>` : '<p class="results__empty">첫 글을 준비 중입니다.</p>'}
     </section></div>${ctaBand({ title: '글에서 본 매장, 담당자에게 바로 물어보세요' })}` }) });
-  out.push(list(posts, '/blog/', `창업 인사이트 | 지역·브랜드·예산으로 읽는 창업 매장 분석 — 창업가이드`, '매일 3편. 인천 메가커피, 강남 카페, 송파 치킨집처럼 지역·브랜드·예산 기준으로 실제 양도양수 매장의 월매출·월수익·권리금을 분석합니다.', '창업 <span class="hl">인사이트</span>'));
+  out.push(list(posts, '/blog/', `창업 인사이트 | 지역·브랜드·예산으로 읽는 창업 매장 분석 — 창업가이드`, '매일 3편. 인천 메가커피, 강남 카페, 송파 치킨집처럼 지역·브랜드·예산 기준으로 실제 양도양수 매장의 월매출·월수익·창업비용을 분석합니다.', '창업 <span class="hl">인사이트</span>'));
   for (const c of cats) out.push(list(posts.filter(p => p.category === c), `/blog/category/${encodeURIComponent(c)}/`, `${c} | 창업 인사이트 — 창업가이드`, `${c} 관련 창업 분석 글 모음.`, `${esc(c)}`, c));
 
   for (const [i, p] of posts.entries()) {
@@ -60,7 +60,7 @@ export function blogPages(ctx) {
         ${l ? `<section class="d-sec"><h2 class="h2">이 글에서 다룬 매장</h2><div class="grid" style="grid-template-columns:1fr;max-width:420px">${listingCard(l, { eager: false })}</div>${agent ? `<p style="font-weight:700;margin-top:12px">담당 ${esc(agent.name)} ${esc(agent.role)} · <a href="tel:${esc(agent.mobile.replace(/^0/, '+82-'))}" data-call="${esc(l.id)}" data-agent="${esc(agent.id)}" data-phone="${esc(agent.mobile)}" data-title="${esc(l.title)}">${esc(agent.mobile)}</a></p>` : ''}</section>` : ''}
         ${p.faq ? `<section class="d-sec">${faqBlock(p.faq, { title: '이 글의 Q&A' })}</section>` : ''}
         ${related.length ? `<section class="d-sec"><h2 class="h2">함께 볼 매장</h2><div class="grid">${related.slice(0, 4).map(x => listingCard(x)).join('')}</div></section>` : ''}
-        <div class="author-card"><div style="width:56px;flex:none">${ILLO.coins}</div><div><strong>${esc(p.author || '창업가이드 편집팀')}</strong><p class="muted" style="margin:0;font-size:.88rem">이 글은 창업가이드에 등록된 실제 매장 데이터(월매출·월수익·권리금)를 기준으로 작성되었습니다. 숫자는 등록 시점 기준이며, 최신 조건은 담당 창업전문가에게 확인하세요.</p></div></div>
+        <div class="author-card"><div style="width:56px;flex:none">${ILLO.coins}</div><div><strong>${esc(p.author || '창업가이드 편집팀')}</strong><p class="muted" style="margin:0;font-size:.88rem">이 글은 창업가이드에 등록된 실제 매장 데이터(월매출·월수익·창업비용)를 기준으로 작성되었습니다. 숫자는 등록 시점 기준이며, 최신 조건은 담당 창업전문가에게 확인하세요.</p></div></div>
         <nav class="pager" style="justify-content:space-between" aria-label="이전·다음 글">${prev ? `<a href="${u(`/blog/${prev.slug}/`)}" style="min-width:0;padding:8px 14px">‹ ${esc(prev.title.slice(0, 28))}…</a>` : '<span></span>'}${next ? `<a href="${u(`/blog/${next.slug}/`)}" style="min-width:0;padding:8px 14px">${esc(next.title.slice(0, 28))}… ›</a>` : ''}</nav>
       </article></div>${ctaBand({ title: '이 조건으로 매장을 찾아드릴까요?' })}` }) });
   }

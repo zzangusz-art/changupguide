@@ -119,6 +119,19 @@ function migratePhotoFolder() {
   } catch (e) { console.log('[photos] folder migrate skip', e.message); }
 }
 
+// ---------- 1회 용어 정리 2: 운영 데이터 안의 '권리금' → '창업비용' (2026-11-16 업체 요청 — 매장 제목·설명·브랜드·공지·글) ----------
+function migrateWords2() {
+  if (setting('wordMigration2') >= 1) return;
+  try {
+    const OLD = '권리금'; const fx = t => String(t).split(OLD).join('창업비용'); const like = `%${OLD}%`; let n = 0;
+    for (const r of q('SELECT id,data FROM listings WHERE data LIKE ?', like)) { run('UPDATE listings SET data=? WHERE id=?', fx(r.data), r.id); n++; }
+    for (const r of q('SELECT slug,data FROM brands WHERE data LIKE ?', like)) { run('UPDATE brands SET data=? WHERE slug=?', fx(r.data), r.slug); n++; }
+    for (const r of q('SELECT id,title,body FROM notices WHERE title LIKE ? OR body LIKE ?', like, like)) { run('UPDATE notices SET title=?,body=? WHERE id=?', fx(r.title), fx(r.body), r.id); n++; }
+    if (fs.existsSync(POSTS_DIR)) for (const f of fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.json'))) { const x = path.join(POSTS_DIR, f); const t = fs.readFileSync(x, 'utf-8'); if (t.includes(OLD)) { fs.writeFileSync(x, fx(t)); n++; } }
+    setSetting('wordMigration2', 1); audit('system', 'word_migration', '권리금→창업비용', String(n)); console.log(`[migrate] 권리금 → 창업비용 ${n}건`);
+  } catch (e) { console.log('[migrate2] skip', e.message); }
+}
+
 // ---------- 1회 용어 정리: 운영 데이터 안의 '매물' → '매장' (2026-11-12 업체 요청) ----------
 function migrateWords() {
   if (setting('wordMigration') >= 1) return;
@@ -203,7 +216,7 @@ function seedBrands() {
 }
 
 // 시작 순서 (아래 상수 정의 뒤에 실행): 부팅 백업 → 시드 → 저장소 새 항목 동기화 → 비밀번호 재설정 → 재빌드, 이후 20분마다 백업 점검
-if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migrateWords2(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
 
 // ---------- 데이터 내보내기 + 재빌드 ----------
 let rebuildTimer = null, building = false, pending = false;
@@ -320,7 +333,7 @@ async function api(req, res, url) {
     if (!me.isAdmin || !l.agentId) l.agentId = me.id;
     const ag = q1('SELECT * FROM agents WHERE id=?', l.agentId); if (ag) { l.agentName = ag.name; l.agentPhone = ag.mobile; }
     l.createdAt = t; l.updatedAt = t; l.status = l.status || 'active'; l.createdBy = me.id; l.source = 'own'; if (!me.isAdmin) delete l.verified;
-    // 중복 경고: 같은 담당자·같은 지역·브랜드·권리금
+    // 중복 경고: 같은 담당자·같은 지역·브랜드·창업비용
     const dup = q('SELECT data FROM listings WHERE agentId=? AND status!=?', l.agentId, 'archived').map(r => JSON.parse(r.data)).find(x => x.sido === l.sido && x.gugun === l.gugun && (x.brand || x.kind2) === (l.brand || l.kind2) && x.premium === l.premium && x.sales === l.sales);
     run('INSERT INTO listings(id,data,agentId,status,updatedAt,updatedBy) VALUES(?,?,?,?,?,?)', l.id, JSON.stringify(l), l.agentId, l.status, t, me.id); audit(me.id, 'listing_create', l.id, l.title); scheduleRebuild();
     return json(res, 200, { item: l, duplicateOf: dup ? dup.id : null });

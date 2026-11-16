@@ -31,7 +31,7 @@ def og():
     d.text((90, 270), '양도양수 창업 매장', font=font(76), fill=INK)
     d.text((90, 360), '지역 · 브랜드 · 예산별 비교', font=font(60), fill=RED)
     # 스티커
-    for (x, y, t, col, fc) in [(760, 440, '월매출 공개', RED, 'w'), (940, 400, '권리금 공개', BLUE, 'w'), (820, 510, '담당자 바로 통화', INK, 'y')]:
+    for (x, y, t, col, fc) in [(760, 440, '월매출 공개', RED, 'w'), (940, 400, '창업비용 공개', BLUE, 'w'), (820, 510, '담당자 바로 통화', INK, 'y')]:
         f = font(34); w = d.textlength(t, font=f)
         d.rounded_rectangle([x - 18, y - 10, x + w + 18, y + 50], radius=30, fill=col, outline=INK, width=5)
         d.text((x, y), t, font=f, fill=(255, 255, 255) if fc == 'w' else YEL)

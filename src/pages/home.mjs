@@ -35,7 +35,7 @@ export function homePage(ctx) {
           <p class="hslide__sub">${esc(s.sub)}</p>
           <p class="hslide__tags">${s.tags.map(t => `<span>${esc(t)}</span>`).join(' ')}</p>
           <div class="hslide__btns"><a class="btn btn--yellow btn--lg" href="${href}">창업상품 바로가기 ${ICONS.arrow}</a><a class="btn btn--glass btn--lg" href="${u('/inquiry/')}">창업 문의</a></div>
-          ${arr.length ? `<dl class="hslide__facts"><div><dt>등록 매장</dt><dd>${arr.length}건</dd></div>${minPrem ? `<div><dt>권리금</dt><dd>${esc(fmtWon(minPrem))}부터</dd></div>` : ''}${avgSales ? `<div><dt>평균 월매출</dt><dd>${esc(fmtMan(avgSales))}</dd></div>` : ''}</dl>` : ''}
+          ${arr.length ? `<dl class="hslide__facts"><div><dt>등록 매장</dt><dd>${arr.length}건</dd></div>${minPrem ? `<div><dt>창업비용</dt><dd>${esc(fmtWon(minPrem))}부터</dd></div>` : ''}${avgSales ? `<div><dt>평균 월매출</dt><dd>${esc(fmtMan(avgSales))}</dd></div>` : ''}</dl>` : ''}
         </div>
       </div>
     </div>`;
@@ -50,7 +50,7 @@ export function homePage(ctx) {
     <div class="finder2__sel">
       <select name="sido" aria-label="지역"><option value="">지역 전체</option>${sidos.map(s => `<option value="${s}">${s} (${bySido[s].length})</option>`).join('')}</select>
       <select name="brandSlug" aria-label="브랜드"><option value="">브랜드 전체</option>${brandsSorted.slice(0, 40).map(b => `<option value="${b.slug}">${esc(b.name)} (${b.n})</option>`).join('')}</select>
-      <select name="budget" aria-label="예산"><option value="">예산 전체</option>${BUDGETS.map(b => `<option value="${b.slug}">권리금 ${b.name}</option>`).join('')}</select>
+      <select name="budget" aria-label="예산"><option value="">예산 전체</option>${BUDGETS.map(b => `<option value="${b.slug}">창업비용 ${b.name}</option>`).join('')}</select>
     </div>
     <p class="finder2__hint">인기 검색어 ${brandsSorted.slice(0, 6).map(b => `<a href="${u(`/brand/${b.slug}/`)}">#${esc(b.name)}</a>`).join(' ')} <a href="${u('/theme/beginner/')}">#초보창업</a> <a href="${u('/theme/low-capital/')}">#소자본창업</a></p>
   </form></div></section>`;
@@ -69,7 +69,7 @@ export function homePage(ctx) {
 
   // ---------- 테마별 창업 (배너 + 탭) ----------
   const themeTabs = THEMES.map(t => ({ ...t, items: themeItems(t, ctx) })).filter(t => t.items.length >= 3);
-  const themeCopy = { 초보창업: ['첫 창업이 막막할 때', '운영 매뉴얼이 갖춰진 매장부터, 담당자가 처음부터 끝까지 동행합니다.'], 소자본창업: ['권리금 1억 미만으로 시작', '테이크아웃·배달·소형 매장 중심의 소자본 창업 매장입니다.'], 여성창업: ['혼자서도 운영 가능한 매장', '규칙적인 영업시간과 1인 운영이 가능한 업종을 골랐습니다.'], 고수익창업: ['수익 구조가 확인된 매장', '월매출·월지출·월수익을 항목별로 공개합니다.'], 프랜차이즈창업: ['운영 중인 가맹점 인수', '신규 오픈 비용 없이 매출이 검증된 가맹점으로 시작합니다.'], 시니어창업: ['체력 부담이 적은 업종', '안정 상권과 간편 운영, 본사 교육이 있는 매장입니다.'], 수익형창업: ['상주하지 않아도 돌아가는 매장', '오토·반오토 운영 구조의 투자형 매장입니다.'], 신도시창업: ['입주가 진행 중인 상권', '신도시·택지지구의 성장 상권 매장입니다.'] };
+  const themeCopy = { 초보창업: ['첫 창업이 막막할 때', '운영 매뉴얼이 갖춰진 매장부터, 담당자가 처음부터 끝까지 동행합니다.'], 소자본창업: ['창업비용 1억 미만으로 시작', '테이크아웃·배달·소형 매장 중심의 소자본 창업 매장입니다.'], 여성창업: ['혼자서도 운영 가능한 매장', '규칙적인 영업시간과 1인 운영이 가능한 업종을 골랐습니다.'], 고수익창업: ['수익 구조가 확인된 매장', '월매출·월지출·월수익을 항목별로 공개합니다.'], 프랜차이즈창업: ['운영 중인 가맹점 인수', '신규 오픈 비용 없이 매출이 검증된 가맹점으로 시작합니다.'], 시니어창업: ['체력 부담이 적은 업종', '안정 상권과 간편 운영, 본사 교육이 있는 매장입니다.'], 수익형창업: ['상주하지 않아도 돌아가는 매장', '오토·반오토 운영 구조의 투자형 매장입니다.'], 신도시창업: ['입주가 진행 중인 상권', '신도시·택지지구의 성장 상권 매장입니다.'] };
   const themeSec = `<section class="sec sec--paper sec--bordered"><div class="wrap"><div class="sec__head"><div><span class="eyebrow">테마별</span><h2 class="h2">창업가이드 <span class="hl">추천 테마</span></h2></div><a class="more" href="${u('/theme/')}">테마 전체 ${ICONS.arrow}</a></div>
     <div class="tabs tabs--pills" data-tabs>
       <div class="tabs__nav" role="tablist">${themeTabs.map((t, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="theme-${i}" id="theme-tab-${i}" type="button">${esc(t.name)}<small>${t.items.length}</small></button>`).join('')}</div>
@@ -109,9 +109,9 @@ export function homePage(ctx) {
         <div class="tabs__nav" role="tablist">${['서울', '경기', '인천'].filter(sd => bySido[sd]).map((sd, i) => `<button class="tabs__tab" role="tab" aria-selected="${i === 0}" aria-controls="rg-${i}" id="rg-tab-${i}" type="button">${sd}<small>${bySido[sd].length}</small></button>`).join('')}</div>
         <div class="tabs__panels">${['서울', '경기', '인천'].filter(sd => bySido[sd]).map((sd, i) => `<div class="tabs__panel" role="tabpanel" id="rg-${i}" aria-labelledby="rg-tab-${i}" ${i ? 'hidden' : ''}><div class="regions">${Object.entries(byGugun).filter(([k]) => k.startsWith(sd + '/')).sort((x, y) => y[1].length - x[1].length).slice(0, 14).map(([k, arr]) => `<a class="region-pill" href="${u(`/region/${encodeURIComponent(sd)}/${encodeURIComponent(k.split('/')[1])}/`)}">${esc(k.split('/')[1])}<small>${arr.length}</small></a>`).join('')}</div></div>`).join('')}</div>
       </div></div>
-    <div class="panel-card"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">예산별 창업상품</span><h2 class="h2">권리금으로 찾기</h2></div><a class="more" href="${u('/budget/')}">전체 ${ICONS.arrow}</a></div>
+    <div class="panel-card"><div class="sec__head" style="margin-bottom:16px"><div><span class="eyebrow">예산별 창업상품</span><h2 class="h2">창업비용으로 찾기</h2></div><a class="more" href="${u('/budget/')}">전체 ${ICONS.arrow}</a></div>
       <ol class="budget-list">${BUDGETS.map(b => { const arr = byBudget[b.slug] || []; const avgP = arr.filter(l => l.profit).length ? Math.round(arr.filter(l => l.profit).reduce((s, l) => s + l.profit, 0) / arr.filter(l => l.profit).length) : 0; return `<li><a href="${u(`/budget/${b.slug}/`)}"><span class="budget-list__name">${esc(b.name)}</span><span class="budget-list__meta">${arr.length}건${avgP ? ` · 평균 월수익 ${esc(fmtMan(avgP))}` : ''}</span>${ICONS.arrow}</a></li>`; }).join('')}</ol>
-      <p class="muted" style="font-size:.82rem;margin-top:10px">표시 금액은 임대보증금을 제외한 권리금입니다.</p></div>
+      <p class="muted" style="font-size:.82rem;margin-top:10px">표시 금액은 임대보증금을 제외한 창업비용입니다.</p></div>
   </div></div></section>`;
 
   // ---------- 인기 프랜차이즈 ----------
@@ -130,7 +130,7 @@ export function homePage(ctx) {
     { t: '매장 선택 · 담당자 연결', who: '창업자 → 담당 창업전문가', d: '매장 페이지의 "담당자 전화 연결" 또는 문자 상담을 누르면 담당자에게 바로 연결됩니다. 어떤 매장을 보고 연락했는지 링크가 담당자 휴대폰으로 자동 전송되어 설명을 처음부터 반복하지 않습니다.', out: ['통화 즉시 연결', '열람 매장 링크 자동 문자', '상담 가능 시간 안내'], icon: 'phone', time: '당일' },
     { t: '매출·임대 자료 확인', who: '담당자 → 창업자', d: '양도인이 제출한 월매출·월지출 근거(포스 자료, 카드 매출, 배달앱 정산), 임대차 조건(보증금·월세·잔여 기간), 시설·집기 상태를 담당자가 정리해 설명합니다. 점주 인건비 제외 기준도 함께 안내합니다.', out: ['월매출·월지출 근거 자료', '임대차 조건 요약', '총 창업비용 산출'], icon: 'chart', time: '1~3일' },
     { t: '현장 답사 (담당자 동행)', who: '담당자 + 창업자', d: '양도인의 영업 보안을 위해 정확한 위치는 상담 후 안내하며, 담당자가 동행해 상권·유동 인구·경쟁 매장·매장 상태를 함께 확인합니다. 필요하면 시간대를 달리해 2차 답사를 진행합니다.', out: ['상권·경쟁 매장 체크', '시설 상태 점검', '영업시간대별 유동 확인'], icon: 'pin', time: '1~2주' },
-    { t: '조건 협의 · 계약', who: '양도인 ↔ 창업자 (담당자 조율)', d: '권리금·인수 시점·집기 포함 범위를 조율하고, 프랜차이즈는 본사 양수인 승인(교육 이수·계약 승계)을 함께 진행합니다. 임대인과의 임대차 승계 또는 신규 계약도 담당자가 일정에 맞춰 안내합니다.', out: ['권리금·인수 조건 합의', '본사 승인·교육 일정', '임대차 승계'], icon: 'doc', time: '2~4주' },
+    { t: '조건 협의 · 계약', who: '양도인 ↔ 창업자 (담당자 조율)', d: '창업비용·인수 시점·집기 포함 범위를 조율하고, 프랜차이즈는 본사 양수인 승인(교육 이수·계약 승계)을 함께 진행합니다. 임대인과의 임대차 승계 또는 신규 계약도 담당자가 일정에 맞춰 안내합니다.', out: ['창업비용·인수 조건 합의', '본사 승인·교육 일정', '임대차 승계'], icon: 'doc', time: '2~4주' },
     { t: '인수 · 오픈 후 지원', who: '담당자 → 창업자', d: '인수인계(레시피·거래처·직원·운영 노하우)를 거쳐 영업을 이어갑니다. 오픈 후에도 운영 문의, 추가 매장 확장, 향후 양도 의뢰까지 같은 담당자가 응대합니다.', out: ['인수인계 체크리스트', '오픈 후 운영 문의 응대', '확장·양도 재상담'], icon: 'flag', time: '인수일 이후' },
   ];
   const SEQ_ICON = { phone: ICONS.phone, chart: ICONS.chart || ICONS.bolt, pin: ICONS.pin || ICONS.search, doc: ICONS.doc || ICONS.share, flag: ICONS.flag || ICONS.arrow };
