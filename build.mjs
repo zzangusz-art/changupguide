@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, KEYWORD_PAGES, FAQ, PRICE_NOTICE } from './src/data.mjs';
-import { indexEntry, canon, BRAND_LIST, isoDate } from './src/lib/text.mjs';
+import { indexEntry, canon, BRAND_LIST, isoDate, makeDesc } from './src/lib/text.mjs';
 import { abs, u, FLAGS } from './src/lib/html.mjs';
 import { homePage } from './src/pages/home.mjs';
 import { photoFirst } from './src/lib/picks.mjs';
@@ -145,7 +145,20 @@ fs.writeFileSync(path.join(DIST, 'llms.txt'), llms);
 fs.writeFileSync(path.join(DIST, 'llms-full.txt'), llms + (real.length ? '\n\n## 매장 목록\n' + real.map(l => `- [${l.title}](${abs(`/listing/${l.id}/`)}) — ${l.kind1}${l.kind2 ? ` (${l.kind2})` : ''}${l.sales ? `, 월매출 ${l.sales.toLocaleString()}만원` : ''}${l.profit ? `, 월수익 ${l.profit.toLocaleString()}만원` : ''}${l.premium ? `, 창업비용 ${l.premium.toLocaleString()}만원` : ''}`).join('\n') : ''));
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-fs.writeFileSync(path.join(DIST, 'rss.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${esc(SITE.name)} 창업 인사이트</title><link>${abs('/blog/')}</link><description>지역·브랜드·예산별 창업 매장 분석과 양도양수 가이드</description><language>ko-KR</language><atom:link href="${abs('/rss.xml')}" rel="self" type="application/rss+xml"/>${posts.slice(0, 30).map(p => `<item><title>${esc(p.title)}</title><link>${abs(`/blog/${p.slug}/`)}</link><guid>${abs(`/blog/${p.slug}/`)}</guid><pubDate>${new Date(p.date).toUTCString()}</pubDate><description>${esc(p.desc)}</description></item>`).join('')}</channel></rss>`);
+// RSS (네이버 서치어드바이저 RSS 제출용): 실제 공개 매장 + 인사이트 글을 최신순으로. 비어 있으면 네이버가 거부하므로 주요 페이지로 채움
+{
+  const xd = d => { const t = new Date(d || Date.now()); return (isNaN(t) ? new Date() : t).toUTCString(); };
+  const cdata = s => `<![CDATA[${String(s ?? '').replace(/]]>/g, ']]&gt;')}]]>`;
+  const rssItems = [
+    ...listingsActive.filter(l => !l.sample && !l.canonicalId).map(l => ({ title: l.title || `${[l.sido, l.gugun, l.dong].filter(Boolean).join(' ')} ${l.brand || l.kind2 || ''} 창업 매장`, link: abs(`/listing/${l.id}/`), date: l.updatedAt || l.createdAt, desc: makeDesc(l), cat: l.brand || l.kind2 || l.kind1 || '창업 매장' })),
+    ...posts.map(p => ({ title: p.title, link: abs(`/blog/${p.slug}/`), date: p.updated || p.date, desc: p.desc, cat: '창업 인사이트' })),
+  ].sort((x, y) => String(y.date || '').localeCompare(String(x.date || ''))).slice(0, 50);
+  if (!rssItems.length) rssItems.push(
+    { title: `${SITE.name} — 양도양수 창업 매장 검색`, link: abs('/listings/'), date: null, desc: '지역·브랜드·예산별로 운영 중인 매장을 월매출·월수익·창업비용으로 비교합니다.', cat: '창업 매장' },
+    { title: `${SITE.name} 자주 묻는 질문`, link: abs('/faq/'), date: null, desc: '양도양수 창업 비용·절차 안내', cat: '안내' },
+    { title: `${SITE.name} 회사 소개`, link: abs('/about/'), date: null, desc: '2014년부터 양도양수 창업 컨설팅', cat: '안내' });
+  fs.writeFileSync(path.join(DIST, 'rss.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n<channel>\n<title>${esc(SITE.name)} — 양도양수 창업 매장·창업 인사이트</title>\n<link>${abs('/')}</link>\n<description>지역·브랜드·예산별 양도양수 창업 매장과 창업 인사이트</description>\n<language>ko</language>\n<lastBuildDate>${xd()}</lastBuildDate>\n<atom:link href="${abs('/rss.xml')}" rel="self" type="application/rss+xml"/>\n${rssItems.map(it => `<item>\n<title>${cdata(it.title)}</title>\n<link>${esc(it.link)}</link>\n<guid isPermaLink="true">${esc(it.link)}</guid>\n<pubDate>${xd(it.date)}</pubDate>\n<category>${cdata(it.cat)}</category>\n<description>${cdata(it.desc)}</description>\n</item>`).join('\n')}\n</channel>\n</rss>\n`);
+}
 fs.writeFileSync(path.join(DIST, 'feed.json'), JSON.stringify({ version: 'https://jsonfeed.org/version/1.1', title: `${SITE.name} 창업 인사이트`, home_page_url: abs('/'), feed_url: abs('/feed.json'), items: posts.slice(0, 30).map(p => ({ id: abs(`/blog/${p.slug}/`), url: abs(`/blog/${p.slug}/`), title: p.title, summary: p.desc, date_published: p.date })) }));
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
 // IndexNow(네이버·빙) 소유 확인 키 파일 — 서버가 재생성 후 바뀐 주소를 알림
