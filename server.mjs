@@ -53,6 +53,7 @@ if (!STATIC_ONLY) {
   db.exec('PRAGMA busy_timeout=5000;');
 }
 const now = () => new Date().toISOString();
+const STARTED_AT = new Date().toISOString();
 const uid = (p = '') => p + crypto.randomBytes(8).toString('hex');
 const hashPw = pw => { const salt = crypto.randomBytes(16).toString('hex'); return salt + ':' + crypto.scryptSync(pw, salt, 32).toString('hex'); };
 const checkPw = (pw, h) => { if (!h) return false; const [salt, k] = h.split(':'); return crypto.timingSafeEqual(Buffer.from(k, 'hex'), crypto.scryptSync(pw, salt, 32)); };
@@ -502,6 +503,8 @@ function serveStatic(req, res, url) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  // 상태 확인 (Railway 헬스체크·외부 감시용): 켜진 시각과 마지막 사이트 반영 결과
+  if (url.pathname === '/healthz') { let lb = null; try { lb = db ? setting('lastBuild') : null; } catch {} return json(res, 200, { ok: true, startedAt: STARTED_AT, uptimeSec: Math.round(process.uptime()), build: lb ? { at: lb.at, ok: lb.ok } : null }); }
   const apiPath = BASE && url.pathname.startsWith(BASE + '/api') ? url.pathname.slice(BASE.length) : url.pathname;
   if (apiPath.startsWith('/api/')) {
     if (STATIC_ONLY) return json(res, 503, { error: 'static preview — API 없음' });
