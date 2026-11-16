@@ -89,7 +89,7 @@ export function listingPage(l, ctx) {
       ${l.summary ? `<h3>담당자 한줄 요약</h3><p>${esc(l.summary)}</p>` : ''}
       <h3>이런 분께 맞습니다</h3><ul>
         ${theme ? `<li>${esc(theme.name)} 테마 매장 — ${esc(theme.desc.split('.')[0])}.</li>` : ''}
-        ${l.tags.includes('풀오토') || l.tags.includes('오토운영') ? '<li>매장 상주가 어려운 투자형·부업형 창업자 (오토 운영 구조)</li>' : ''}
+        ${(l.tags || []).includes('풀오토') || (l.tags || []).includes('오토운영') ? '<li>매장 상주가 어려운 투자형·부업형 창업자 (오토 운영 구조)</li>' : ''}
         ${l.brand ? `<li>${esc(l.brand)} 가맹점을 신규 오픈 비용 없이 운영 중인 매장으로 시작하려는 분</li>` : `<li>${esc(l.kind2 || l.kind1)} 업종 경험이 있거나, 담당자 교육으로 시작하려는 분</li>`}
         ${budget ? `<li>창업비용 예산 ${esc(budget.name)} 범위에서 ${esc(loc)} 상권을 찾는 분</li>` : ''}
       </ul>

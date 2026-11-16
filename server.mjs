@@ -216,7 +216,28 @@ function seedBrands() {
 }
 
 // 시작 순서 (아래 상수 정의 뒤에 실행): 부팅 백업 → 시드 → 저장소 새 항목 동기화 → 비밀번호 재설정 → 재빌드, 이후 20분마다 백업 점검
+if (db) { setTimeout(guideTick, 20000); setInterval(guideTick, 5 * 60 * 1000); }
 if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migrateWords2(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+
+// ---------- 창업 인사이트 자동 발행: 하루 3편 (KST 09:05 브랜드 · 13:05 프랜차이즈 키워드 · 18:05 지역), 처음 한 번 6편 ----------
+// 운영(Railway)에서만 동작. 로컬에서 시험하려면 AUTO_POSTS=1
+let guideBusy = false;
+function runGuides(args, why) {
+  return new Promise(res => { if (guideBusy) return res(1); guideBusy = true; exportData();
+    const ch = spawn(process.execPath, [path.join(ROOT, 'tools/make_guides.mjs'), ...args], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = ''; ch.stdout.on('data', d => out += d); ch.stderr.on('data', d => out += d);
+    ch.on('close', code => { guideBusy = false; console.log(`[guides] ${why}: ${out.trim().split(String.fromCharCode(10)).slice(-3).join(' / ')}`); try { audit('system', 'post_auto', why, out.trim().split(String.fromCharCode(10)).filter(x => x.startsWith('발행:')).join(' | ').slice(0, 900)); } catch {} if (code === 0) scheduleRebuild(1500); res(code); });
+  });
+}
+function guideTick() {
+  if (!(ON_RAILWAY || process.env.AUTO_POSTS === '1') || process.env.AUTO_POSTS === '0') return;
+  const k = new Date(Date.now() + 9 * 3600e3); const day = k.toISOString().slice(0, 10); const hm = k.getUTCHours() * 60 + k.getUTCMinutes();
+  const SLOTS = [9 * 60 + 5, 13 * 60 + 5, 18 * 60 + 5]; const st = setting('guideRuns') || {};
+  if (!st.initial) { setSetting('guideRuns', { initial: day, [day]: [0, 1, 2] }); runGuides(['--count', '6', '--date', day, '--now'], '첫 발행 6편'); return; }
+  const done = st[day] || []; const i = SLOTS.findIndex((t, n) => hm >= t && !done.includes(n)); if (i < 0) return;
+  const keep = Object.fromEntries(Object.entries(st).filter(([d]) => d === 'initial' || d >= new Date(Date.now() - 7 * 864e5 + 9 * 3600e3).toISOString().slice(0, 10)));
+  setSetting('guideRuns', { ...keep, [day]: [...done, i] }); runGuides(['--count', '1', '--slot', String(i), '--date', day], `${['오전', '오후', '저녁'][i]} 발행`);
+}
 
 // ---------- 데이터 내보내기 + 재빌드 ----------
 let rebuildTimer = null, building = false, pending = false;
@@ -499,7 +520,7 @@ async function api(req, res, url) {
 
   // --- 글 발행 ---
   if (p === '/posts' && m === 'GET') { if (!need()) return; const dir = POSTS_DIR; const items = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => { const p2 = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')); return { slug: p2.slug, title: p2.title, date: p2.date, status: p2.status, listingId: p2.listingId, category: p2.category }; }).sort((a, b) => b.date.localeCompare(a.date)) : []; return json(res, 200, { items }); }
-  if (p === '/posts/generate' && m === 'POST') { if (!needAdmin()) return; exportData(); const child = spawn(process.execPath, [path.join(ROOT, 'tools/make_posts.mjs'), '--count', String(body.count || 3), ...(body.force ? ['--force'] : [])], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV }, stdio: ['ignore', 'pipe', 'pipe'] }); let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d); child.on('close', code => { scheduleRebuild(1000); json(res, 200, { ok: code === 0, log: out }); }); return; }
+  if (p === '/posts/generate' && m === 'POST') { if (!needAdmin()) return; exportData(); const child = spawn(process.execPath, [path.join(ROOT, 'tools/make_guides.mjs'), '--count', String(Math.min(6, Number(body.count) || 3)), '--now'], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV }, stdio: ['ignore', 'pipe', 'pipe'] }); let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d); child.on('close', code => { scheduleRebuild(1000); json(res, 200, { ok: code === 0, log: out }); }); return; }
   if ((mm = p.match(/^\/posts\/([^/]+)$/)) && m === 'PUT') { if (!needAdmin()) return; if (!/^[^/\\.][^/\\]*$/.test(mm[1])) return json(res, 400, {}); const f = path.join(POSTS_DIR, decodeURIComponent(mm[1]) + '.json'); if (!fs.existsSync(f)) return json(res, 404, {}); const p2 = JSON.parse(fs.readFileSync(f, 'utf-8')); Object.assign(p2, { title: body.title ?? p2.title, status: body.status ?? p2.status, body: body.body ?? p2.body, desc: body.desc ?? p2.desc, updated: now() }); fs.writeFileSync(f, JSON.stringify(p2, null, 1)); scheduleRebuild(); return json(res, 200, { ok: true }); }
 
   // --- 설정·운영 ---

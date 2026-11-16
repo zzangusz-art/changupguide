@@ -20,6 +20,8 @@ const DATA = process.env.CU_DATA_DIR || 'src/data'; const dp = f => path.join(DA
 // 관리자 "설정 → 사이트 정보"에서 바꾼 대표번호·이메일·상담시간 (src/data/site.json)
 if (fs.existsSync(dp('site.json'))) { const o = read(dp('site.json')); for (const k of ['phone', 'email', 'hours', 'gaId', 'gtmId', 'naverWa', 'clarityId', 'googleVerification', 'naverVerification', 'bingVerification']) if (typeof o[k] === 'string') SITE[k] = o[k].trim() || (k === 'hours' ? SITE.hours : ''); const d = SITE.phone.replace(/[^0-9]/g, ''); SITE.phoneTel = d ? '+82' + d.replace(/^0/, '') : ''; }
 const listingsAll = read(dp('listings.json'));
+// 직원이 일부 칸을 비워 저장해도 빌드가 멈추지 않도록 기본값 보정
+for (const l of listingsAll) { if (!Array.isArray(l.tags)) l.tags = []; if (!Array.isArray(l.images)) l.images = []; if (!l.expenseBreakdown || typeof l.expenseBreakdown !== 'object') l.expenseBreakdown = {}; }
 // 외부(창업미디어) 수집 데이터 분리: 담당자 계정은 공개하지 않고, 매장은 SHOW_LEGACY=0 이면 검증(verified) 완료분만 공개
 const LEGACY_SRC = 'changupmedia.com';
 const isLegacy = l => l.source === LEGACY_SRC;
