@@ -15,6 +15,8 @@ const photoSrc = p => !p ? '' : p.startsWith('data:') || /^https?:/.test(p) ? p 
 const thumbSrc = p => !p ? '' : p.startsWith('data:') || /^https?:/.test(p) ? p : p.startsWith('upload/') ? 'https://www.changupmedia.com/' + p : p.includes('/thumb/') ? `../${p}` : `../${p.replace('photos/', 'photos/thumb/')}`;
 
 export function toast(msg, kind = '', ms = 3200) { const el = document.createElement('div'); el.className = `toast ${kind}`; el.textContent = msg; $('#toasts').appendChild(el); setTimeout(() => el.remove(), ms); }
+// 검색칸: 한글 조합 중에는 화면을 다시 그리지 않음 (다시 그리면 "ㄹㅗㅅ"처럼 자모가 풀어짐) — 조합이 끝나면 반영
+const onSearch = (inp, fn) => { if (!inp) return; inp.addEventListener('compositionstart', () => { inp.dataset.composing = '1'; }); inp.addEventListener('compositionend', () => { delete inp.dataset.composing; fn({ target: inp }); }); inp.addEventListener('input', e => { if (e.isComposing || inp.dataset.composing) return; fn(e); }); };
 const fail = e => { console.error(e); toast(e.message || String(e), 'err', 4500); };
 const agentName = id => (cache.agents || []).find(a => a.id === id)?.name || id || '-';
 
@@ -146,7 +148,7 @@ async function listingList(view, my) {
     <div class="table-wrap"><table class="table"><thead><tr>${me.isAdmin ? `<th><input type="checkbox" data-all ${slice.length && slice.every(l => st.sel.has(l.id)) ? 'checked' : ''}></th>` : ''}<th>사진</th><th>번호</th><th>제목</th><th>지역·브랜드</th><th class="right">월매출</th><th class="right">월수익</th><th class="right">권리금</th><th>담당 / 등록</th><th>상태</th><th>갱신</th><th></th></tr></thead><tbody>
     ${slice.map(l => { const s = srcOf(l); return `<tr data-id="${l.id}">${me.isAdmin ? `<td><input type="checkbox" data-sel="${l.id}" ${st.sel.has(l.id) ? 'checked' : ''}></td>` : ''}<td>${l.images && l.images[0] ? `<img class="thumb" src="${thumbSrc(l.images[0])}" alt="">` : '<div class="thumb"></div>'}</td><td>${l.id}</td><td><a href="#/listings/${l.id}"><b>${esc(l.title)}</b></a><br><span class="muted" style="font-size:.78rem">${esc((l.summary || '').slice(0, 50))}</span></td><td>${esc([l.sido, l.gugun].join(' '))}<br><span class="badge y">${esc(l.brand || l.kind2 || '-')}</span></td><td class="right">${l.sales ? fmtMan(l.sales) : '-'}</td><td class="right" style="color:var(--red);font-weight:900">${l.profit ? fmtMan(l.profit) : '-'}</td><td class="right" style="color:var(--blue);font-weight:900">${l.premium ? fmtWon(l.premium) : '협의'}</td><td>${agentCell(l)}${l.createdBy ? `<br><span class="muted" style="font-size:.74rem">등록 ${esc(agentName(l.createdBy))}</span>` : ''}</td><td>${canEditL(l) && l.status !== 'archived' ? `<select class="st-sel st-${l.status}" data-st-id="${l.id}" title="바로 변경">${Object.entries(STATUS).filter(([k]) => k !== 'archived').map(([k, [t]]) => `<option value="${k}" ${l.status === k ? 'selected' : ''}>${t}</option>`).join('')}</select>` : `<span class="badge ${STATUS[l.status]?.[1] || 'c'}">${STATUS[l.status]?.[0] || l.status}</span>`}<br><span class="badge ${SRC[s][1]}" style="margin-top:3px">${SRC[s][0]}</span>${l.duplicateOf ? `<br><span class="badge r" title="기존 사이트 중복 등록 — 사이트 목록에는 No.${l.duplicateOf}만 표시">중복 No.${l.duplicateOf}</span>` : ''}</td><td class="muted nowrap">${fmtDate(l.updatedAt)}</td><td class="nowrap"><a class="btn btn--sm" href="#/listings/${l.id}">수정</a> <a class="btn btn--sm btn--ghost" href="#/listings/new/${l.id}" title="같은 내용으로 새 매장 등록">복제</a>${my && l.status !== 'archived' && (me.isAdmin || l.agentId === me.id || (l.createdBy === me.id && !l.agentId)) ? ` <button class="btn btn--sm btn--ghost btn--del" data-del-l="${l.id}" title="바로 삭제 (삭제됨 목록에 보관, 되돌리기 가능)">삭제</button>` : ''}</td></tr>`; }).join('') || `<tr><td colspan="12" class="muted">${my ? '아직 등록한 매장이 없습니다. 오른쪽 위 "+ 매장 등록"으로 시작하세요.' : '매장이 없습니다.'}</td></tr>`}</tbody></table></div>
     <div class="pager">${Array.from({ length: pages }, (_, i) => `<button ${i + 1 === st.page ? 'aria-current="page"' : ''} data-p="${i + 1}">${i + 1}</button>`).join('')}</div>`;
-    $('[data-q]', view).addEventListener('input', e => { st.q = e.target.value; st.page = 1; const pos = e.target.selectionStart; draw(); const inp = $('[data-q]', view); inp.focus(); inp.setSelectionRange(pos, pos); });
+    onSearch($('[data-q]', view), e => { st.q = e.target.value; st.page = 1; const pos = e.target.selectionStart; draw(); const inp = $('[data-q]', view); inp.focus(); inp.setSelectionRange(pos, pos); });
     $('[data-status]', view).addEventListener('change', e => { st.status = e.target.value; st.page = 1; draw(); });
     $('[data-agent]', view)?.addEventListener('change', e => { st.agent = e.target.value; st.page = 1; draw(); });
     $('[data-src]', view).addEventListener('change', e => { st.src = e.target.value; st.page = 1; draw(); });
@@ -381,7 +383,7 @@ route('brands', async (view, rest) => {
     view.innerHTML = `<div class="alert info">브랜드를 등록해 두면 매장 등록 때 브랜드명만 고르면 <b>업종(고정값)</b>과 <b>평균 지출 비율</b>이 자동으로 들어가고, 월매출만 넣으면 월지출·월수익이 계산됩니다. 직원은 자동값을 언제든 직접 고칠 수 있습니다. 소개·이미지는 사이트 브랜드 페이지에 표시됩니다.</div>
     <div class="toolbar"><input type="search" placeholder="브랜드명·별칭 검색" value="${esc(q)}" data-q><span class="muted">${list.length}개</span></div>
     <div class="table-wrap"><table class="table"><thead><tr><th>로고</th><th>브랜드</th><th>업종 (기본값)</th><th>평균 지출 비율</th><th class="right">매장</th><th>소개</th><th>수정일</th><th></th></tr></thead><tbody>${list.map(b => { const p = b.expensePct || {}; const has = EB_KEYS.filter(k => p[k] != null); return `<tr><td>${b.logo ? `<img src="${esc(photoSrc(b.logo))}" alt="" style="height:26px;max-width:80px;object-fit:contain">` : ''}</td><td><b>${esc(b.name)}</b>${(b.aliases || []).length ? `<br><span class="muted" style="font-size:.76rem">${esc(b.aliases.join(', '))}</span>` : ''}</td><td>${esc(b.kind1 || '-')}${b.kind2 ? ` › ${esc(b.kind2)}` : ''}</td><td class="muted" style="font-size:.8rem">${has.length ? has.map(k => `${k.replace('(세전)', '')} ${p[k]}%`).join(' · ') : '-'}</td><td class="right">${cnt[b.slug] || 0}</td><td>${b.intro ? '<span class="badge g">있음</span>' : '<span class="badge c">-</span>'}</td><td class="muted nowrap">${b.updatedAt ? fmtDate(b.updatedAt) : '-'}</td><td><button class="btn btn--sm" data-edit="${esc(b.slug)}">${me.isAdmin ? '수정' : '보기'}</button></td></tr>`; }).join('') || '<tr><td colspan="8" class="muted">브랜드가 없습니다.</td></tr>'}</tbody></table></div>`;
-    $('[data-q]', view).addEventListener('input', e => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('[data-q]', view); i.focus(); i.setSelectionRange(pos, pos); });
+    onSearch($('[data-q]', view), e => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('[data-q]', view); i.focus(); i.setSelectionRange(pos, pos); });
     $$('[data-edit]', view).forEach(b => b.addEventListener('click', () => brandForm(items.find(x => x.slug === b.dataset.edit))));
   };
   draw();
@@ -471,23 +473,22 @@ route('photos', async view => {
       ${fa.list.map(([k, n]) => row(k, n, `📁 ${esc(k)}`)).join('')}
       ${row('', fa.none, `📂 ${FOLDER_NONE}`)}
       <form class="newf" data-newf><input list="brandlist" name="nf" placeholder="새 브랜드 폴더 이름" maxlength="40" required><button class="btn btn--sm btn--red" type="submit">＋ 만들기</button></form>
-      <p class="muted" style="font-size:.72rem;margin:8px 6px 0;line-height:1.5">사진을 눌러 고른 뒤 폴더로 <b>끌어다 놓으면</b> 이동됩니다. ✎ 이름 바꾸기, 🗑 폴더 삭제(사진은 미분류로 이동).</p></aside>
+      <p class="muted" style="font-size:.72rem;margin:8px 6px 0;line-height:1.5">사진을 <b>끌어서 폴더에 놓으면</b> 바로 이동됩니다. 여러 장을 눌러 고른 뒤 끌면 함께 옮겨집니다 (휴대폰은 사진을 꾹 누른 채 끌기). ✎ 이름 바꾸기, 🗑 폴더 삭제(사진은 미분류로 이동).</p></aside>
       <div><div class="toolbar"><b>${esc(cur)}</b><input type="search" placeholder="파일명·폴더·담당자 검색" value="${esc(q)}" data-q><label class="chip ${mine ? 'is-on' : ''}" data-mine>내 사진만</label><button type="button" class="chip" data-selall>${list.length && list.every(p => sel.has(p.id)) ? '선택 해제' : '이 폴더 전체 선택'}</button>${folder === null ? `<label class="muted" style="display:flex;gap:6px;align-items:center">올릴 폴더 <input list="brandlist" data-target value="${esc(uploadTo)}" placeholder="브랜드 (비우면 미분류)" style="width:170px"></label>` : ''}<span class="muted">${list.length}장 · 팀 전체 공유</span></div>
       ${sel.size ? `<div class="bulkbar"><b>${sel.size}장 선택</b><select data-mv-to><option value="">${FOLDER_NONE}</option>${fa.list.map(([k]) => `<option value="${esc(k)}" ${k === folder ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select><button class="btn btn--sm" data-mv-sel>폴더로 이동</button><button class="btn btn--sm btn--ghost btn--del" data-del-sel>선택 삭제</button><button class="btn btn--sm btn--ghost" data-clear>선택 해제</button></div>` : ''}
       <datalist id="brandlist">${brandNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-      <div class="lib lib--drop" data-lib title="빈 곳을 더블클릭하거나 사진 파일을 끌어다 놓으면 바로 업로드">${list.slice(0, 400).map(p => `<div class="it ${sel.has(p.id) ? 'is-on' : ''}" data-id="${p.id}" draggable="true" title="${esc(p.name)} · ${esc(agentName(p.agentId))} — 눌러서 선택"><img src="${thumbSrc(p.thumb || p.file)}" loading="lazy" alt="" draggable="false"><span class="fd">${esc(p.folder || FOLDER_NONE)}</span><span class="ck">${sel.has(p.id) ? '✓' : ''}</span><div class="meta">${esc(p.name)} · ${esc(agentName(p.agentId))}</div><button class="mv" data-mv="${p.id}" title="폴더 옮기기">📁</button>${canDel(p) ? `<button class="del" data-del="${p.id}" title="삭제">×</button>` : ''}</div>`).join('') || `<div class="lib-empty">이 폴더에 사진이 없습니다.<br><b>여기를 더블클릭</b>하거나 사진을 끌어다 놓으면 바로 올라갑니다.</div>`}</div></div></div>`;
+      <div class="lib lib--drop" data-lib title="빈 곳을 더블클릭하거나 사진 파일을 끌어다 놓으면 바로 업로드">${list.slice(0, 400).map(p => `<div class="it ${sel.has(p.id) ? 'is-on' : ''}" data-id="${p.id}" title="${esc(p.name)} · ${esc(agentName(p.agentId))} — 눌러서 선택 · 끌어서 왼쪽 폴더에 놓으면 이동"><img src="${thumbSrc(p.thumb || p.file)}" loading="lazy" alt="" draggable="false"><span class="fd">${esc(p.folder || FOLDER_NONE)}</span><span class="ck">${sel.has(p.id) ? '✓' : ''}</span><div class="meta">${esc(p.name)} · ${esc(agentName(p.agentId))}</div><button class="mv" data-mv="${p.id}" title="폴더 옮기기">📁</button>${canDel(p) ? `<button class="del" data-del="${p.id}" title="삭제">×</button>` : ''}</div>`).join('') || `<div class="lib-empty">이 폴더에 사진이 없습니다.<br><b>여기를 더블클릭</b>하거나 사진을 끌어다 놓으면 바로 올라갑니다.</div>`}</div></div></div>`;
     // 폴더: 열기·더블클릭 업로드·끌어다 놓아 이동·이름 바꾸기·삭제
     $$('.folders .f', view).forEach(c => {
       const key = c.dataset.f === '*' ? null : c.dataset.f;
       c.addEventListener('click', e => { if (e.target.closest('.fa')) return; folder = key; if (folder !== null) uploadTo = folder; draw(); });
       c.addEventListener('dblclick', e => { if (e.target.closest('.fa')) return; if (key !== null) { folder = key; uploadTo = key; draw(); } fileInput.click(); });
-      if (key !== null) { c.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('text/cu-photos')) { e.preventDefault(); c.classList.add('is-drop'); } }); c.addEventListener('dragleave', () => c.classList.remove('is-drop')); c.addEventListener('drop', e => { const ids = e.dataTransfer.getData('text/cu-photos'); c.classList.remove('is-drop'); if (!ids) return; e.preventDefault(); moveTo(ids.split(','), key); }); }
     });
     $$('[data-ren]', view).forEach(bt => bt.addEventListener('click', async e => { e.stopPropagation(); const from = bt.dataset.ren; const n = prompt(`"${from}" 폴더의 새 이름`, from); if (n == null || !n.trim() || n.trim() === from) return; try { let r; try { r = await api.renamePhotoFolder(from, n.trim()); } catch (er) { if (er.status === 409 && confirm(er.message)) r = await api.renamePhotoFolder(from, n.trim(), true); else throw er; } for (const p of items) if ((p.folder || '') === from) p.folder = r.name; saved = saved.filter(x => x !== from); if (!saved.includes(r.name)) saved.push(r.name); if (folder === from) folder = r.name; draw(); toast(`폴더 이름을 "${r.name}"(으)로 바꿨습니다 (${r.moved}장)`, 'ok'); } catch (er) { if (er.status !== 409) fail(er); } }));
     $$('[data-delf]', view).forEach(bt => bt.addEventListener('click', async e => { e.stopPropagation(); const k = bt.dataset.delf; const n = items.filter(p => (p.folder || '') === k).length; if (!confirm(`"${k}" 폴더를 삭제할까요?\n${n ? `안에 있는 사진 ${n}장은 지워지지 않고 "${FOLDER_NONE}"으로 옮겨집니다.` : '빈 폴더입니다.'}`)) return; try { await api.deletePhotoFolder(k); for (const p of items) if ((p.folder || '') === k) p.folder = ''; saved = saved.filter(x => x !== k); if (folder === k) folder = null; draw(); toast(`"${k}" 폴더를 삭제했습니다`, 'ok'); } catch (er) { fail(er); } }));
     $('[data-newf]', view).addEventListener('submit', async e => { e.preventDefault(); const n = e.target.nf.value.trim(); if (!n) return; try { const r = await api.createPhotoFolder(n); saved.push(r.name); folder = r.name; uploadTo = r.name; draw(); toast(`"${r.name}" 폴더를 만들었습니다. 사진을 끌어다 놓거나 빈 곳을 더블클릭해 올리세요.`, 'ok'); } catch (er) { fail(er); } });
     // 상단 도구
-    $('[data-q]', view).addEventListener('input', e => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('[data-q]', view); i.focus(); i.setSelectionRange(pos, pos); });
+    onSearch($('[data-q]', view), e => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('[data-q]', view); i.focus(); i.setSelectionRange(pos, pos); });
     $('[data-mine]', view).addEventListener('click', () => { mine = !mine; draw(); });
     $('[data-selall]', view).addEventListener('click', () => { const all = list.length && list.every(p => sel.has(p.id)); for (const p of list) all ? sel.delete(p.id) : sel.add(p.id); draw(); });
     $('[data-target]', view)?.addEventListener('change', e => { uploadTo = e.target.value.trim(); });
@@ -497,9 +498,8 @@ route('photos', async view => {
     // 사진: 눌러서 선택, 끌어서 폴더로
     const lib = $('[data-lib]', view);
     $$('.it', lib).forEach(it => {
-      it.addEventListener('click', e => { if (e.target.closest('button')) return; const id = it.dataset.id; sel.has(id) ? sel.delete(id) : sel.add(id); draw(); });
-      it.addEventListener('dragstart', e => { const id = it.dataset.id; const ids = sel.has(id) ? [...sel] : [id]; e.dataTransfer.setData('text/cu-photos', ids.join(',')); e.dataTransfer.effectAllowed = 'move'; lib.classList.add('is-moving'); });
-      it.addEventListener('dragend', () => lib.classList.remove('is-moving'));
+      it.addEventListener('click', e => { if (e.target.closest('button') || Date.now() - dragEndAt < 400) return; const id = it.dataset.id; sel.has(id) ? sel.delete(id) : sel.add(id); draw(); });
+      it.addEventListener('pointerdown', e => pressPhoto(e, it));
     });
     lib.addEventListener('dblclick', e => { if (!e.target.closest('.it')) fileInput.click(); });
     lib.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); lib.classList.add('is-drag'); } }); lib.addEventListener('dragleave', () => lib.classList.remove('is-drag'));
@@ -507,6 +507,47 @@ route('photos', async view => {
     $$('[data-mv]', view).forEach(bt => bt.addEventListener('click', async ev => { ev.stopPropagation(); const p = items.find(x => x.id === bt.dataset.mv); const n = prompt(`옮길 폴더(브랜드) 이름 — 비우면 "${FOLDER_NONE}"\n지금: ${p.folder || FOLDER_NONE}`, p.folder || ''); if (n == null) return; moveTo([p.id], n.trim()); }));
     $$('[data-del]', view).forEach(bt => bt.addEventListener('click', async ev => { ev.stopPropagation(); if (!confirm('이 사진을 삭제할까요? 매장에서 사용 중이면 삭제되지 않습니다.')) return; try { await api.deletePhoto(bt.dataset.del); items = items.filter(p => p.id !== bt.dataset.del); draw(); toast('삭제했습니다', 'ok'); } catch (e) { fail(e); } }));
   };
+  // ---- 사진 끌어서 폴더로 옮기기 (마우스: 6px 이상 끌면 시작 / 터치: 0.35초 꾹 누른 뒤 끌기) ----
+  let press = null, drag = null, dragEndAt = 0, hoverKey, scrollV = 0, scrollRaf = 0;
+  const ac = new AbortController(); const on = (t, ev, fn, o = {}) => t.addEventListener(ev, fn, { ...o, signal: ac.signal });
+  window.addEventListener('hashchange', () => ac.abort(), { once: true });
+  function pressPhoto(e, it) {
+    if (e.button > 0 || e.target.closest('button')) return;
+    press = { id: it.dataset.id, x: e.clientX, y: e.clientY, type: e.pointerType, timer: null };
+    if (e.pointerType !== 'mouse') press.timer = setTimeout(() => { if (press) { startDrag(press.x, press.y); navigator.vibrate?.(20); } }, 350);
+  }
+  function startDrag(x, y) {
+    const id = press.id; const ids = sel.has(id) ? [...sel] : [id]; const ph = items.find(p => p.id === id); clearTimeout(press.timer); press = null;
+    const g = document.createElement('div'); g.className = 'drag-ghost'; g.innerHTML = `<div class="dg-img"><img src="${thumbSrc(ph?.thumb || ph?.file)}" alt="">${ids.length > 1 ? `<b>${ids.length}</b>` : ''}</div><span data-tip>${ids.length}장 — 왼쪽 폴더에 놓으세요</span>`; document.body.appendChild(g);
+    drag = { ids, g }; document.body.classList.add('is-dragging-photos'); moveGhost(x, y);
+  }
+  function folderAt(x, y) { const el = document.elementFromPoint(x, y); const f = el && el.closest('.folders .f'); return f && f.dataset.f !== '*' ? f : null; }
+  function moveGhost(x, y) {
+    drag.g.style.transform = `translate(${x + 14}px, ${y + 14}px)`;
+    const f = folderAt(x, y); const key = f ? f.dataset.f : undefined;
+    if (key !== hoverKey) { $$('.folders .f.is-drop', view).forEach(z => z.classList.remove('is-drop')); if (f) f.classList.add('is-drop'); hoverKey = key; $('[data-tip]', drag.g).textContent = f ? `${drag.ids.length}장 → ${key || FOLDER_NONE}` : `${drag.ids.length}장 — 왼쪽 폴더에 놓으세요`; drag.g.classList.toggle('is-ok', !!f); }
+    // 화면 위·아래 가장자리, 폴더 목록 가장자리에서 자동 스크롤
+    const fl = $('.folders', view); let v = y < 70 ? -14 : y > innerHeight - 70 ? 14 : 0; scrollV = v;
+    if (fl && fl.scrollHeight > fl.clientHeight) { const r = fl.getBoundingClientRect(); if (x >= r.left && x <= r.right) { if (y < r.top + 40 && y > r.top - 10) fl.scrollTop -= 10; else if (y > r.bottom - 40 && y < r.bottom + 10) fl.scrollTop += 10; } }
+    if (scrollV && !scrollRaf) { const step = () => { if (!drag || !scrollV) { scrollRaf = 0; return; } window.scrollBy(0, scrollV); scrollRaf = requestAnimationFrame(step); }; scrollRaf = requestAnimationFrame(step); }
+  }
+  function endDrag(x, y, cancel) {
+    if (!drag) return; const f = cancel ? null : folderAt(x, y); const ids = drag.ids; drag.g.remove(); drag = null; hoverKey = undefined; scrollV = 0; dragEndAt = Date.now();
+    document.body.classList.remove('is-dragging-photos'); $$('.folders .f.is-drop', view).forEach(z => z.classList.remove('is-drop'));
+    if (f) { const key = f.dataset.f; const same = ids.every(id => (items.find(p => p.id === id)?.folder || '') === key); if (same) toast(`이미 ${key || FOLDER_NONE} 폴더에 있습니다`); else moveTo(ids, key); }
+  }
+  on(document, 'pointermove', e => {
+    if (drag) { e.preventDefault(); moveGhost(e.clientX, e.clientY); return; }
+    if (!press) return; const d = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+    if (press.type === 'mouse' ? d > 6 : false) startDrag(e.clientX, e.clientY);
+    else if (press.type !== 'mouse' && d > 10) { clearTimeout(press.timer); press = null; } // 꾹 누르기 전에 움직이면 일반 스크롤
+  });
+  on(document, 'pointerup', e => { if (press) { clearTimeout(press.timer); press = null; } if (drag) endDrag(e.clientX, e.clientY); });
+  on(document, 'pointercancel', () => { if (press) { clearTimeout(press.timer); press = null; } if (drag) endDrag(0, 0, true); });
+  on(document, 'keydown', e => { if (e.key === 'Escape' && drag) endDrag(0, 0, true); });
+  on(document, 'touchmove', e => { if (drag) e.preventDefault(); }, { passive: false }); // 끄는 동안 화면이 같이 스크롤되지 않게
+  on(document, 'contextmenu', e => { if (drag || press) e.preventDefault(); });
+  on(document, 'dragstart', e => { if (e.target.closest?.('.lib .it')) e.preventDefault(); }); // 브라우저 기본 이미지 끌기 막기
   draw();
   fileInput.addEventListener('change', async e => { await doUpload([...e.target.files]); e.target.value = ''; });
 });
