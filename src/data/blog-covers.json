@@ -1,0 +1,58 @@
+{
+ "kw-transfer": {
+  "file": "img/blog/kw-transfer.jpg",
+  "unsplash": "https://unsplash.com/photos/4mEyvORkbN0"
+ },
+ "kw-franchise-steps": {
+  "file": "img/blog/kw-franchise-steps.jpg",
+  "unsplash": "https://unsplash.com/photos/8k5j5z6ZYT4"
+ },
+ "kw-disclosure": {
+  "file": "img/blog/kw-disclosure.jpg",
+  "unsplash": "https://unsplash.com/photos/ecHGTPfjNfA"
+ },
+ "kw-cost": {
+  "file": "img/blog/kw-cost.jpg",
+  "unsplash": "https://unsplash.com/photos/JhevWHCbVyw"
+ },
+ "kw-cafe": {
+  "file": "img/blog/kw-cafe.jpg",
+  "unsplash": "https://unsplash.com/photos/dettQdy_nc0"
+ },
+ "kw-small": {
+  "file": "img/blog/kw-small.jpg",
+  "unsplash": "https://unsplash.com/photos/8jp-6SjVibM"
+ },
+ "kw-beginner": {
+  "file": "img/blog/kw-beginner.jpg",
+  "unsplash": "https://unsplash.com/photos/QGg-vsPYbu8"
+ },
+ "kw-contract": {
+  "file": "img/blog/kw-contract.jpg",
+  "unsplash": "https://unsplash.com/photos/doplSDELX7E"
+ },
+ "kw-area": {
+  "file": "img/blog/kw-area.jpg",
+  "unsplash": "https://unsplash.com/photos/-sUFxh7wQqY"
+ },
+ "kw-auto": {
+  "file": "img/blog/kw-auto.jpg",
+  "unsplash": "https://unsplash.com/photos/X_bbCAYzlTs"
+ },
+ "kw-sales-proof": {
+  "file": "img/blog/kw-sales-proof.jpg",
+  "unsplash": "https://unsplash.com/photos/3YSDTzqnVtQ"
+ },
+ "kw-approval": {
+  "file": "img/blog/kw-approval.jpg",
+  "unsplash": "https://unsplash.com/photos/Q80LYxv_Tbs"
+ },
+ "region": {
+  "file": "img/blog/region.jpg",
+  "unsplash": "https://unsplash.com/photos/YhrfGxxNZQc"
+ },
+ "brand": {
+  "file": "img/blog/brand.jpg",
+  "unsplash": "https://unsplash.com/photos/dU3KJqyYlO0"
+ }
+}

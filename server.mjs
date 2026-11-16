@@ -217,7 +217,21 @@ function seedBrands() {
 
 // 시작 순서 (아래 상수 정의 뒤에 실행): 부팅 백업 → 시드 → 저장소 새 항목 동기화 → 비밀번호 재설정 → 재빌드, 이후 20분마다 백업 점검
 if (db) { setTimeout(guideTick, 20000); setInterval(guideTick, 5 * 60 * 1000); }
-if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migrateWords2(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migrateWords2(); migrateGuideCovers(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+
+// 이미 발행된 가이드 글의 썸네일을 무료 사진으로 교체 (img/og/… 그림 카드 → img/blog/…)
+function migrateGuideCovers() {
+  if (setting('guideCovers') >= 1) return;
+  try {
+    const C = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/blog-covers.json'), 'utf-8')); let n = 0;
+    if (fs.existsSync(POSTS_DIR)) for (const f of fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.json'))) {
+      const x = path.join(POSTS_DIR, f); const p = JSON.parse(fs.readFileSync(x, 'utf-8')); if (p.generator !== 'guide-v1' || !String(p.cover || '').startsWith('img/og/')) continue;
+      const k = String(p.guideKey || '').startsWith('kw:') ? p.guideKey.replace(':', '-') : String(p.guideKey || '').split(':')[0]; if (!C[k]) continue;
+      p.cover = C[k].file; fs.writeFileSync(x, JSON.stringify(p, null, 1)); n++;
+    }
+    setSetting('guideCovers', 1); console.log(`[migrate] 블로그 썸네일 교체 ${n}편`);
+  } catch (e) { console.log('[migrate] covers skip', e.message); }
+}
 
 // ---------- 창업 인사이트 자동 발행: 하루 3편 (KST 09:05 브랜드 · 13:05 프랜차이즈 키워드 · 18:05 지역), 처음 한 번 6편 ----------
 // 운영(Railway)에서만 동작. 로컬에서 시험하려면 AUTO_POSTS=1

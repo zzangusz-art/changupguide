@@ -19,6 +19,9 @@ const YEAR = DATE.slice(0, 4);
 // ---------- 데이터 ----------
 const all = read('listings.json');
 const L = all.filter(l => l.status === 'active' && !l.sample && !l.duplicateOf && (l.source !== 'changupmedia.com' || l.verified));
+// 썸네일: Unsplash 무료 라이선스 사진(상업 이용·출처 표기 불필요) — src/data/blog-covers.json
+const COVERS = (() => { try { return JSON.parse(fs.readFileSync(new URL('../src/data/blog-covers.json', import.meta.url), 'utf-8')); } catch { return {}; } })();
+const coverFor = (k, fb) => COVERS[k]?.file || fb;
 const BRANDS = read('brands.json'); const brandBy = Object.fromEntries(BRANDS.map(b => [b.slug, b]));
 const existing = fs.readdirSync(DIR).filter(f => f.endsWith('.json')).map(f => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf-8')); } catch { return null; } }).filter(Boolean);
 const usedKeys = new Set(existing.map(p => p.guideKey).filter(Boolean));
@@ -78,7 +81,7 @@ function brandGuide() {
       { q: `${name} 매장 월수익은 어느 정도인가요?`, a: `공개 매장 평균 월수익(세전)은 ${man(p)}입니다. 점주 본인의 인건비는 월지출에 포함되지 않은 금액이므로 직접 근무 여부에 따라 실제 수익이 달라집니다.` },
       { q: `${name} 매장을 양도양수로 인수하려면 무엇이 필요한가요?`, a: `양도인과의 조건 협의·계약, 임대차 승계, ${name} 본사의 양수 승인 절차가 필요합니다. 담당 창업전문가가 현장 답사부터 계약·본사 승인·인수인계까지 함께합니다.` },
     ],
-    cover: coverOf(arr, 'img/og/brand.jpg'), body };
+    cover: coverOf(arr, coverFor('brand', 'img/og/brand.jpg')), body };
 }
 
 // ---------- 2) 키워드 가이드 (프랜차이즈·양도양수 창업 일반) ----------
@@ -146,7 +149,7 @@ function kwGuide() {
     faq = [{ q: `${t.kws[0]}에 드는 비용은?`, a: `창업가이드 공개 매장 기준 창업비용 중간값은 ${won(med(arr, 'premium'))}입니다(임대보증금 별도). 예산과 지역을 남겨 주시면 맞는 매장을 추려 드립니다.` }];
   }
   const body = [lead, '', ...secs.flatMap(([h, lines]) => [`## ${h}`, ...lines, '']), NOTE, '', CTA].join('\n');
-  return { key: t.key, category: '프랜차이즈 창업 가이드', title: t.title, desc: `${lead.slice(0, 110)}`, keywords: t.kws, summary, faq, cover: t.cover, body };
+  return { key: t.key, category: '프랜차이즈 창업 가이드', title: t.title, desc: `${lead.slice(0, 110)}`, keywords: t.kws, summary, faq, cover: coverFor(t.key.replace(':', '-'), t.cover), body };
 }
 
 // ---------- 3) 지역별 창업 가이드 ----------
@@ -167,7 +170,7 @@ function regionGuide() {
     keywords: [`${r} 창업`, `${gu} 창업`, `${gu} 카페 창업`, `${r} 양도양수`, `${gu} 매장 매매`, ...brands.slice(0, 2).map(([b]) => `${gu} ${b} 창업`)],
     summary: [`${r} 공개 매장 ${fmtNum(arr.length)}곳 (${asOf})`, `평균 월매출 ${man(avg(arr, 'sales'))} · 평균 월수익 ${man(avg(arr, 'profit'))}`, `많은 브랜드: ${brands.slice(0, 3).map(([b, n]) => `${b} ${n}곳`).join(', ')}`],
     faq: [{ q: `${r} 창업 매장은 몇 곳이 있나요?`, a: `${asOf} 창업가이드에 공개된 ${r} 매장은 ${fmtNum(arr.length)}곳입니다. 새 매장은 담당자가 확인 후 계속 등록됩니다.` }, { q: `${r} 매장의 정확한 위치를 알 수 있나요?`, a: '양도인 영업 보안을 위해 사이트에는 구·시까지만 공개하고, 상담 후 담당자가 정확한 위치를 안내하며 답사에 동행합니다.' }],
-    cover: coverOf(arr, 'img/og/region.jpg'), body };
+    cover: coverOf(arr, coverFor('region', 'img/og/region.jpg')), body };
 }
 
 // ---------- 발행 ----------
