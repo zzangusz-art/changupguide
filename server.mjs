@@ -121,14 +121,14 @@ function migratePhotoFolder() {
 
 // ---------- 1회 용어 정리 2: 운영 데이터 안의 '권리금' → '창업비용' (2026-11-16 업체 요청 — 매장 제목·설명·브랜드·공지·글) ----------
 function migrateWords2() {
-  if (setting('wordMigration2') >= 1) return;
+  if (setting('wordMigration2') >= 2) return;
   try {
     const OLD = '권리금'; const fx = t => String(t).split(OLD).join('창업비용'); const like = `%${OLD}%`; let n = 0;
     for (const r of q('SELECT id,data FROM listings WHERE data LIKE ?', like)) { run('UPDATE listings SET data=? WHERE id=?', fx(r.data), r.id); n++; }
     for (const r of q('SELECT slug,data FROM brands WHERE data LIKE ?', like)) { run('UPDATE brands SET data=? WHERE slug=?', fx(r.data), r.slug); n++; }
     for (const r of q('SELECT id,title,body FROM notices WHERE title LIKE ? OR body LIKE ?', like, like)) { run('UPDATE notices SET title=?,body=? WHERE id=?', fx(r.title), fx(r.body), r.id); n++; }
     if (fs.existsSync(POSTS_DIR)) for (const f of fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.json'))) { const x = path.join(POSTS_DIR, f); const t = fs.readFileSync(x, 'utf-8'); if (t.includes(OLD)) { fs.writeFileSync(x, fx(t)); n++; } }
-    setSetting('wordMigration2', 1); audit('system', 'word_migration', '권리금→창업비용', String(n)); console.log(`[migrate] 권리금 → 창업비용 ${n}건`);
+    setSetting('wordMigration2', 2); audit('system', 'word_migration', '권리금→창업비용', String(n)); console.log(`[migrate] 권리금 → 창업비용 ${n}건`);
   } catch (e) { console.log('[migrate2] skip', e.message); }
 }
 
@@ -282,6 +282,7 @@ const readBody = req => new Promise((resolve, reject) => { let b = ''; req.on('d
 const cookies = req => Object.fromEntries((req.headers.cookie || '').split(';').map(c => c.trim().split('=')).filter(c => c[0]));
 function user(req) { const t = cookies(req).cu_sess || (req.headers.authorization || '').replace('Bearer ', ''); if (!t) return null; const s = q1('SELECT * FROM sessions WHERE token=?', t); if (!s) return null; run('UPDATE sessions SET lastAt=? WHERE token=?', now(), t); const a = q1('SELECT * FROM agents WHERE id=? AND active=1', s.agentId); return a ? { ...a, isAdmin: !!a.isAdmin, pass: undefined } : null; }
 const pub = a => a && ({ id: a.id, name: a.name, role: a.role, mobile: a.mobile, tel: a.tel, kakao: a.kakao, email: a.email, photo: a.photo, intro: a.intro, active: !!a.active, isAdmin: !!a.isAdmin, createdAt: a.createdAt, updatedAt: a.updatedAt });
+const fixWords = l => { for (const k of ['title', 'summary', 'description', 'titleRaw']) if (typeof l[k] === 'string') l[k] = l[k].split('권리금').join('창업비용').replace(/매물로/g, '매장으로').replace(/매물/g, '매장'); return l; };
 const canEdit = (u, l) => u.isAdmin || l.agentId === u.id || (l.createdBy === u.id && !l.agentId);
 
 // ---------- 라우팅 ----------
@@ -326,7 +327,7 @@ async function api(req, res, url) {
   // --- 매장 ---
   if (p === '/listings' && m === 'GET') { if (!need()) return; const rows = q('SELECT data, updatedBy FROM listings ORDER BY updatedAt DESC').map(r => ({ ...JSON.parse(r.data), updatedBy: r.updatedBy })); return json(res, 200, { items: rows }); }
   if (p === '/listings' && m === 'POST') {
-    if (!need()) return; const l = body.listing || body; const t = now();
+    if (!need()) return; const l = fixWords(body.listing || body); const t = now();
     // 네트워크 재시도로 같은 등록이 두 번 들어오면 처음 것을 돌려줌
     if (l.clientKey && /^[\w-]{8,64}$/.test(l.clientKey)) { const ex = q1('SELECT data FROM listings WHERE data LIKE ?', `%"clientKey":"${l.clientKey}"%`); if (ex) return json(res, 200, { item: JSON.parse(ex.data), duplicateOf: null, repeated: true }); } else delete l.clientKey;
     l.id = l.id && !q1('SELECT 1 FROM listings WHERE id=?', String(l.id)) ? String(l.id) : String(Math.max(800000, ...q('SELECT id FROM listings').map(r => Number(r.id) || 0)) + 1);
@@ -359,7 +360,7 @@ async function api(req, res, url) {
     if (m === 'GET') { const lock = q1('SELECT * FROM locks WHERE listingId=? AND agentId!=? AND at>?', mm[1], me.id, new Date(Date.now() - 120000).toISOString()); return json(res, 200, { item: cur, lock: lock ? { agentId: lock.agentId, name: (q1('SELECT name FROM agents WHERE id=?', lock.agentId) || {}).name, at: lock.at } : null }); }
     if (!canEdit(me, cur)) return json(res, 403, { error: '본인 담당 매장만 수정할 수 있습니다. 담당자 변경은 관리자에게 요청하세요.' });
     if (m === 'PUT') {
-      let l = body.listing || body; let merged = null;
+      let l = fixWords(body.listing || body); let merged = null;
       if (body.baseUpdatedAt && body.baseUpdatedAt !== cur.updatedAt) {
         const by = (q1('SELECT name FROM agents WHERE id=?', row.updatedBy) || {}).name || row.updatedBy;
         const baseItem = body.baseItem && typeof body.baseItem === 'object' && body.baseItem.updatedAt === body.baseUpdatedAt ? body.baseItem : null;
@@ -523,7 +524,7 @@ function serveStatic(req, res, url) {
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) { file = path.join(DIST, '404.html'); res.statusCode = 404; }
   const ext = path.extname(file).toLowerCase();
   res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
-  res.setHeader('Cache-Control', ['.html', '.json', '.xml', '.txt'].includes(ext) ? 'no-cache' : 'public, max-age=86400');
+  res.setHeader('Cache-Control', ['.html', '.json', '.xml', '.txt'].includes(ext) || p.startsWith('/admin/') ? 'no-cache' : 'public, max-age=86400');
   fs.createReadStream(file).pipe(res);
 }
 

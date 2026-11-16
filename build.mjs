@@ -86,7 +86,7 @@ function copyDir(src, dst) { if (!fs.existsSync(src)) return; fs.mkdirSync(dst, 
 copyDir('public', DIST);
 copyDir('admin', path.join(DIST, 'admin'));
 // 관리자 스크립트 모듈도 배포마다 새로 받도록 import 경로에 버전 부여
-{ const v = Date.now().toString(36); const f = path.join(DIST, 'admin/admin.js'); fs.writeFileSync(f, fs.readFileSync(f, 'utf-8').replace("from './api.js'", `from './api.js?v=${v}'`).replace("from '../js/data.mjs'", `from '../js/data.mjs?v=${v}'`).replace("from '../js/lib/text.mjs'", `from '../js/lib/text.mjs?v=${v}'`)); }
+{ const v = Date.now().toString(36); const f = path.join(DIST, 'admin/admin.js'); fs.writeFileSync(f, fs.readFileSync(f, 'utf-8').replace("from './api.js'", `from './api.js?v=${v}'`).replace("from '../js/data.mjs'", `from '../js/data.mjs?v=${v}'`).replace("from '../js/lib/text.mjs'", `from '../js/lib/text.mjs?v=${v}'`)); const ih = path.join(DIST, 'admin/index.html'); fs.writeFileSync(ih, fs.readFileSync(ih, 'utf-8').replace('src="admin.js"', `src="admin.js?v=${v}"`).replace('href="admin.css"', `href="admin.css?v=${v}"`)); }
 // 직원용 짧은 주소: /login/ → /admin/
 fs.mkdirSync(path.join(DIST, 'login'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'login/index.html'), `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>창업가이드 관리자</title><meta http-equiv="refresh" content="0;url=${u('/admin/')}"><link rel="canonical" href="${u('/admin/')}"><a href="${u('/admin/')}">관리자 로그인으로 이동</a>`);
