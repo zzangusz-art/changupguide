@@ -379,6 +379,19 @@ async function api(req, res, url) {
   }
   if ((mm = p.match(/^\/listings\/([^/]+)\/lock$/)) && m === 'POST') { if (!need()) return; run('INSERT INTO locks(listingId,agentId,at) VALUES(?,?,?) ON CONFLICT(listingId) DO UPDATE SET agentId=excluded.agentId, at=excluded.at', mm[1], me.id, now()); return json(res, 200, { ok: true }); }
 
+  // --- 사진 폴더 (브랜드별) — 빈 폴더도 저장, 이름 바꾸기·삭제(사진은 미분류로)·여러 장 이동 ---
+  const fname = v => String(v ?? '').trim().replace(/[<>"'`\/\\|]/g, '').replace(/\s+/g, ' ').slice(0, 40);
+  const savedFolders = () => (setting('photoFolders') || []).filter(Boolean);
+  if (p === '/photo-folders' && m === 'GET') { if (!need()) return; const cnt = Object.fromEntries(q("SELECT IFNULL(folder,'') f, COUNT(*) n FROM photos GROUP BY IFNULL(folder,'')").map(r => [r.f, r.n])); const names = [...new Set([...savedFolders(), ...Object.keys(cnt).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'ko')); return json(res, 200, { items: names.map(n => ({ name: n, n: cnt[n] || 0 })), none: cnt[''] || 0 }); }
+  if (p === '/photo-folders' && m === 'POST') { if (!need()) return; const n = fname(body.name); if (!n) return json(res, 400, { error: '폴더 이름을 입력하세요' }); const sv = savedFolders(); if (sv.includes(n) || q1('SELECT 1 FROM photos WHERE folder=? LIMIT 1', n)) return json(res, 400, { error: `"${n}" 폴더가 이미 있습니다` }); setSetting('photoFolders', [...sv, n]); audit(me.id, 'folder_create', n); return json(res, 200, { ok: true, name: n }); }
+  if ((mm = p.match(/^\/photo-folders\/(.+)$/)) && (m === 'PUT' || m === 'DELETE')) {
+    if (!need()) return; const from = fname(decodeURIComponent(mm[1])); if (!from) return json(res, 400, { error: '폴더 이름이 없습니다' });
+    if (m === 'PUT') { const to = fname(body.name); if (!to) return json(res, 400, { error: '새 이름을 입력하세요' }); if (to !== from && (savedFolders().includes(to) || q1('SELECT 1 FROM photos WHERE folder=? LIMIT 1', to)) && !body.merge) return json(res, 409, { error: `"${to}" 폴더가 이미 있습니다. 합칠까요?`, exists: true });
+      const n = run('UPDATE photos SET folder=? WHERE folder=?', to, from).changes; setSetting('photoFolders', [...new Set(savedFolders().map(x => x === from ? to : x).concat(to))]); audit(me.id, 'folder_rename', from, `→${to} (${n}장)`); return json(res, 200, { ok: true, name: to, moved: n }); }
+    const n = run("UPDATE photos SET folder='' WHERE folder=?", from).changes; setSetting('photoFolders', savedFolders().filter(x => x !== from)); audit(me.id, 'folder_delete', from, `${n}장 → 미분류`); return json(res, 200, { ok: true, moved: n });
+  }
+  if (p === '/photos/move' && m === 'POST') { if (!need()) return; const ids = (body.ids || []).map(String).slice(0, 1000); const to = fname(body.folder); let n = 0; for (const id of ids) n += run('UPDATE photos SET folder=? WHERE id=?', to, id).changes; if (to && !savedFolders().includes(to)) setSetting('photoFolders', [...savedFolders(), to]); audit(me.id, 'photo_move', `${n}장`, to || '미분류'); return json(res, 200, { ok: true, n, folder: to }); }
+
   // --- 사진 ---
   if (p === '/photos' && m === 'GET') { if (!need()) return; return json(res, 200, { items: q('SELECT * FROM photos ORDER BY createdAt DESC').map(r => ({ ...r, tags: JSON.parse(r.tags || '[]') })) }); }
   if (p === '/photos' && m === 'POST') {

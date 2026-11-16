@@ -193,3 +193,15 @@ body{background:var(--bg-gray)}
 .lib .it .mv{position:absolute;top:4px;right:30px;width:22px;height:22px;border-radius:50%;border:1px solid #D9D5C9;background:#fff;padding:0;font-size:.7rem;line-height:20px}
 .btn--del{color:#E5402F!important}
 @media (max-width:900px){.lib-wrap{grid-template-columns:1fr}.folders{position:static;max-height:none;display:flex;gap:4px;overflow-x:auto;padding:6px}.folders>b{display:none!important}.folders .f{width:auto;flex:none;white-space:nowrap}.folders [data-newf]{width:auto!important;flex:none;margin:0!important}}
+
+/* 사진 폴더 관리 */
+.folders .f{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;padding:7px 8px;border-radius:8px;font-size:.86rem;font-weight:700;cursor:pointer;user-select:none;position:relative}
+.folders .f .fa{display:none;font-style:normal;gap:2px;margin-left:4px}.folders .f:hover .fa,.folders .f.is-on .fa{display:inline-flex}
+.folders .f .fa button{border:0;background:#fff;border-radius:6px;width:24px;height:24px;padding:0;font-size:.78rem;cursor:pointer;box-shadow:0 0 0 1px #E3E1DA}
+.folders .f.is-drop{outline:3px dashed #1D5BF0;background:#EEF3FF}
+.folders .newf{display:flex;gap:6px;margin-top:10px}.folders .newf input{flex:1;min-width:0;padding:6px 8px;border:1px solid #D9D5C9;border-radius:8px;font:inherit;font-size:.82rem}
+.lib .it .ck{position:absolute;bottom:26px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.85);border:2px solid #fff;box-shadow:0 0 0 1px #D9D5C9;display:grid;place-items:center;font-weight:900;color:#fff;font-size:.8rem}
+.lib .it.is-on .ck{background:#1D5BF0;box-shadow:none}
+.lib .it.is-on{outline:4px solid #1D5BF0}
+.lib.is-moving .it{opacity:.75}
+@media (max-width:900px){.folders .f .fa{display:inline-flex}.folders .newf{flex:none}.folders>p{display:none}}

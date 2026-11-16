@@ -39,6 +39,11 @@ export class RemoteApi {
   uploadPhoto(p) { return this.req('/photos', 'POST', p).then(r => r.item); }
   deletePhoto(id) { return this.req(`/photos/${id}`, 'DELETE'); }
   updatePhoto(id, patch) { return this.req(`/photos/${id}`, 'PUT', patch); }
+  photoFolders() { return this.req('/photo-folders'); }
+  createPhotoFolder(name) { return this.req('/photo-folders', 'POST', { name }); }
+  renamePhotoFolder(from, name, merge) { return this.req(`/photo-folders/${encodeURIComponent(from)}`, 'PUT', { name, merge: !!merge }); }
+  deletePhotoFolder(name) { return this.req(`/photo-folders/${encodeURIComponent(name)}`, 'DELETE'); }
+  movePhotos(ids, folder) { return this.req('/photos/move', 'POST', { ids, folder }); }
   agents() { return this.req('/agents').then(r => r.items); }
   createAgent(a) { return this.req('/agents', 'POST', a); }
   updateAgent(id, a) { return this.req(`/agents/${id}`, 'PUT', a); }
@@ -115,6 +120,11 @@ export class LocalApi {
   backupUrl() { return '#'; }
   async photos() { this.need(); return [...this.db.photos].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))); }
   async uploadPhoto(p) { const u = this.need(); const it = { id: uid('p'), file: p.data, thumb: p.thumb || p.data, name: p.name, agentId: u.id, tags: p.tags || [], folder: p.folder || '', w: p.w, h: p.h, createdAt: now(), inline: true }; this.db.photos.unshift(it); this.log('photo_upload', it.id, p.name); this.save(); return it; }
+  async photoFolders() { this.need(); const cnt = {}; for (const p of this.db.photos) cnt[p.folder || ''] = (cnt[p.folder || ''] || 0) + 1; const names = [...new Set([...(this.db.photoFolders || []), ...Object.keys(cnt).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'ko')); return { items: names.map(n => ({ name: n, n: cnt[n] || 0 })), none: cnt[''] || 0 }; }
+  async createPhotoFolder(name) { this.need(); const n = String(name || '').trim().slice(0, 40); if (!n) throw new Error('폴더 이름을 입력하세요'); this.db.photoFolders = [...new Set([...(this.db.photoFolders || []), n])]; this.save(); return { ok: true, name: n }; }
+  async renamePhotoFolder(from, name) { this.need(); const to = String(name || '').trim().slice(0, 40); let moved = 0; for (const p of this.db.photos) if ((p.folder || '') === from) { p.folder = to; moved++; } this.db.photoFolders = [...new Set((this.db.photoFolders || []).map(x => x === from ? to : x).concat(to))]; this.save(); return { ok: true, name: to, moved }; }
+  async deletePhotoFolder(name) { this.need(); let moved = 0; for (const p of this.db.photos) if ((p.folder || '') === name) { p.folder = ''; moved++; } this.db.photoFolders = (this.db.photoFolders || []).filter(x => x !== name); this.save(); return { ok: true, moved }; }
+  async movePhotos(ids, folder) { this.need(); let n = 0; for (const p of this.db.photos) if (ids.includes(p.id)) { p.folder = folder || ''; n++; } this.save(); return { ok: true, n, folder: folder || '' }; }
   async updatePhoto(id, patch) { this.need(); const ph = this.db.photos.find(p => p.id === id); if (ph) ph.folder = String(patch.folder || ''); this.save(); return { ok: true }; }
   async deletePhoto(id) { const u = this.need(); const ph = this.db.photos.find(p => p.id === id); if (!ph) return {}; if (!u.isAdmin && ph.agentId !== u.id) throw new Error('본인이 올린 사진만 삭제할 수 있습니다'); const used = this.db.listings.filter(l => l.status !== 'archived' && (l.images || []).includes(ph.file)); if (used.length) throw new Error(`매장 ${used.map(l => l.id).join(', ')}에서 사용 중입니다`); this.db.photos = this.db.photos.filter(p => p.id !== id); this.save(); return { ok: true }; }
   async agents() { this.need(); return this.db.agents; }
