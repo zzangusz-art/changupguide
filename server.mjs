@@ -54,6 +54,11 @@ if (!STATIC_ONLY) {
 }
 const now = () => new Date().toISOString();
 const STARTED_AT = new Date().toISOString();
+// 예상 못한 오류 하나로 서버 전체가 꺼지지 않도록: 기록만 하고 계속 운영 (꺼지면 Railway 재시작 반복 → 사이트 502)
+let lastError = null;
+for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e => { lastError = { at: new Date().toISOString(), ev, msg: String(e && e.message || e).slice(0, 300) }; console.log(`[error] ${ev}`, e && e.stack || e); });
+// 볼륨 남은 용량 (MB). 가득 차면 DB 쓰기가 실패해 서버가 멈추므로 백업 정리에 사용
+const diskFreeMB = () => { try { const s = fs.statfsSync(DATA_DIR); return Math.round(s.bavail * s.bsize / 1048576); } catch { return null; } };
 const uid = (p = '') => p + crypto.randomBytes(8).toString('hex');
 const hashPw = pw => { const salt = crypto.randomBytes(16).toString('hex'); return salt + ':' + crypto.scryptSync(pw, salt, 32).toString('hex'); };
 const checkPw = (pw, h) => { if (!h) return false; const [salt, k] = h.split(':'); return crypto.timingSafeEqual(Buffer.from(k, 'hex'), crypto.scryptSync(pw, salt, 32)); };
@@ -169,7 +174,15 @@ function merge3(base, mine, theirs) {
 
 // ---------- 자동 백업 (볼륨 안 backups/ 에 gzip JSON) — 부팅 때, 변경이 있으면 1시간마다, 매일 1회, 복원 직전 ----------
 const BACKUP_TABLES = ['agents', 'listings', 'listing_history', 'brands', 'photos', 'inquiries', 'calls', 'messages', 'notices', 'notice_reads', 'settings', 'audit'];
-const KEEP = { boot: 10, hourly: 48, daily: 45, prerestore: 10, manual: 20 };
+const KEEP = { boot: 5, hourly: 24, daily: 30, prerestore: 10, manual: 20 };
+// 볼륨이 부족하면 오래된 자동 백업부터 지워 공간 확보 (수동·복원 직전 백업은 3개까지는 남김)
+function pruneBackups(minFreeMB) {
+  if (!fs.existsSync(BK_DIR)) return; const free = diskFreeMB(); if (free == null || free >= minFreeMB) return;
+  const files = fs.readdirSync(BK_DIR).filter(f => f.endsWith('.json.gz')).sort((a, b) => fs.statSync(path.join(BK_DIR, a)).mtimeMs - fs.statSync(path.join(BK_DIR, b)).mtimeMs);
+  const byTag = {}; for (const f of files) (byTag[f.split('-')[0]] ||= []).push(f); let n = 0;
+  for (const tag of ['boot', 'hourly', 'daily', 'manual', 'prerestore']) for (const f of (byTag[tag] || []).slice(0, Math.max(0, (byTag[tag] || []).length - 3))) { if ((diskFreeMB() ?? Infinity) >= minFreeMB) break; try { fs.unlinkSync(path.join(BK_DIR, f)); n++; } catch {} }
+  console.log(`[backup] 볼륨 공간 부족(${free}MB) — 오래된 백업 ${n}개 정리, 남은 용량 ${diskFreeMB()}MB`);
+}
 const kst = () => new Date(Date.now() + 9 * 3600e3).toISOString();
 function dumpAll() {
   const posts = fs.existsSync(POSTS_DIR) ? fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.json')).map(f => { try { return { file: f, data: JSON.parse(fs.readFileSync(path.join(POSTS_DIR, f), 'utf-8')) }; } catch { return null; } }).filter(Boolean) : [];
@@ -178,6 +191,7 @@ function dumpAll() {
 function snapshotBackup(tag) {
   try {
     if (!db || !q1('SELECT COUNT(*) c FROM agents').c) return null;
+    pruneBackups(500); const free = diskFreeMB(); if (free != null && free < 150) { console.log(`[backup] 볼륨 남은 용량 ${free}MB — 이번 백업은 건너뜀`); setSetting('lastBackup', { at: now(), ok: false, error: `볼륨 공간 부족 (${free}MB)` }); return null; }
     fs.mkdirSync(BK_DIR, { recursive: true }); const name = `${tag}-${kst().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')}.json.gz`;
     fs.writeFileSync(path.join(BK_DIR, name), zlib.gzipSync(JSON.stringify(dumpAll())));
     const mine = fs.readdirSync(BK_DIR).filter(f => f.startsWith(tag + '-')).sort(); for (const f of mine.slice(0, Math.max(0, mine.length - (KEEP[tag] || 10)))) fs.unlinkSync(path.join(BK_DIR, f));
@@ -217,7 +231,13 @@ function seedBrands() {
 
 // 시작 순서 (아래 상수 정의 뒤에 실행): 부팅 백업 → 시드 → 저장소 새 항목 동기화 → 비밀번호 재설정 → 재빌드, 이후 20분마다 백업 점검
 if (db) { setTimeout(guideTick, 20000); setInterval(guideTick, 5 * 60 * 1000); }
-if (db) { snapshotBackup('boot'); seedIfEmpty(); seedBrands(); seedSite(); syncFromRepo(); migrateWords(); migrateWords2(); migrateGuideCovers(); migratePhotoFolder(); adminReset(); setTimeout(() => rebuild(), 1500); setInterval(periodicBackup, 20 * 60 * 1000); }
+// 서버가 먼저 응답을 시작한 뒤(아래 listen) 무거운 시작 작업을 실행 — 배포 직후 502 시간을 줄임
+function boot() {
+  if (!db) return;
+  for (const [n, f] of [['backup', () => snapshotBackup('boot')], ['seed', seedIfEmpty], ['brands', seedBrands], ['site', seedSite], ['sync', syncFromRepo], ['words', migrateWords], ['words2', migrateWords2], ['covers', migrateGuideCovers], ['folder', migratePhotoFolder], ['admin', adminReset]]) { try { f(); } catch (e) { console.log(`[boot] ${n} 실패 — 건너뜀:`, e.message); } }
+  setTimeout(() => rebuild(), 1500); setInterval(() => { try { periodicBackup(); } catch (e) { console.log('[backup] 점검 실패', e.message); } }, 20 * 60 * 1000);
+  console.log(`[boot] 시작 작업 완료 · 볼륨 남은 용량 ${diskFreeMB()}MB`);
+}
 
 // 이미 발행된 가이드 글의 썸네일을 무료 사진으로 교체 (img/og/… 그림 카드 → img/blog/…)
 function migrateGuideCovers() {
@@ -240,6 +260,7 @@ function runGuides(args, why) {
   return new Promise(res => { if (guideBusy) return res(1); guideBusy = true; exportData();
     const ch = spawn(process.execPath, [path.join(ROOT, 'tools/make_guides.mjs'), ...args], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV }, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = ''; ch.stdout.on('data', d => out += d); ch.stderr.on('data', d => out += d);
+    ch.on('error', e => { guideBusy = false; console.log('[guides] 실행 실패', e.message); res(1); });
     ch.on('close', code => { guideBusy = false; console.log(`[guides] ${why}: ${out.trim().split(String.fromCharCode(10)).slice(-3).join(' / ')}`); try { audit('system', 'post_auto', why, out.trim().split(String.fromCharCode(10)).filter(x => x.startsWith('발행:')).join(' | ').slice(0, 900)); } catch {} if (code === 0) scheduleRebuild(1500); res(code); });
   });
 }
@@ -270,10 +291,11 @@ function exportData() {
 function scheduleRebuild(delay = 8000) { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(rebuild, delay); }
 function rebuild() {
   if (building) { pending = true; return; }
-  building = true; exportData();
+  building = true; try { exportData(); } catch (e) { building = false; console.log('[build] 데이터 내보내기 실패', e.message); return; }
   const t = Date.now();
   const child = spawn(process.execPath, [path.join(ROOT, 'build.mjs')], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV, API_URL: process.env.API_URL || '' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d);
+  child.on('error', e => { building = false; console.log('[build] 실행 실패', e.message); });
   child.on('close', code => { building = false; setSetting('lastBuild', { at: now(), ok: code === 0, ms: Date.now() - t, log: out.slice(-2000) }); console.log(`[build] ${code === 0 ? 'ok' : 'FAIL'} ${Date.now() - t}ms`); if (code === 0) setTimeout(pingIndexNow, 5000); if (pending) { pending = false; rebuild(); } });
 }
 
@@ -549,7 +571,7 @@ async function api(req, res, url) {
 
 // ---------- 정적 ----------
 function serveStatic(req, res, url) {
-  let p = decodeURIComponent(url.pathname);
+  let p; try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400); return res.end(); }
   if (BASE && p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
   if (p.includes('..')) { res.writeHead(400); return res.end(); }
   let file = path.join(DIST, p);
@@ -560,13 +582,16 @@ function serveStatic(req, res, url) {
   const ext = path.extname(file).toLowerCase();
   res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
   res.setHeader('Cache-Control', ['.html', '.json', '.xml', '.txt'].includes(ext) || p.startsWith('/admin/') ? 'no-cache' : 'public, max-age=86400');
-  fs.createReadStream(file).pipe(res);
+  // 파일을 못 읽어도(사이트 교체 순간 등) 서버가 꺼지지 않게 오류를 처리
+  const st = fs.createReadStream(file);
+  st.on('error', () => { if (!res.headersSent) { res.writeHead(res.statusCode === 404 ? 404 : 503, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '5' }); res.end('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="5"><title>창업가이드</title><p style="font-family:sans-serif;padding:40px;text-align:center">페이지를 준비하고 있습니다. 잠시 후 자동으로 다시 열립니다.</p>'); } else res.destroy(); });
+  st.pipe(res);
 }
 
-const server = http.createServer(async (req, res) => {
+async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   // 상태 확인 (Railway 헬스체크·외부 감시용): 켜진 시각과 마지막 사이트 반영 결과
-  if (url.pathname === '/healthz') { let lb = null; try { lb = db ? setting('lastBuild') : null; } catch {} return json(res, 200, { ok: true, startedAt: STARTED_AT, uptimeSec: Math.round(process.uptime()), build: lb ? { at: lb.at, ok: lb.ok } : null }); }
+  if (url.pathname === '/healthz') { let lb = null; try { lb = db ? setting('lastBuild') : null; } catch {} return json(res, 200, { ok: true, startedAt: STARTED_AT, uptimeSec: Math.round(process.uptime()), build: lb ? { at: lb.at, ok: lb.ok } : null, diskFreeMB: diskFreeMB(), rssMB: Math.round(process.memoryUsage().rss / 1048576), lastError }); }
   const apiPath = BASE && url.pathname.startsWith(BASE + '/api') ? url.pathname.slice(BASE.length) : url.pathname;
   if (apiPath.startsWith('/api/')) {
     if (STATIC_ONLY) return json(res, 503, { error: 'static preview — API 없음' });
@@ -576,5 +601,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   serveStatic(req, res, url);
-}).listen(PORT, () => console.log(`창업가이드 ${STATIC_ONLY ? '정적 미리보기' : 'API+정적'} 서버: http://localhost:${PORT}${BASE}/  (dist: ${fs.existsSync(DIST) ? 'ok' : '없음 — node build.mjs 먼저'})`));
+}
+// 요청 하나에서 오류가 나도 응답만 실패로 돌려주고 서버는 계속 운영
+const server = http.createServer((req, res) => { handle(req, res).catch(e => { console.log('[error] request', req.method, String(req.url).slice(0, 200), e && e.stack || e); try { if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(); } catch {} }); });
+server.listen(PORT, () => { console.log(`창업가이드 ${STATIC_ONLY ? '정적 미리보기' : 'API+정적'} 서버: http://localhost:${PORT}${BASE}/  (dist: ${fs.existsSync(DIST) ? 'ok' : '없음 — node build.mjs 먼저'})`); setTimeout(boot, 300); });
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { console.log(`[server] ${sig} — DB 정리 후 종료`); server.close(); try { if (db) { db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); db.close(); } } catch {} process.exit(0); });

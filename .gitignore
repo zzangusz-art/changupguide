@@ -6,3 +6,5 @@ data/uploads/
 .env
 *.log
 data/test/
+dist.building/
+dist.old/

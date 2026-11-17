@@ -13,7 +13,9 @@ import { miscPages } from './src/pages/misc.mjs';
 import { blogPages, loadPosts } from './src/pages/blog.mjs';
 
 const t0 = Date.now();
-const DIST = path.resolve('dist');
+// 새 사이트는 dist.building 에 만든 뒤 완성되면 dist 와 한 번에 교체 — 만드는 동안에도 운영 사이트가 비지 않음(빈 dist 로 서버가 꺼지던 문제)
+const FINAL_DIST = path.resolve('dist');
+const DIST = path.resolve('dist.building');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf-8'));
 // 운영 서버는 DB 내용을 CU_DATA_DIR(볼륨 안)로 내보낸 뒤 빌드 — 저장소의 src/data 는 초기값·예시용
 const DATA = process.env.CU_DATA_DIR || 'src/data'; const dp = f => path.join(DATA, f);
@@ -168,3 +170,16 @@ if (SITE.indexNowKey) fs.writeFileSync(path.join(DIST, `${SITE.indexNowKey}.txt`
 if (process.env.CNAME) fs.writeFileSync(path.join(DIST, 'CNAME'), process.env.CNAME);
 
 console.log(`built ${pages.length} pages (${listingsActive.length} listings, ${duplicates} duplicate→canonical, ${posts.length} posts) → dist/ in ${((Date.now() - t0) / 1000).toFixed(1)}s  base=${SITE.base || '/'} url=${SITE.url} noindex=${SITE.noindex}`);
+
+// 완성본으로 교체: dist → dist.old, dist.building → dist (교체 순간만 아주 짧게 비어 있음)
+{
+  const OLD = path.resolve('dist.old'); fs.rmSync(OLD, { recursive: true, force: true });
+  try {
+    if (fs.existsSync(FINAL_DIST)) fs.renameSync(FINAL_DIST, OLD);
+    fs.renameSync(DIST, FINAL_DIST);
+  } catch (e) { // 폴더를 다른 프로그램이 잡고 있으면(Windows 등) 덮어쓰기로 대신
+    if (!fs.existsSync(FINAL_DIST)) fs.mkdirSync(FINAL_DIST, { recursive: true });
+    fs.cpSync(DIST, FINAL_DIST, { recursive: true, force: true }); fs.rmSync(DIST, { recursive: true, force: true });
+  }
+  fs.rmSync(OLD, { recursive: true, force: true });
+}

@@ -4,3 +4,5 @@ data
 .git
 .env
 *.log
+dist.building
+dist.old
