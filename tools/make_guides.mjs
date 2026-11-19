@@ -36,7 +36,7 @@ const top = (arr, f, n = 5) => Object.entries(arr.reduce((m, x) => { const k = f
 const region = l => [l.sido, l.gugun].filter(Boolean).join(' ');
 const regionLink = (s, g) => g ? `/region/${enc(s)}/${enc(g)}/` : `/region/${enc(s)}/`;
 const pickList = (arr, n = 5) => [...arr].filter(l => l.images?.length).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))).concat(arr.filter(l => !l.images?.length)).slice(0, n);
-const listingLines = arr => pickList(arr).map(l => `- [No.${l.id} ${[l.sido, l.gugun, l.dong].filter(Boolean).join(' ')} ${l.brand || l.kind2 || ''}](/listing/${l.id}/) — 월매출 ${man(l.sales)} · 월수익 ${man(l.profit)} · 창업비용 ${won(l.premium)}`);
+const listingLines = (arr, n = 5) => pickList(arr, n).map(l => `- [No.${l.id} ${[l.sido, l.gugun, l.dong].filter(Boolean).join(' ')} ${l.brand || l.kind2 || ''}](/listing/${l.id}/) — 월매출 ${man(l.sales)} · 월수익 ${man(l.profit)} · 창업비용 ${won(l.premium)}`);
 const statTable = arr => ['| 항목 | 내용 |', '|---|---|', `| 공개 매장 수 | ${fmtNum(arr.length)}곳 |`, `| 평균 월매출 | ${man(avg(arr, 'sales'))} |`, `| 평균 월수익 (세전) | ${man(avg(arr, 'profit'))} |`, `| 창업비용 중간값 | ${won(med(arr, 'premium'))} |`, ...(rng(arr, 'premium') ? [`| 창업비용 범위 | ${won(rng(arr, 'premium')[0])} ~ ${won(rng(arr, 'premium')[1])} |`] : [])];
 const budgetSpread = arr => BUDGETS.map(b => [b, arr.filter(l => l.premium >= b.min && l.premium < b.max).length]).filter(([, n]) => n);
 const coverOf = (arr, fallback) => (pickList(arr, 1)[0]?.images?.[0]) || fallback;
@@ -45,11 +45,44 @@ const CTA = `## 원하는 조건으로 찾아보기\n지역·브랜드·예산�
 const NOTE = `> 이 글의 숫자는 ${asOf} 창업가이드에 공개된 매장 기준이며, 매장이 새로 등록되거나 거래되면 달라질 수 있습니다. 창업비용은 임대보증금을 제외한 금액이고, 월수익은 세금 공제 전 금액입니다.`;
 
 // ---------- 1) 브랜드별 창업 가이드 ----------
+// 집중 브랜드: src/data/guide-brands.json 순서대로 돌아가며, 브랜드마다 4가지 주제(비용·수익 / 양도양수 / 지역 비교 / 예산별)로 발행
+const FOCUS = (() => { try { return JSON.parse(fs.readFileSync(new URL('../src/data/guide-brands.json', import.meta.url), 'utf-8')).brands || []; } catch { return []; } })();
+const ALIAS = Object.fromEntries(FOCUS.map(f => [f.slug, f.alias || []]));
+const ANGLES = ['cost', 'transfer', 'region', 'budget'];
+const angleOk = (a, arr) => a === 'region' ? arr.length >= 8 && top(arr, region, 99).filter(([, n]) => n >= 2).length >= 3 : a === 'budget' ? arr.length >= 8 && budgetSpread(arr).length >= 2 : arr.length >= 1;
+const angleKey = (slug, a, m) => (a === 'cost' ? `brand:${slug}` : `brand:${slug}:${a}`) + (m ? `:${m}` : '');
 function brandGuide() {
-  const groups = Object.entries(L.reduce((m, l) => { if (l.brandSlug && l.brand) (m[l.brandSlug] ||= []).push(l); return m; }, {})).sort((a, b) => b[1].length - a[1].length);
-  const pick = groups.find(([slug]) => !usedKeys.has(`brand:${slug}`)) || groups.find(([slug]) => !usedKeys.has(`brand:${slug}:${DATE.slice(0, 7)}`));
-  if (!pick) return null;
-  const [slug, arr] = pick; const key = usedKeys.has(`brand:${slug}`) ? `brand:${slug}:${DATE.slice(0, 7)}` : `brand:${slug}`;
+  const by = L.reduce((m, l) => { if (l.brandSlug && l.brand) (m[l.brandSlug] ||= []).push(l); return m; }, {});
+  const month = DATE.slice(0, 7);
+  // 1) 집중 브랜드의 아직 안 쓴 주제 → 2) 이번 달 숫자로 다시 쓰기 → 3) 그래도 없으면 매장 많은 다른 브랜드
+  // 같은 브랜드·주제를 다시 쓸 때는 마지막 글로부터 4주 뒤, 매장 3곳 이상일 때만, 제목에 'n월' 표기 (같은 제목 중복 방지)
+  const lastOf = base => existing.filter(p => p.guideKey === base || String(p.guideKey || '').startsWith(base + ':20')).map(p => String(p.date || '').slice(0, 10)).sort().pop() || '';
+  const daysSince = d => d ? (Date.parse(DATE) - Date.parse(d)) / 864e5 : 999;
+  for (const m of [null, month]) for (const a of ANGLES) for (const f of FOCUS) {
+    const arr = by[f.slug]; if (!arr || !angleOk(a, arr)) continue;
+    const key = angleKey(f.slug, a, m); if (usedKeys.has(key)) continue;
+    if (m && (arr.length < 3 || daysSince(lastOf(angleKey(f.slug, a))) < 28)) continue;
+    const post = BRAND_POST[a](f.slug, arr, key);
+    if (m) post.title = post.title.replace(` ${YEAR}`, ` ${YEAR}년 ${Number(month.slice(5))}월`);
+    return post;
+  }
+  const groups = Object.entries(by).filter(([slug]) => !ALIAS[slug]).sort((a, b) => b[1].length - a[1].length);
+  for (const m of [null, month]) for (const [slug, arr] of groups) {
+    const key = angleKey(slug, 'cost', m); if (usedKeys.has(key) || arr.length < 3) continue;
+    if (m && daysSince(lastOf(angleKey(slug, 'cost'))) < 28) continue;
+    const post = BRAND_POST.cost(slug, arr, key); if (m) post.title = post.title.replace(` ${YEAR}`, ` ${YEAR}년 ${Number(month.slice(5))}월`); return post;
+  }
+  return null;
+}
+const brandName = (slug, arr) => arr[0].brand || brandBy[slug]?.name || slug;
+const brandKws = (slug, name, extra) => [...new Set([...extra, ...(ALIAS[slug] || []).map(x => `${x} 창업`), '프랜차이즈 창업'])];
+// 같은 브랜드 글끼리 썸네일이 겹치지 않도록 주제마다 다른 매장 사진
+const coverN = (arr, n) => { const w = pickList(arr, 8).filter(l => l.images?.length); return w.length ? w[n % w.length].images[0] : coverFor('brand', 'img/og/brand.jpg'); };
+const sameBrandLinks = (slug, name, me) => { const links = existing.filter(p => String(p.guideKey || '').split(':')[1] === slug && p.slug !== me).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 3); return links.length ? ['', `## 함께 보면 좋은 ${name} 글`, ...links.map(p => `- [${p.title}](/blog/${p.slug}/)`)] : []; };
+const expenseTable = (name, b, s) => { const ep = Object.entries(b.expensePct || {}).filter(([, v]) => v != null); if (!ep.length) return null; const ex = s || 3000; return [`## ${name} 매장의 월지출 구조`, `창업가이드가 ${name} 매장을 등록할 때 기본값으로 쓰는 평균 지출 비율입니다. 월매출 ${man(ex)} 매장이라면 대략 이렇게 나뉩니다.`, '', `| 항목 | 비율 | 월매출 ${man(ex)} 기준 |`, '|---|---|---|', ...ep.map(([k, v]) => `| ${k} | ${v}% | 약 ${man(Math.round(ex * v / 100))} |`), '', '> 점주 본인의 인건비는 월지출에 포함하지 않습니다. 직접 근무하면 그만큼 수익이 늘고, 직원을 더 두면 줄어듭니다.', ''].join('\n'); };
+
+// 1-a) 비용·수익 구조
+function costPost(slug, arr, key) {
   const b = brandBy[slug] || {}; const name = arr[0].brand; const kind = [b.kind1 || arr[0].kind1, b.kind2 || arr[0].kind2].filter(Boolean).join(' · ');
   const s = avg(arr, 'sales'), p = avg(arr, 'profit'), pm = med(arr, 'premium'); const regs = top(arr, region, 6);
   const ep = b.expensePct || {}; const epRows = Object.entries(ep).filter(([, v]) => v != null);
@@ -74,15 +107,117 @@ function brandGuide() {
   ].filter(x => x != null).join('\n');
   return { key, category: '브랜드 창업 가이드', title: `${name} 창업 비용과 수익 구조 — 운영 중 매장 ${fmtNum(arr.length)}곳으로 본 ${YEAR} 양도양수 가이드`,
     desc: `${name} 창업, 얼마가 들고 얼마가 남을까. 창업가이드 공개 매장 ${fmtNum(arr.length)}곳 기준 평균 월매출 ${man(s)}, 월수익 ${man(p)}, 창업비용 중간값 ${won(pm)}. 지출 구조와 인수 체크리스트.`,
-    keywords: [`${name} 창업`, `${name} 창업비용`, `${name} 양도양수`, `${name} 창업 수익`, `${name} 매장 인수`, '프랜차이즈 창업', kind].filter(Boolean),
+    keywords: brandKws(slug, name, [`${name} 창업`, `${name} 창업비용`, `${name} 양도양수`, `${name} 창업 수익`, `${name} 매장 인수`, kind].filter(Boolean)),
     summary: [`${name} 공개 매장 ${fmtNum(arr.length)}곳 (${asOf})`, `평균 월매출 ${man(s)} · 평균 월수익(세전) ${man(p)}`, `창업비용 중간값 ${won(pm)} (임대보증금 별도)`, regs.length ? `매장이 많은 지역: ${regs.slice(0, 3).map(([r]) => r).join(', ')}` : null].filter(Boolean),
     faq: [
       { q: `${name} 창업 비용은 얼마인가요?`, a: `창업가이드에 공개된 ${name} 매장 기준 창업비용 중간값은 ${won(pm)}입니다(임대보증금 별도). 매장마다 면적·상권·매출이 달라 금액 차이가 크므로, 원하는 지역과 예산을 남겨 주시면 맞는 매장을 추려 드립니다.` },
       { q: `${name} 매장 월수익은 어느 정도인가요?`, a: `공개 매장 평균 월수익(세전)은 ${man(p)}입니다. 점주 본인의 인건비는 월지출에 포함되지 않은 금액이므로 직접 근무 여부에 따라 실제 수익이 달라집니다.` },
       { q: `${name} 매장을 양도양수로 인수하려면 무엇이 필요한가요?`, a: `양도인과의 조건 협의·계약, 임대차 승계, ${name} 본사의 양수 승인 절차가 필요합니다. 담당 창업전문가가 현장 답사부터 계약·본사 승인·인수인계까지 함께합니다.` },
     ],
-    cover: coverOf(arr, coverFor('brand', 'img/og/brand.jpg')), body };
+    cover: coverN(arr, 0), body };
 }
+
+// 1-b) 양도양수(매장 인수) 가이드
+function transferPost(slug, arr, key) {
+  const b = brandBy[slug] || {}; const name = brandName(slug, arr); const s = avg(arr, 'sales'), p = avg(arr, 'profit'), pm = med(arr, 'premium');
+  const me = `${DATE}-${key.replace(/[:/\s]+/g, '-')}`;
+  const body = [
+    `${josa(name, '은/는')} 새로 가맹점을 여는 방법 말고도, 이미 영업 중인 매장을 그대로 넘겨받는 양도양수로 시작할 수 있습니다. 실제 매출을 보고 고를 수 있다는 점이 가장 큰 차이입니다. 창업가이드에 공개된 ${name} 매장 ${fmtNum(arr.length)}곳을 기준으로, 인수 절차와 계약 전에 확인할 것을 정리했습니다.`,
+    '', `## ${name} 양도양수, 지금 공개된 매장은`, ...statTable(arr), '',
+    `## 신규 가맹과 무엇이 다를까`,
+    '| 구분 | 신규 가맹 | 양도양수(매장 인수) |', '|---|---|---|',
+    '| 매출 확인 | 오픈 후에야 알 수 있음 | 실제 매출 자료로 미리 확인 |', '| 준비 기간 | 상권 조사·공사로 수개월 | 계약·본사 승인·인수인계 후 바로 영업 |',
+    '| 상권 | 검증 전 | 단골·유동 인구가 이미 형성 |', '| 확인할 점 | 정보공개서·예상 매출 | 매출 자료 진위·임대차 조건·시설 상태 |', '',
+    `## ${name} 매장 인수 순서`,
+    '1. 조건 정리: 원하는 지역과 예산(창업비용), 직접 운영할지 직원을 둘지',
+    `2. 매장 비교: 공개된 ${name} 매장의 월매출·월수익·창업비용을 나란히 비교`,
+    '3. 현장 답사: 점심·저녁·주말 시간대 손님과 배달 비중, 시설 상태 확인',
+    '4. 조건 협의: 창업비용, 인수 범위(시설·장비·재고), 직원 승계 여부',
+    '5. 계약: 양도양수 계약과 임대차 승계(건물주 동의)를 함께 진행',
+    `6. 본사 승인: ${name} 본사의 양수 승인 절차(교육 이수 등)를 거쳐 가맹 계약 승계`,
+    '7. 인수인계: 재고 실사, 레시피·운영 교육, 영업 개시', '',
+    '## 계약 전에 꼭 받아 볼 서류',
+    '- 최근 6개월 이상의 POS 매출과 카드 매출 내역, 부가세 신고서 — 세 가지 숫자가 서로 맞는지',
+    '- 임대차 계약서 — 남은 기간, 보증금·월세, 재계약·권리 승계 조건',
+    `- 가맹 계약서 — ${name} 가맹 계약 잔여 기간과 양수 시 본사 비용`,
+    '- 시설·장비 목록과 상태, 재고 목록', '',
+    expenseTable(name, b, s),
+    `## 지금 인수할 수 있는 ${name} 매장`, ...listingLines(arr), `- [${name} 매장 전체 보기](/brand/${slug}/)`,
+    ...sameBrandLinks(slug, name, me), '', NOTE, '', CTA,
+  ].filter(x => x != null).join('\n');
+  return { key, category: '브랜드 창업 가이드', title: `${name} 양도양수 가이드 ${YEAR} — 매장 인수 7단계와 계약 전 체크리스트`,
+    desc: `${name} 매장을 양도양수로 인수하는 순서와 계약 전 확인할 서류. 창업가이드 공개 매장 ${fmtNum(arr.length)}곳 기준 평균 월매출 ${man(s)}, 월수익 ${man(p)}, 창업비용 중간값 ${won(pm)}.`,
+    keywords: brandKws(slug, name, [`${name} 양도양수`, `${name} 매장 인수`, `${name} 매장 매매`, `${name} 창업`, `${name} 가맹점 인수`, '양도양수 창업']),
+    summary: [`${name} 공개 매장 ${fmtNum(arr.length)}곳 (${asOf})`, '실제 매출 자료를 보고 고르는 양도양수 방식', '인수 순서 7단계 · 계약 전 서류 4가지'],
+    faq: [
+      { q: `${name} 매장을 인수하면 본사 승인이 필요한가요?`, a: `네. 가맹점을 넘겨받을 때는 ${name} 본사의 양수 승인 절차(교육 이수 등)를 거쳐 가맹 계약을 승계합니다. 구체적인 조건과 비용은 본사 기준에 따릅니다.` },
+      { q: `${name} 양도양수에서 창업비용에는 무엇이 포함되나요?`, a: '창업가이드에 표시되는 창업비용은 임대보증금을 제외한 금액입니다. 시설·장비·재고 등 인수 범위는 매장마다 달라 담당자가 매장별로 안내합니다.' },
+      { q: '매출 자료는 어떻게 확인하나요?', a: 'POS 매출, 카드 매출 내역, 부가세 신고서를 함께 받아 세 숫자가 서로 맞는지 확인합니다. 담당 창업전문가가 자료 확인과 현장 답사를 함께합니다.' },
+    ],
+    cover: coverN(arr, 1), body };
+}
+
+// 1-c) 지역별 비교
+function regionPost(slug, arr, key) {
+  const name = brandName(slug, arr); const me = `${DATE}-${key.replace(/[:/\s]+/g, '-')}`;
+  const row = (label, a) => `| ${label} | ${fmtNum(a.length)}곳 | ${man(avg(a, 'sales'))} | ${man(avg(a, 'profit'))} | ${won(med(a, 'premium'))} |`;
+  const sidos = top(arr, l => l.sido, 10); const gus = top(arr, region, 99).filter(([, n]) => n >= 2).slice(0, 10);
+  const gStats = gus.map(([r]) => { const a = arr.filter(l => region(l) === r); return { r, a, p: avg(a, 'profit') || 0, c: med(a, 'premium') || 0 }; });
+  const bestP = [...gStats].sort((x, y) => y.p - x.p)[0], lowC = [...gStats].filter(x => x.c).sort((x, y) => x.c - y.c)[0];
+  const body = [
+    `같은 ${josa(name, '이라도/라도')} 어느 지역 매장이냐에 따라 매출도, 창업비용도 달라집니다. 창업가이드에 공개된 ${name} 매장 ${fmtNum(arr.length)}곳을 지역별로 나눠 비교했습니다.`,
+    '', `## 시도별 ${name} 매장`, '| 지역 | 매장 수 | 평균 월매출 | 평균 월수익(세전) | 창업비용 중간값 |', '|---|---|---|---|---|', ...sidos.map(([sd]) => row(`[${sd}](${regionLink(sd)})`, arr.filter(l => l.sido === sd))), '',
+    '## 매장이 많은 시·군·구', '| 지역 | 매장 수 | 평균 월매출 | 평균 월수익(세전) | 창업비용 중간값 |', '|---|---|---|---|---|', ...gStats.map(x => { const [sd, ...g] = x.r.split(' '); return row(`[${x.r}](${regionLink(sd, g.join(' '))})`, x.a); }), '',
+    '## 숫자로 보면',
+    bestP ? `- 평균 월수익이 가장 높은 곳은 **${bestP.r}**(${fmtNum(bestP.a.length)}곳, 평균 ${man(bestP.p)})입니다.` : null,
+    lowC && lowC !== bestP ? `- 창업비용 중간값이 가장 낮은 곳은 **${lowC.r}**(${won(lowC.c)})입니다. 예산이 빠듯하다면 먼저 살펴볼 만합니다.` : null,
+    '- 매장 수가 적은 지역은 평균이 한두 매장에 크게 흔들리므로, 개별 매장의 숫자를 꼭 같이 보세요.', '',
+    '## 지역을 고를 때 확인할 것',
+    '- 주거 밀집지·오피스·대학가 등 상권 유형과 시간대별 손님',
+    `- 반경 안의 다른 ${name} 매장과 경쟁 매장 수`, '- 배달 비중과 배달 가능 반경', '- 임대료 수준과 임대차 남은 기간', '',
+    ...gStats.slice(0, 3).flatMap(x => [`## ${x.r} ${name} 매장`, ...listingLines(x.a), '']),
+    `- [${name} 매장 전체 보기](/brand/${slug}/)`, ...sameBrandLinks(slug, name, me), '', NOTE, '', CTA,
+  ].filter(x => x != null).join('\n');
+  return { key, category: '브랜드 창업 가이드', title: `${name} 창업 지역별 비교 ${YEAR} — 어디 매장이 많고 수익은 어떻게 다를까`,
+    desc: `${name} 공개 매장 ${fmtNum(arr.length)}곳을 시도·시군구별로 비교했습니다. 지역별 매장 수, 평균 월매출·월수익, 창업비용 중간값.`,
+    keywords: brandKws(slug, name, [`${name} 창업`, ...gus.slice(0, 3).map(([r]) => `${r.split(' ').slice(1).join(' ')} ${name} 창업`), `${name} 양도양수`, `${name} 매장 매매`]),
+    summary: [`${name} 공개 매장 ${fmtNum(arr.length)}곳 지역별 비교 (${asOf})`, gus.length ? `매장이 많은 곳: ${gus.slice(0, 3).map(([r, n]) => `${r} ${n}곳`).join(', ')}` : null, bestP ? `평균 월수익 최고: ${bestP.r} ${man(bestP.p)}` : null].filter(Boolean),
+    faq: [
+      { q: `${name} 매장은 어느 지역에 많나요?`, a: `창업가이드 공개 매장 기준으로 ${gus.slice(0, 3).map(([r, n]) => `${r}(${n}곳)`).join(', ')} 순으로 많습니다.` },
+      { q: '지역 평균만 보고 매장을 골라도 되나요?', a: '평균은 출발점일 뿐입니다. 같은 지역에서도 상권·면적·운영 방식에 따라 매장별 편차가 크므로, 개별 매장의 매출 자료와 현장 답사로 확인해야 합니다.' },
+    ],
+    cover: coverN(arr, 2), body };
+}
+
+// 1-d) 예산(창업비용)별
+function budgetPost(slug, arr, key) {
+  const name = brandName(slug, arr); const me = `${DATE}-${key.replace(/[:/\s]+/g, '-')}`;
+  const bands = budgetSpread(arr).map(([bd]) => ({ bd, a: arr.filter(l => l.premium >= bd.min && l.premium < bd.max) }));
+  const main = [...bands].sort((x, y) => y.a.length - x.a.length)[0];
+  const body = [
+    `"${name} 창업, 내 예산으로 가능할까?" 창업가이드에 공개된 ${name} 매장 ${fmtNum(arr.length)}곳을 창업비용 구간별로 나눠, 예산에 따라 어떤 매장을 고를 수 있는지 정리했습니다.`,
+    '', `## 창업비용 구간별 ${name} 매장`, '| 창업비용 | 매장 수 | 평균 월매출 | 평균 월수익(세전) |', '|---|---|---|---|',
+    ...bands.map(x => `| [${x.bd.name}](/budget/${x.bd.slug}/) | ${fmtNum(x.a.length)}곳 | ${man(avg(x.a, 'sales'))} | ${man(avg(x.a, 'profit'))} |`), '',
+    main ? `가장 많은 매장이 모인 구간은 **${main.bd.name}**(${fmtNum(main.a.length)}곳)입니다. 창업비용이 높을수록 대체로 매출 규모도 커지지만, 같은 구간 안에서도 매장마다 차이가 크니 개별 매장을 비교해 보세요.` : null, '',
+    '## 같은 예산이라면 무엇을 비교할까',
+    '- 월매출 대비 월수익 비율 — 재료비·인건비 구조가 드러납니다',
+    '- 직원 수와 점주 근무 여부 — 점주 인건비는 월지출에 포함되지 않습니다',
+    '- 임대보증금·월세 — 창업비용에는 임대보증금이 빠져 있습니다',
+    '- 시설 연식과 남은 임대 기간', '',
+    ...bands.flatMap(x => [`## 창업비용 ${x.bd.name} ${name} 매장`, ...listingLines(x.a, 3), '']),
+    `- [${name} 매장 전체 보기](/brand/${slug}/)`, ...sameBrandLinks(slug, name, me), '', NOTE, '', CTA,
+  ].filter(x => x != null).join('\n');
+  return { key, category: '브랜드 창업 가이드', title: `${name} 창업 예산별 가이드 ${YEAR} — 창업비용 구간별 매장과 수익 비교`,
+    desc: `${name} 공개 매장 ${fmtNum(arr.length)}곳을 창업비용 구간별로 나눴습니다. 구간별 매장 수와 평균 월매출·월수익, 같은 예산에서 비교할 점.`,
+    keywords: brandKws(slug, name, [`${name} 창업비용`, `${name} 창업 비용`, ...bands.slice(0, 2).map(x => `${x.bd.name.split(' ')[0]} ${name} 창업`), `${name} 양도양수`, '소자본 창업']),
+    summary: [`${name} 공개 매장 ${fmtNum(arr.length)}곳 창업비용 구간별 비교 (${asOf})`, main ? `가장 많은 구간: ${main.bd.name} ${main.a.length}곳` : null, '창업비용은 임대보증금 제외 금액'].filter(Boolean),
+    faq: [
+      { q: `${name} 창업은 최소 얼마부터 가능한가요?`, a: `창업가이드에 공개된 ${name} 매장 중 창업비용이 가장 낮은 매장은 ${won(rng(arr, 'premium')?.[0])}입니다(임대보증금 별도). 매장이 새로 등록되면 달라질 수 있습니다.` },
+      { q: '창업비용에 임대보증금이 포함되나요?', a: '아니요. 창업가이드에 표시되는 창업비용은 임대보증금을 제외한 금액입니다. 보증금·월세는 매장마다 달라 담당자가 따로 안내합니다.' },
+    ],
+    cover: coverN(arr, 3), body };
+}
+const BRAND_POST = { cost: costPost, transfer: transferPost, region: regionPost, budget: budgetPost };
 
 // ---------- 2) 키워드 가이드 (프랜차이즈·양도양수 창업 일반) ----------
 const KW = [

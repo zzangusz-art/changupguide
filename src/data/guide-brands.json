@@ -1,0 +1,12 @@
+{
+ "note": "브랜드 창업 가이드(매일 오전 발행)에서 집중해서 다룰 브랜드. 위에서부터 차례로 돌아가며 발행합니다. alias는 글 키워드에 함께 넣을 다른 이름입니다.",
+ "brands": [
+  { "slug": "mega-coffee", "alias": ["메가MGC커피"] },
+  { "slug": "subway", "alias": [] },
+  { "slug": "lotteria", "alias": [] },
+  { "slug": "kyochon", "alias": [] },
+  { "slug": "paris-baguette", "alias": [] },
+  { "slug": "baskin-robbins", "alias": ["베스킨라빈스"] },
+  { "slug": "yupdduk", "alias": ["동대문엽기떡볶이", "엽떡"] }
+ ]
+}
