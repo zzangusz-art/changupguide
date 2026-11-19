@@ -85,7 +85,7 @@ export function listingPage(l, ctx) {
   const detailSec = `<section class="d-sec"><h2 class="h2">이 매장 핵심 정리</h2>
     <div class="summary-box"><h2>${esc(l.title)}</h2><ul>${summaryItems.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>
     <div class="prose">
-      <p class="lead">${esc(loc)}에서 운영 중인 ${esc(l.brand || l.kind2 || l.kind1)} 매장을 창업비용 ${l.premium ? esc(fmtWon(l.premium)) : '협의'}에 인수하는 양도양수 창업 매장입니다.${l.sales ? ` 현재 월매출 ${esc(fmtMan(l.sales))}${l.profit ? `, 세전 월수익 ${esc(fmtMan(l.profit))}` : ''} 규모로 운영되고 있습니다.` : ''}</p>
+      <p class="prose-lead">${esc(loc)}에서 운영 중인 ${esc(l.brand || l.kind2 || l.kind1)} 매장을 창업비용 ${l.premium ? esc(fmtWon(l.premium)) : '협의'}에 인수하는 양도양수 창업 매장입니다.${l.sales ? ` 현재 월매출 ${esc(fmtMan(l.sales))}${l.profit ? `, 세전 월수익 ${esc(fmtMan(l.profit))}` : ''} 규모로 운영되고 있습니다.` : ''}</p>
       ${l.summary ? `<h3>담당자 한줄 요약</h3><p>${esc(l.summary)}</p>` : ''}
       <h3>이런 분께 맞습니다</h3><ul>
         ${theme ? `<li>${esc(theme.name)} 테마 매장 — ${esc(theme.desc.split('.')[0])}.</li>` : ''}

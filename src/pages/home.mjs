@@ -40,7 +40,8 @@ export function homePage(ctx) {
       </div>
     </div>`;
   }).join('');
-  const hero = `<section class="hero2" aria-roledescription="carousel" aria-label="추천 브랜드 창업"><div class="hero2__track">${slides}</div>
+  const hero = `<h1 class="sr-only">창업가이드 — 서울·경기·인천 양도양수 창업 매장과 프랜차이즈 창업 정보</h1>
+  <section class="hero2" aria-roledescription="carousel" aria-label="추천 브랜드 창업"><div class="hero2__track">${slides}</div>
     <div class="hero2__pager glass" role="tablist" data-hero-pager></div></section>`;
 
   // ---------- 검색 바 ----------

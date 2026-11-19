@@ -492,3 +492,5 @@ h1,h2,h3,h4{letter-spacing:-.015em}
 .card__sample{position:absolute;right:10px;top:10px;z-index:3;background:#111;color:#FFCC00;font-size:.7rem;font-weight:800;padding:4px 9px;border-radius:999px;letter-spacing:-.01em}
 .sample-note{margin:6px 0 10px;padding:9px 12px;border-radius:10px;background:#FFF7CC;border:1px dashed #C9A800;font-size:.84rem;color:#4a3b00}
 .sample-note b{background:#111;color:#FFCC00;border-radius:999px;padding:2px 8px;font-size:.74rem;margin-right:6px}
+
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
