@@ -22,6 +22,7 @@ export class RemoteApi {
   logout() { return this.req('/auth/logout', 'POST', {}); }
   me() { return this.req('/me'); }
   stats() { return this.req('/stats'); }
+  visits(opt = {}) { return this.req('/visits?' + new URLSearchParams(Object.entries(opt).filter(([, v]) => v))); }
   listings() { return this.req('/listings').then(r => r.items); }
   getListing(id) { return this.req(`/listings/${id}`); }
   createListing(l) { return this.req('/listings', 'POST', { listing: l }); }
@@ -104,6 +105,7 @@ export class LocalApi {
   async login(id, password) { const a = this.db.agents.find(x => x.id === id && x.active !== false); if (!a || password !== '1234') throw new Error('아이디 또는 비밀번호가 올바르지 않습니다 (데모: 비밀번호 1234)'); this.user = a; sessionStorage.setItem('cu-demo-user', a.id); this.log('login', ''); return { user: a }; }
   async logout() { this.user = null; sessionStorage.removeItem('cu-demo-user'); return {}; }
   async me() { const u = this.need(); const unread = this.db.messages.filter(m => m.toId === u.id && !m.readAt).length + this.db.notices.filter(n => !(n.reads || []).includes(u.id)).length; return { user: u, unread, demo: true }; }
+  async visits() { throw new Error('방문 통계는 서버에 연결된 관리자에서만 볼 수 있습니다 (데모 모드)'); }
   async stats() { const u = this.need(); const mine = l => u.isAdmin || l.agentId === u.id; return { listings: this.db.listings.filter(l => l.status === 'active' && mine(l)).length, held: this.db.listings.filter(l => l.status === 'held' && mine(l)).length, newInquiries: this.db.inquiries.filter(i => i.status === 'new' && (u.isAdmin || i.agentId === u.id || !i.agentId)).length, callsToday: this.db.calls.filter(c => mine(c) && Date.now() - new Date(c.createdAt) < 86400000).length, lastBuild: { at: now(), ok: true, ms: 0, log: '데모 모드 — 저장 즉시 반영된 것으로 표시' } }; }
   async listings() { this.need(); return [...this.db.listings].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))); }
   async getListing(id) { this.need(); const l = this.db.listings.find(x => x.id === String(id)); if (!l) throw new Error('없는 매장'); return { item: l, lock: null }; }

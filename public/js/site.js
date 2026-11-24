@@ -323,6 +323,16 @@ async function initSuggest() {
   });
 }
 
+// ---------- 방문 집계 (관리자 > 방문 통계) ----------
+// 브라우저마다 임의 번호 하나를 저장해 같은 사람의 재방문을 구분 (개인 정보 없음)
+function trackVisit() {
+  if (!CU.api) return;
+  let v = '';
+  try { v = localStorage.getItem('cu:vid') || ''; if (!/^[a-z0-9]{12,40}$/i.test(v)) { v = (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2) + Date.now().toString(36)); localStorage.setItem('cu:vid', v); } } catch { v = ''; }
+  const u = new URLSearchParams(location.search).get('utm_source') || '';
+  beacon('/api/seen', { p: location.pathname, r: document.referrer || '', v, u: u.slice(0, 40) });
+}
+
 // ---------- 기타 ----------
 function initMisc() {
   $$('[data-scroll-top]').forEach(b => b.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' })));
@@ -335,7 +345,7 @@ function initMisc() {
   if ($('.sticky-bar')) { document.body.classList.add('has-sticky'); if (matchMedia('(max-width:860px)').matches) { const f = $('#floatCta'); if (f) f.style.display = 'none'; } }
 }
 
-initDrawer(); initModals(); initHero(); initHeroBg(); initTabs(); initRails(); initLead(); initSeq(); initRegionMap(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc();
+initDrawer(); initModals(); initHero(); initHeroBg(); initTabs(); initRails(); initLead(); initSeq(); initRegionMap(); initReveal(); initCall(); initSms(); initGallery(); trackRecent(); renderRecent(); initSuggest(); initMisc(); trackVisit();
 
 // ---------- 방문 분석 이벤트: GTM(dataLayer)·GA4(gtag)·네이버(전환) 공통 ----------
 function track(name, params = {}, naverCnv = 0) {

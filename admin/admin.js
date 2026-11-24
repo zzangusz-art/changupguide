@@ -57,7 +57,7 @@ window.addEventListener('hashchange', render);
 window.addEventListener('cu-retry', e => toast(`서버 응답을 기다리는 중… 자동으로 다시 시도합니다 (${e.detail})`, '', 2500));
 
 function shell(active) {
-  const nav = [['dashboard', '대시보드'], ['listings', '매장 관리'], ['my', '내가 등록한 매장'], ['brands', '브랜드 관리'], ['photos', '사진 라이브러리'], ['inbox', '문의함'], ['calls', '통화 알림'], ['messages', '메시지·공지'], ['posts', '발행 글'], ['help', '사용 매뉴얼'], ...(me.isAdmin ? [['agents', '직원 계정'], ['settings', '설정·백업']] : [['profile', '내 정보']])];
+  const nav = [['dashboard', '대시보드'], ...(me.isAdmin ? [['visits', '방문 통계']] : []), ['listings', '매장 관리'], ['my', '내가 등록한 매장'], ['brands', '브랜드 관리'], ['photos', '사진 라이브러리'], ['inbox', '문의함'], ['calls', '통화 알림'], ['messages', '메시지·공지'], ['posts', '발행 글'], ['help', '사용 매뉴얼'], ...(me.isAdmin ? [['agents', '직원 계정'], ['settings', '설정·백업']] : [['profile', '내 정보']])];
   return `<div class="shell"><aside class="side" id="side">
     <a class="logo" href="#/dashboard"><svg viewBox="0 0 40 40"><rect width="40" height="40" rx="10" fill="#FFCC00"/><path d="M11.5 28.5 27 13M16.5 13H27v10.5" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>창업<b>가이드</b></a>
     ${nav.map(([k, n]) => `<a class="nav ${active === k ? 'is-on' : ''}" href="#/${k}">${n}${k === 'messages' ? `<span class="cnt ${unread ? '' : 'hide'}" data-unread>${unread || ''}</span>` : ''}</a>`).join('')}
@@ -116,7 +116,8 @@ route('dashboard', async view => {
   const [s, inq, calls, notices, msgs] = await Promise.all([api.stats(), api.inquiries(), api.calls(), api.notices(), api.messages()]);
   const newInq = inq.filter(i => i.status === 'new').slice(0, 6); const recentCalls = calls.slice(0, 6); const un = msgs.filter(m => m.toId === me.id && !m.readAt);
   const stg = s.storage; const stWarn = stg && !stg.persistent ? '<div class="alert err">⚠ 데이터 저장소(Railway 볼륨)가 연결되지 않았습니다. 이 상태로 재배포하면 등록한 매장이 사라집니다. Railway → changupguide → Volumes 에서 /app/data 볼륨을 확인하세요.</div>' : stg?.lastBackup && !stg.lastBackup.ok ? `<div class="alert err">⚠ 자동 백업이 실패했습니다: ${esc(stg.lastBackup.error || '')} — 설정 → 백업에서 확인하세요.</div>` : '';
-  view.innerHTML = `${stWarn}${startGuide()}${await todoBoard()}<div class="grid4">
+  const vt = s.visits; const visitStrip = vt ? `<a class="card visit-mini" href="#/visits"><span>오늘 방문자 <b>${fmtNum(vt.today.v)}</b>명 · 페이지뷰 ${fmtNum(vt.today.n)}회</span><span class="muted">어제 ${fmtNum(vt.yesterday.v)}명 · ${fmtNum(vt.yesterday.n)}회</span><span class="visit-mini__go">일간·주간·월간 방문 통계 →</span></a>` : '';
+  view.innerHTML = `${stWarn}${startGuide()}${await todoBoard()}${visitStrip}<div class="grid4">
     <div class="stat"><b>${s.listings}</b><span>공개 매장${me.isAdmin ? ' (전체)' : ' (내 담당)'}</span></div><div class="stat ink"><b>${s.held}</b><span>보류 매장</span></div><div class="stat"><b>${s.newInquiries}</b><span>새 문의</span></div><div class="stat blue"><b>${s.callsToday}</b><span>24시간 내 통화 연결</span></div></div>
     <div class="grid2" style="margin-top:14px">
       <div class="card"><h2>새 문의 <a class="btn btn--sm" href="#/inbox">전체</a></h2>${newInq.length ? `<table class="table">${newInq.map(i => `<tr><td><span class="badge ${INQ_STATUS[i.status][1]}">${{ sms: '문자상담', buy: '창업의뢰', sell: '양도의뢰' }[i.type] || i.type}</span></td><td><b>${esc(i.name)}</b><br><a href="tel:${esc(i.phone)}">${esc(i.phone)}</a></td><td class="muted">${esc((i.message || '').slice(0, 40))}${i.listingId ? `<br><a href="#/listings/${i.listingId}">No.${i.listingId}</a>` : ''}</td><td class="muted nowrap">${fmtDate(i.createdAt)}</td></tr>`).join('')}</table>` : '<p class="muted">새 문의가 없습니다.</p>'}</div>
@@ -126,6 +127,72 @@ route('dashboard', async view => {
     </div>
     ${me.isAdmin ? await staffBoard() : ''}
     <div class="card" style="margin-top:14px"><h2>바로가기</h2><div class="chips"><a class="chip" href="#/listings/new">매장 등록</a><a class="chip" href="#/my">내가 등록한 매장</a><a class="chip" href="#/brands">브랜드 기본값</a><a class="chip" href="#/photos">사진 올리기</a><a class="chip" href="#/inbox">문의 처리</a>${me.isAdmin ? '<a class="chip" href="#/posts">오늘 글 발행</a><a class="chip" href="#/settings">문자 발송 설정</a>' : '<a class="chip" href="#/profile">내 정보·비밀번호</a>'}<a class="chip" href="../listings/" target="_blank">사이트 검색 페이지 ↗</a></div>${s.lastBuild ? `<p class="muted" style="margin-top:10px;font-size:.82rem">사이트 반영: ${s.lastBuild.ok ? '정상' : '실패'} · ${fmtDate(s.lastBuild.at)} ${new Date(s.lastBuild.at).toLocaleTimeString('ko-KR', { hour12: false })}${s.lastBuild.ms ? ` (${(s.lastBuild.ms / 1000).toFixed(1)}초)` : ''}</p>` : ''}</div>`;
+});
+
+// ---------- 방문 통계 (관리자) ----------
+// 서버 /api/visits: 일간·주간(월요일 시작)·월간 칸별 방문자(같은 브라우저 1명)·신규 방문자·페이지뷰 + 많이 본 페이지·유입 경로·기기
+const VIS = { unit: 'day', from: '', to: '' };
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
+const vLabel = (unit, k) => { const [y, m, d] = k.split('-').map(Number); if (unit === 'month') return `${y}년 ${m}월`; const wd = WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; if (unit === 'week') { const e = new Date(Date.UTC(y, m - 1, d + 6)); return `${m}/${d} ~ ${e.getUTCMonth() + 1}/${e.getUTCDate()}`; } return `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')} (${wd})`; };
+const vShort = (unit, k) => { const [y, m, d] = k.split('-').map(Number); return unit === 'month' ? `${String(y).slice(2)}.${m}월` : `${m}/${d}`; };
+const vDiff = (a, b) => { if (!b) return a ? '<span class="trend up">새로 생김</span>' : '<span class="muted">—</span>'; const p = Math.round((a - b) / b * 100); return `<span class="trend ${p > 0 ? 'up' : p < 0 ? 'down' : ''}">${p > 0 ? '▲' : p < 0 ? '▼' : ''} ${Math.abs(p)}%</span>`; };
+const vDay = (n, from = new Date()) => new Date(from.getTime() + 9 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
+const V_PRESETS = { day: [['7', '최근 7일'], ['30', '최근 30일'], ['90', '최근 90일']], week: [['12', '최근 12주'], ['26', '최근 26주'], ['52', '최근 52주']], month: [['12', '최근 12개월'], ['24', '최근 24개월']] };
+function vPreset(unit, n) { const to = vDay(0); n = Number(n); if (unit === 'day') return { from: vDay(-(n - 1)), to }; if (unit === 'week') { const t = new Date(to + 'T00:00:00Z'); const mon = new Date(t.getTime() - ((t.getUTCDay() + 6) % 7) * 86400e3); return { from: new Date(mon.getTime() - (n - 1) * 7 * 86400e3).toISOString().slice(0, 10), to }; } const [y, m] = to.split('-').map(Number); const s = new Date(Date.UTC(y, m - 1 - (n - 1), 1)); return { from: s.toISOString().slice(0, 10), to }; }
+function visitChart(d) {
+  const S = d.series; if (!S.length) return ''; const W = 960, H = 240, L = 36, R = 10, T = 14, B = 34; const n = S.length; const cw = (W - L - R) / n;
+  const max = Math.max(4, ...S.map(s => s.views), ...S.map(s => s.visitors)); const step = Math.pow(10, Math.floor(Math.log10(max))); const top = Math.ceil(max / step) * step; const y = v => T + (H - T - B) * (1 - v / top);
+  const grid = [0, .25, .5, .75, 1].map(f => `<line x1="${L}" x2="${W - R}" y1="${y(top * f)}" y2="${y(top * f)}" class="g"/><text x="${L - 6}" y="${y(top * f) + 4}" text-anchor="end">${Math.round(top * f)}</text>`).join('');
+  const every = Math.ceil(n / 14); const bw = Math.max(2, Math.min(34, cw * .62));
+  const bars = S.map((s, i) => { const x = L + cw * i + cw / 2; return `<g><title>${vLabel(d.unit, s.key)} · 방문자 ${s.visitors}명 (신규 ${s.newVisitors}) · 페이지뷰 ${s.views}회</title><rect x="${x - bw / 2}" y="${y(s.visitors)}" width="${bw}" height="${Math.max(0, H - B - y(s.visitors))}" rx="3" class="b"/><rect x="${L + cw * i}" y="${T}" width="${cw}" height="${H - T - B}" fill="transparent"/>${i % every === 0 || i === n - 1 ? `<text x="${x}" y="${H - B + 16}" text-anchor="middle">${vShort(d.unit, s.key)}</text>` : ''}</g>`; }).join('');
+  const line = S.map((s, i) => `${L + cw * i + cw / 2},${y(s.views)}`).join(' ');
+  const dots = n <= 62 ? S.map((s, i) => `<circle cx="${L + cw * i + cw / 2}" cy="${y(s.views)}" r="3" class="d"/>`).join('') : '';
+  return `<svg class="vchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="기간별 방문자와 페이지뷰">${grid}${bars}<polyline points="${line}" class="l"/>${dots}</svg><div class="vlegend"><span><i class="b"></i>방문자</span><span><i class="l"></i>페이지뷰</span></div>`;
+}
+async function drawVisits(view) {
+  view.innerHTML = '<div class="loading">불러오는 중…</div>';
+  const d = await api.visits(VIS); VIS.from = d.from; VIS.to = d.to;
+  const S = d.series; const sm = d.summary;
+  const card = (t, o, cls = '') => `<div class="stat ${cls}"><span>${t}</span><b>${fmtNum(o.visitors)}<small>명</small></b><span class="muted">페이지뷰 ${fmtNum(o.views)}회</span>${o.prev ? `<span class="vs">${o.prevLabel} ${fmtNum(o.prev.visitors)}명 ${vDiff(o.visitors, o.prev.visitors)}</span>` : ''}</div>`;
+  const maxSrc = Math.max(1, ...d.sources.map(s => s.n)); const devTotal = d.devices.reduce((a, x) => a + x.visitors, 0) || 1; const DEV = { mobile: '모바일', desktop: 'PC', tablet: '태블릿' };
+  const rows = [...S].reverse().map((s, i, arr) => { const prev = arr[i + 1]; return `<tr><td class="nowrap"><b>${vLabel(d.unit, s.key)}</b></td><td class="right"><b>${fmtNum(s.visitors)}</b></td><td class="right">${fmtNum(s.newVisitors)}</td><td class="right">${fmtNum(s.views)}</td><td class="right">${s.visitors ? (s.views / s.visitors).toFixed(1) : '-'}</td><td class="right">${prev ? vDiff(s.visitors, prev.visitors) : ''}</td></tr>`; }).join('');
+  view.innerHTML = `<div class="grid4">${card('오늘', sm.today)}${card('이번 주 (월요일부터)', sm.week, 'ink')}${card('이번 달', sm.month, 'blue')}${card('전체 누적', sm.total, 'ink')}</div>
+  <div class="card" style="margin-top:14px">
+    <div class="vbar">
+      <div class="seg" role="tablist">${[['day', '일간'], ['week', '주간'], ['month', '월간']].map(([k, t]) => `<button class="${d.unit === k ? 'is-on' : ''}" data-vunit="${k}">${t}</button>`).join('')}</div>
+      <div class="chips">${V_PRESETS[d.unit].map(([n, t]) => `<button class="chip" data-vpreset="${n}">${t}</button>`).join('')}</div>
+      <form class="vrange" data-vrange><input type="date" name="from" value="${d.from}" max="${d.today}"><span>~</span><input type="date" name="to" value="${d.to}" max="${d.today}"><button class="btn btn--sm btn--ink" type="submit">조회</button></form>
+    </div>
+    <h2 style="margin-top:12px">${vLabel('day', d.from).slice(0, 10)} ~ ${vLabel('day', d.to).slice(0, 10)} <span class="muted" style="font-size:.86rem;font-weight:700">방문자 ${fmtNum(d.totals.visitors)}명 · 페이지뷰 ${fmtNum(d.totals.views)}회</span></h2>
+    ${d.totals.views ? visitChart(d) : `<p class="muted" style="padding:30px 0;text-align:center">이 기간에는 아직 방문 기록이 없습니다.${d.since ? '' : ' 방문 집계는 이번 업데이트부터 시작됩니다.'}</p>`}
+    <div class="table-wrap"><table class="table vtable"><thead><tr><th>${{ day: '날짜', week: '주 (월~일)', month: '월' }[d.unit]}</th><th class="right">방문자</th><th class="right">신규 방문자</th><th class="right">페이지뷰</th><th class="right">1인당 페이지</th><th class="right">직전 대비</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card"><h2>많이 본 페이지</h2>${d.pages.length ? `<table class="table">${d.pages.map(p => `<tr><td><a href="..${esc(p.path)}" target="_blank">${esc(decodeURIComponent(p.path))}</a></td><td class="right nowrap">${fmtNum(p.views)}회</td><td class="right nowrap muted">${fmtNum(p.visitors)}명</td></tr>`).join('')}</table>` : '<p class="muted">기록 없음</p>'}</div>
+    <div class="card"><h2>유입 경로 <span class="muted" style="font-size:.78rem;font-weight:700">사이트에 들어온 횟수</span></h2>${d.sources.length ? d.sources.map(s => `<div class="srow"><span>${esc(s.src)}</span><i style="width:${Math.round(s.n / maxSrc * 100)}%"></i><b>${fmtNum(s.n)}</b></div>`).join('') : '<p class="muted">기록 없음</p>'}
+      <h2 style="margin-top:16px">기기</h2><div class="chips">${d.devices.sort((a, b) => b.visitors - a.visitors).map(x => `<span class="chip">${DEV[x.device] || x.device} ${Math.round(x.visitors / devTotal * 100)}% <span class="muted">(${fmtNum(x.visitors)}명)</span></span>`).join('') || '<span class="muted">기록 없음</span>'}</div></div>
+  </div>
+  <p class="muted" style="font-size:.8rem;margin-top:12px">집계 시작 ${d.since || '—'} · 한국 시간 기준 · 같은 브라우저는 하루·한 주·한 달 안에서 1명으로 셉니다. 검색·AI 크롤러와 로그인한 직원의 방문(이 기간 ${fmtNum(d.staffViews)}회)은 빠집니다. 집계 시작 전 기록은 GA4에서 확인하세요.</p>`;
+  view._visits = d;
+}
+route('visits', async view => {
+  if (!me.isAdmin) { view.innerHTML = '<div class="alert err">관리자만 볼 수 있습니다.</div>'; return; }
+  setTitle('방문 통계', '<button class="btn" data-vcsv>CSV 받기</button>');
+  await drawVisits(view);
+});
+document.addEventListener('click', async e => {
+  const view = $('#view'); if (!view) return;
+  const u = e.target.closest('[data-vunit]'); if (u) { VIS.unit = u.dataset.vunit; Object.assign(VIS, vPreset(VIS.unit, V_PRESETS[VIS.unit][VIS.unit === 'day' ? 1 : 0][0])); try { await drawVisits(view); } catch (err) { fail(err); } return; }
+  const p = e.target.closest('[data-vpreset]'); if (p) { Object.assign(VIS, vPreset(VIS.unit, p.dataset.vpreset)); try { await drawVisits(view); } catch (err) { fail(err); } return; }
+  if (e.target.closest('[data-vcsv]') && view._visits) {
+    const d = view._visits; const head = ['기간', '시작일', '방문자', '신규 방문자', '페이지뷰'];
+    const csv = '﻿' + [head, ...d.series.map(s => [vLabel(d.unit, s.key), s.start, s.visitors, s.newVisitors, s.views])].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `창업가이드_방문통계_${{ day: '일간', week: '주간', month: '월간' }[d.unit]}_${d.from}_${d.to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+});
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('[data-vrange]'); if (!f) return; e.preventDefault();
+  const fd = new FormData(f); VIS.from = fd.get('from'); VIS.to = fd.get('to'); try { await drawVisits($('#view')); } catch (err) { fail(err); }
 });
 
 // ---------- 매장 목록 ----------

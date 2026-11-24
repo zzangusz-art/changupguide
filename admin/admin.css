@@ -221,3 +221,18 @@ body.is-dragging-photos .folders .f{transition:background .1s}
 body.is-dragging-photos .lib .it.is-on{opacity:.55}
 .folders .f.is-drop{outline:3px solid #1D5BF0!important;background:#DCE6FF!important;transform:scale(1.02)}
 .folders .f.is-drop em:after{content:' ← 여기로';color:#1D5BF0;font-weight:800}
+/* 방문 통계 */
+.visit-mini{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;padding:12px 18px;font-weight:700}
+.visit-mini b{font-size:1.25rem;color:var(--red)}.visit-mini__go{margin-left:auto;font-size:.86rem;text-decoration:underline}
+.stat b small{font-size:.95rem;margin-left:2px;color:inherit}.stat>span{display:block}.stat .vs{font-size:.78rem;font-weight:700;color:var(--muted);margin-top:4px}
+.trend{font-weight:900;white-space:nowrap}.trend.up{color:#1E9E4A}.trend.down{color:var(--red)}
+.vbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid #D9D5C9;border-radius:10px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:8px 16px;font-weight:900;font-size:.9rem}.seg button+button{border-left:1px solid #D9D5C9}.seg button.is-on{background:var(--ink);color:#fff}
+.vrange{display:flex;align-items:center;gap:6px;margin-left:auto}.vrange input{padding:7px 10px;border:1px solid #D9D5C9;border-radius:10px;font-weight:700;background:#fff}
+.vchart{width:100%;height:auto;display:block;margin:6px 0 4px}.vchart text{font-size:11px;fill:var(--muted);font-weight:700}.vchart .g{stroke:#EEEBE2}
+.vchart .b{fill:var(--yellow)}.vchart g:hover .b{fill:#F2B800}.vchart .l{fill:none;stroke:var(--ink);stroke-width:2}.vchart .d{fill:#fff;stroke:var(--ink);stroke-width:2}
+.vlegend{display:flex;gap:16px;font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:10px}.vlegend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}.vlegend i.b{background:var(--yellow)}.vlegend i.l{height:3px;background:var(--ink);vertical-align:3px}
+.vtable td,.vtable th{padding:8px 10px}
+.srow{display:grid;grid-template-columns:130px 1fr 48px;align-items:center;gap:8px;font-size:.86rem;font-weight:700;margin:6px 0}.srow i{display:block;height:10px;border-radius:5px;background:var(--yellow);min-width:3px}.srow b{text-align:right}
+@media (max-width:900px){.vrange{margin-left:0}.srow{grid-template-columns:110px 1fr 40px}}

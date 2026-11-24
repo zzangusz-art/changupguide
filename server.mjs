@@ -49,7 +49,9 @@ if (!STATIC_ONLY) {
   CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, agentId TEXT, action TEXT, target TEXT, detail TEXT, at TEXT);
   CREATE TABLE IF NOT EXISTS brands(slug TEXT PRIMARY KEY, data TEXT, updatedAt TEXT);
   CREATE TABLE IF NOT EXISTS listing_history(id INTEGER PRIMARY KEY AUTOINCREMENT, listingId TEXT, data TEXT, action TEXT, byId TEXT, at TEXT);
-  CREATE INDEX IF NOT EXISTS ix_history ON listing_history(listingId, id);`);
+  CREATE INDEX IF NOT EXISTS ix_history ON listing_history(listingId, id);
+  CREATE TABLE IF NOT EXISTS visits(id INTEGER PRIMARY KEY AUTOINCREMENT, day TEXT, at TEXT, vid TEXT, path TEXT, ref TEXT, src TEXT, device TEXT, staff INTEGER DEFAULT 0);
+  CREATE INDEX IF NOT EXISTS ix_visits_day ON visits(day, vid);`);
   db.exec('PRAGMA busy_timeout=5000;');
 }
 const now = () => new Date().toISOString();
@@ -234,7 +236,7 @@ if (db) { setTimeout(guideTick, 20000); setInterval(guideTick, 5 * 60 * 1000); }
 // 서버가 먼저 응답을 시작한 뒤(아래 listen) 무거운 시작 작업을 실행 — 배포 직후 502 시간을 줄임
 function boot() {
   if (!db) return;
-  for (const [n, f] of [['backup', () => snapshotBackup('boot')], ['seed', seedIfEmpty], ['brands', seedBrands], ['site', seedSite], ['sync', syncFromRepo], ['words', migrateWords], ['words2', migrateWords2], ['covers', migrateGuideCovers], ['folder', migratePhotoFolder], ['admin', adminReset]]) { try { f(); } catch (e) { console.log(`[boot] ${n} 실패 — 건너뜀:`, e.message); } }
+  for (const [n, f] of [['backup', () => snapshotBackup('boot')], ['seed', seedIfEmpty], ['brands', seedBrands], ['site', seedSite], ['sync', syncFromRepo], ['words', migrateWords], ['words2', migrateWords2], ['covers', migrateGuideCovers], ['folder', migratePhotoFolder], ['admin', adminReset], ['visits', pruneVisits]]) { try { f(); } catch (e) { console.log(`[boot] ${n} 실패 — 건너뜀:`, e.message); } }
   setTimeout(() => rebuild(), 1500); setInterval(() => { try { periodicBackup(); } catch (e) { console.log('[backup] 점검 실패', e.message); } }, 20 * 60 * 1000);
   console.log(`[boot] 시작 작업 완료 · 볼륨 남은 용량 ${diskFreeMB()}MB`);
 }
@@ -293,7 +295,8 @@ function rebuild() {
   if (building) { pending = true; return; }
   building = true; try { exportData(); } catch (e) { building = false; console.log('[build] 데이터 내보내기 실패', e.message); return; }
   const t = Date.now();
-  const child = spawn(process.execPath, [path.join(ROOT, 'build.mjs')], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV, API_URL: process.env.API_URL || '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  // API 주소: 따로 지정하지 않으면 같은 서버(BASE 또는 '/') — 비어 있으면 사이트 폼·통화 알림·방문 집계가 데모 모드로 빠짐
+  const child = spawn(process.execPath, [path.join(ROOT, 'build.mjs')], { cwd: ROOT, env: { ...process.env, ...BUILD_ENV, API_URL: process.env.API_URL || BASE || '/' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = ''; child.stdout.on('data', d => out += d); child.stderr.on('data', d => out += d);
   child.on('error', e => { building = false; console.log('[build] 실행 실패', e.message); });
   child.on('close', code => { building = false; setSetting('lastBuild', { at: now(), ok: code === 0, ms: Date.now() - t, log: out.slice(-2000) }); console.log(`[build] ${code === 0 ? 'ok' : 'FAIL'} ${Date.now() - t}ms`); if (code === 0) setTimeout(pingIndexNow, 5000); if (pending) { pending = false; rebuild(); } });
@@ -333,6 +336,76 @@ async function sendSms(to, text) {
   } catch (e) { return { ok: false, detail: String(e).slice(0, 300) }; }
 }
 
+// ---------- 방문 집계 (관리자 > 방문 통계) ----------
+// 사이트 페이지가 열릴 때 보내는 신호(/api/seen)를 한 줄씩 기록. 방문자 구분은 브라우저에 저장한 임의 번호(없으면 IP·브라우저 해시) — IP 원문은 저장하지 않음.
+// 검색·AI 크롤러는 제외, 로그인한 직원 방문은 staff=1 로 따로 표시해 통계에서 뺌. 기준 날짜는 한국 시간.
+const kstDay = (d = new Date()) => new Date(d.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+const dayAdd = (day, n) => new Date(Date.parse(day + 'T00:00:00Z') + n * 86400e3).toISOString().slice(0, 10);
+const weekStart = day => dayAdd(day, -((new Date(day + 'T00:00:00Z').getUTCDay() + 6) % 7)); // 월요일 시작
+const BOT_UA = /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|preview|facebookexternalhit|embedly|python|curl|wget|httpclient|java\/|go-http|axios|node-fetch|okhttp|phantom|selenium|puppeteer|playwright|scrapy|yeti|daumoa|gptbot|chatgpt-user|claude-user|perplexity|bytespider|petal/i;
+const SRC_RULES = [[/(^|\.)naver\.com$/, '네이버'], [/(^|\.)google\.[a-z.]+$/, '구글'], [/(^|\.)daum\.net$|(^|\.)kakao\.com$/, '다음·카카오'], [/(^|\.)bing\.com$/, '빙'], [/(^|\.)zum\.com$/, '줌'],
+  [/chatgpt\.com$|openai\.com$/, 'AI · ChatGPT'], [/perplexity\.ai$/, 'AI · Perplexity'], [/gemini\.google\.com$|bard\.google\.com$/, 'AI · Gemini'], [/copilot\.microsoft\.com$/, 'AI · Copilot'], [/claude\.ai$/, 'AI · Claude'], [/(^|\.)wrtn\.ai$/, 'AI · 뤼튼'],
+  [/instagram\.com$/, 'SNS · 인스타그램'], [/facebook\.com$|fb\.com$/, 'SNS · 페이스북'], [/youtube\.com$|youtu\.be$/, 'SNS · 유튜브'], [/(^|\.)band\.us$/, 'SNS · 밴드'], [/(^|\.)t\.co$|x\.com$|twitter\.com$/, 'SNS · X']];
+function visitSource(refHost, utm, siteHost) {
+  if (utm) { const u = utm.toLowerCase(); for (const [re, n] of SRC_RULES) if (re.test(u) || re.test(u + '.com')) return n; return '캠페인 · ' + utm.slice(0, 30); }
+  if (!refHost) return '직접 방문';
+  if (refHost === siteHost || refHost === 'www.' + siteHost || 'www.' + refHost === siteHost) return ''; // 사이트 안 이동
+  if (/gemini\.google\.com$/.test(refHost)) return 'AI · Gemini';
+  for (const [re, n] of SRC_RULES) if (re.test(refHost)) return n;
+  return '기타 · ' + refHost.replace(/^www\./, '').slice(0, 40);
+}
+const seenRate = new Map(); setInterval(() => seenRate.clear(), 60e3).unref();
+function recordVisit(req, body, me) {
+  const ua = String(req.headers['user-agent'] || ''); if (!ua || BOT_UA.test(ua)) return 'bot';
+  const ip = String(req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0] || req.socket.remoteAddress || '').trim();
+  const r = (seenRate.get(ip) || 0) + 1; seenRate.set(ip, r); if (r > 120) return 'rate';
+  let pth = String(body.p || '/').split(/[?#]/)[0].slice(0, 200); if (BASE && pth.startsWith(BASE)) pth = pth.slice(BASE.length) || '/'; if (!pth.startsWith('/') || pth.startsWith('/admin') || pth.startsWith('/api/')) return 'skip';
+  let vid = String(body.v || ''); if (!/^[a-z0-9]{12,40}$/i.test(vid)) { let salt = setting('visitSalt'); if (!salt) { salt = crypto.randomBytes(16).toString('hex'); setSetting('visitSalt', salt); } vid = 'h' + crypto.createHash('sha256').update(salt + ip + ua).digest('hex').slice(0, 24); }
+  const day = kstDay(); if (q1('SELECT COUNT(*) c FROM visits WHERE day=? AND vid=?', day, vid).c >= 500) return 'cap';
+  let refHost = ''; try { refHost = body.r ? new URL(String(body.r)).hostname.toLowerCase() : ''; } catch {}
+  let siteHost = ''; try { siteHost = new URL(process.env.SITE_URL || 'http://' + (req.headers.host || '')).hostname.toLowerCase().replace(/^www\./, ''); } catch {}
+  const src = visitSource(refHost, String(body.u || '').replace(/[^\w.\-가-힣]/g, '').slice(0, 40), siteHost);
+  const device = /iPad|Tablet/i.test(ua) ? 'tablet' : /Mobi|Android|iPhone/i.test(ua) ? 'mobile' : 'desktop';
+  run('INSERT INTO visits(day,at,vid,path,ref,src,device,staff) VALUES(?,?,?,?,?,?,?,?)', day, now(), vid, pth, src ? refHost.slice(0, 80) : '', src, device, me ? 1 : 0);
+  return 'ok';
+}
+function pruneVisits() { const n = run('DELETE FROM visits WHERE day < ?', dayAdd(kstDay(), -800)).changes; if (n) console.log(`[visits] 800일 지난 방문 기록 ${n}줄 정리`); }
+function visitStats(sp) {
+  const today = kstDay(); const unit = ['day', 'week', 'month'].includes(sp.get('unit')) ? sp.get('unit') : 'day';
+  const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(Date.parse(s));
+  let to = isDay(sp.get('to')) ? sp.get('to') : today; if (to > today) to = today;
+  let from = isDay(sp.get('from')) ? sp.get('from') : unit === 'day' ? dayAdd(to, -29) : unit === 'week' ? dayAdd(weekStart(to), -7 * 11) : to.slice(0, 5) + '01-01';
+  if (unit === 'month' && !isDay(sp.get('from'))) from = dayAdd(to.slice(0, 7) + '-01', -335).slice(0, 7) + '-01';
+  if (from > to) [from, to] = [to, from]; if (from < dayAdd(to, -800)) from = dayAdd(to, -800);
+  const key = d => unit === 'day' ? d : unit === 'week' ? weekStart(d) : d.slice(0, 7);
+  const label = k => unit === 'day' ? k : unit === 'week' ? `${k} ~ ${dayAdd(k, 6)}` : k;
+  // 기간 안의 모든 칸(방문 0인 날 포함)을 순서대로
+  const keys = []; for (let d = from; d <= to; d = dayAdd(d, 1)) { const k = key(d); if (keys[keys.length - 1] !== k) keys.push(k); }
+  const rows = q('SELECT day, vid, COUNT(*) n FROM visits WHERE day>=? AND day<=? AND staff=0 GROUP BY day, vid', from, to);
+  const first = new Map(q('SELECT vid, MIN(day) d FROM visits WHERE staff=0 AND vid IN (SELECT DISTINCT vid FROM visits WHERE day>=? AND day<=? AND staff=0) GROUP BY vid', from, to).map(r => [r.vid, r.d]));
+  const B = new Map(keys.map(k => [k, { vids: new Set(), fresh: new Set(), views: 0 }])); const all = new Set(); let views = 0;
+  for (const r of rows) { const b = B.get(key(r.day)); if (!b) continue; b.vids.add(r.vid); b.views += r.n; if (first.get(r.vid) === r.day) b.fresh.add(r.vid); all.add(r.vid); views += r.n; }
+  const series = keys.map(k => { const b = B.get(k); return { key: k, label: label(k), start: unit === 'month' ? k + '-01' : k, visitors: b.vids.size, newVisitors: b.fresh.size, views: b.views }; });
+  const span = (a, b) => { const r = q1('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM visits WHERE day>=? AND day<=? AND staff=0', a, b); return { visitors: r.v, views: r.n }; };
+  const ws = weekStart(today), ms = today.slice(0, 8) + '01', elapsed = Math.round((Date.parse(today) - Date.parse(ws)) / 86400e3);
+  const lastMs = dayAdd(ms, -1).slice(0, 8) + '01', lastMe = dayAdd(ms, -1), lastSame = dayAdd(lastMs, Number(today.slice(8)) - 1);
+  const summary = {
+    today: { ...span(today, today), prev: span(dayAdd(today, -1), dayAdd(today, -1)), prevLabel: '어제' },
+    week: { ...span(ws, today), prev: span(dayAdd(ws, -7), dayAdd(ws, -7 + elapsed)), prevLabel: '지난주 같은 기간' },
+    month: { ...span(ms, today), prev: span(lastMs, lastSame < lastMe ? lastSame : lastMe), prevLabel: '지난달 같은 기간' },
+    total: span('0000-01-01', today),
+  };
+  const W = 'day>=? AND day<=? AND staff=0';
+  return {
+    unit, from, to, today, series, totals: { visitors: all.size, views }, summary,
+    pages: q(`SELECT path, COUNT(*) views, COUNT(DISTINCT vid) visitors FROM visits WHERE ${W} GROUP BY path ORDER BY views DESC LIMIT 20`, from, to),
+    sources: q(`SELECT src, COUNT(*) n, COUNT(DISTINCT vid) visitors FROM visits WHERE ${W} AND src!='' GROUP BY src ORDER BY n DESC LIMIT 20`, from, to),
+    devices: q(`SELECT device, COUNT(DISTINCT vid) visitors FROM visits WHERE ${W} GROUP BY device`, from, to),
+    staffViews: q1('SELECT COUNT(*) c FROM visits WHERE day>=? AND day<=? AND staff=1', from, to).c,
+    since: (q1('SELECT MIN(day) d FROM visits') || {}).d || null,
+  };
+}
+
 // ---------- HTTP 유틸 ----------
 const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 const readBody = req => new Promise((resolve, reject) => { let b = ''; req.on('data', c => { b += c; if (b.length > 25e6) { reject(new Error('too large')); req.destroy(); } }); req.on('end', () => { try { resolve(b ? JSON.parse(b) : {}); } catch { resolve({}); } }); req.on('error', reject); });
@@ -360,6 +433,8 @@ async function api(req, res, url) {
     run('INSERT INTO calls(id,listingId,agentId,phone,title,url,ua,smsStatus,smsDetail,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?)', id, body.listingId || '', agent ? agent.id : '', agent ? agent.mobile : '', ld ? ld.title : (body.title || ''), body.url || '', (body.ua || '').slice(0, 200), sms.ok ? 'sent' : 'failed', sms.detail, t);
     return json(res, 200, { ok: true, sms: sms.ok });
   }
+  if (p === '/seen' && m === 'POST') { try { recordVisit(req, body, me); } catch (e) { console.log('[visits] 기록 실패', e.message); } res.writeHead(204, { 'Cache-Control': 'no-store' }); return res.end(); }
+  if (p === '/visits' && m === 'GET') { if (!needAdmin()) return; return json(res, 200, visitStats(url.searchParams)); }
   if (p === '/inquiries' && m === 'POST') {
     const l = body.listingId ? q1('SELECT data FROM listings WHERE id=?', String(body.listingId)) : null; const ld = l ? JSON.parse(l.data) : null;
     const agentId = body.agentId || (ld && ld.agentId) || '';
@@ -565,7 +640,7 @@ async function api(req, res, url) {
   if (p === '/settings/test-sms' && m === 'POST') { if (!needAdmin()) return; const r = await sendSms(body.to || me.mobile, '[창업가이드] 문자 발송 테스트입니다.'); return json(res, 200, r); }
   if (p === '/rebuild' && m === 'POST') { if (!needAdmin()) return; scheduleRebuild(100); return json(res, 200, { ok: true }); }
   if (p === '/audit' && m === 'GET') { if (!needAdmin()) return; return json(res, 200, { items: q('SELECT * FROM audit ORDER BY id DESC LIMIT 300') }); }
-  if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild'), storage: me.isAdmin ? { persistent: PERSISTENT, lastBackup: setting('lastBackup') } : undefined }); }
+  if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild'), storage: me.isAdmin ? { persistent: PERSISTENT, lastBackup: setting('lastBackup') } : undefined, visits: me.isAdmin ? (() => { const d = kstDay(), y = dayAdd(d, -1); const c = x => q1('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM visits WHERE day=? AND staff=0', x); return { today: c(d), yesterday: c(y) }; })() : undefined }); }
   json(res, 404, { error: 'not found' });
 }
 
