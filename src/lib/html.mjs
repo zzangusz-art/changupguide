@@ -192,13 +192,13 @@ export function footer() {
         <div class="ftr__contact">${SITE.phone ? `<a class="btn btn--yellow" href="tel:${SITE.phoneTel}">${ICONS.phone}창업상담 ${esc(SITE.phone)}</a>` : `<a class="btn btn--yellow" href="${u('/inquiry/')}">${ICONS.bolt}창업 의뢰하기</a>`}${SITE.email ? `<a class="btn btn--white" href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : `<a class="btn btn--white" href="${u('/inquiry/')}">온라인 문의</a>`}</div>
         <p class="muted">${esc(SITE.hours)}</p></div>
       <div class="ftr__cols">
-        <div><h4>매장 찾기</h4>${CATEGORIES.map(c => `<a href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a>`).join('')}<a href="${u('/listings/')}">전체 매장</a></div>
-        <div><h4>테마</h4>${THEMES.map(t => `<a href="${u(`/theme/${t.slug}/`)}">${esc(t.name)}</a>`).join('')}</div>
-        <div><h4>예산별</h4>${BUDGETS.map(b => `<a href="${u(`/budget/${b.slug}/`)}">${esc(b.name)}</a>`).join('')}<a href="${u('/region/')}">지역별 매장</a></div>
-        <div><h4>회사</h4><a href="${u('/about/')}">회사 소개</a>${FLAGS.agents ? `<a href="${u('/agents/')}">담당 창업전문가</a>` : ''}<a href="${u('/inquiry/')}">창업 의뢰</a><a href="${u('/sell/')}">양도양수 의뢰</a><a href="${u('/blog/')}">창업 인사이트</a><a href="${u('/faq/')}">자주 묻는 질문</a><a href="${esc(SITE.blog)}" rel="noopener" target="_blank">네이버 블로그</a><a href="${u('/admin/')}">관리자</a></div>
+        <div><p class="ftr__h">매장 찾기</p>${CATEGORIES.map(c => `<a href="${u(`/category/${c.slug}/`)}">${esc(c.name)}</a>`).join('')}<a href="${u('/listings/')}">전체 매장</a></div>
+        <div><p class="ftr__h">테마</p>${THEMES.map(t => `<a href="${u(`/theme/${t.slug}/`)}">${esc(t.name)}</a>`).join('')}</div>
+        <div><p class="ftr__h">예산별</p>${BUDGETS.map(b => `<a href="${u(`/budget/${b.slug}/`)}">${esc(b.name)}</a>`).join('')}<a href="${u('/region/')}">지역별 매장</a></div>
+        <div><p class="ftr__h">회사</p><a href="${u('/about/')}">회사 소개</a>${FLAGS.agents ? `<a href="${u('/agents/')}">담당 창업전문가</a>` : ''}<a href="${u('/inquiry/')}">창업 의뢰</a><a href="${u('/sell/')}">양도양수 의뢰</a><a href="${u('/blog/')}">창업 인사이트</a><a href="${u('/faq/')}">자주 묻는 질문</a><a href="${esc(SITE.blog)}" rel="noopener" target="_blank">네이버 블로그</a><a href="${u('/admin/')}">관리자</a></div>
       </div>
     </div>
-    <div class="ftr__notice"><h4>창업가이드에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+    <div class="ftr__notice"><p class="ftr__h">창업가이드에서 알려드립니다</p>${SITE.legalNotice.map(p => `<p>${esc(p)}</p>`).join('')}</div>
     <div class="ftr__info"><p>상호 ${esc(SITE.company)} · 사업자등록번호 ${esc(SITE.bizNo)} · 업태/종목 ${esc(SITE.bizType)}</p><p>주소 ${esc(SITE.address)}${SITE.phone ? ` · 창업상담 <a href="tel:${SITE.phoneTel}">${esc(SITE.phone)}</a>` : ''}${SITE.email ? ` · ${esc(SITE.email)}` : ''}</p><p><a href="${u('/privacy/')}">개인정보처리방침</a> · <a href="${u('/terms/')}">이용약관</a> · <a href="${u('/sitemap.xml')}">사이트맵</a> · <a href="${u('/llms.txt')}">llms.txt</a> · Copyright © ${esc(SITE.name)}. All rights reserved.</p></div>
   </div>
 </footer>

@@ -309,9 +309,14 @@ async function pingIndexNow() {
     const site = (process.env.SITE_URL || '').replace(/\/$/, ''); if (!/^https:\/\//.test(site) || /railway\.app|github\.io|localhost/.test(site) || process.env.NOINDEX === '1') return;
     if (Date.now() - lastPing < 30 * 60 * 1000) return; lastPing = Date.now();
     const key = (fs.readFileSync(path.join(ROOT, 'src/data.mjs'), 'utf-8').match(/indexNowKey:\s*'([0-9a-f]{32})'/) || [])[1]; if (!key) return;
-    const sm = fs.readFileSync(path.join(DIST, 'sitemap-1.xml'), 'utf-8'); const urls = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]).slice(0, 10000);
-    const host = new URL(site).host; const body = JSON.stringify({ host, key, keyLocation: `${site}/${key}.txt`, urlList: urls });
-    for (const ep of ['https://searchadvisor.naver.com/indexnow', 'https://api.indexnow.org/indexnow']) { const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body }).catch(e => ({ status: String(e) })); console.log(`[indexnow] ${ep} ${r.status} (${urls.length} urls)`); }
+    // 새로 생겼거나 lastmod 가 바뀐 주소만 알림 (매번 전체를 보내면 검색엔진이 무시하거나 제한할 수 있음)
+    const sm = fs.readFileSync(path.join(DIST, 'sitemap-1.xml'), 'utf-8');
+    const cur = Object.fromEntries([...sm.matchAll(/<url><loc>([^<]+)<\/loc>(?:<lastmod>([^<]*)<\/lastmod>)?/g)].map(m => [m[1], m[2] || '']));
+    const sent = setting('indexnowSent') || {}; const urls = Object.keys(cur).filter(u => sent[u] !== cur[u]).slice(0, 10000);
+    if (!urls.length) return console.log('[indexnow] 바뀐 주소 없음');
+    const host = new URL(site).host; const body = JSON.stringify({ host, key, keyLocation: `${site}/${key}.txt`, urlList: urls }); let ok = false;
+    for (const ep of ['https://searchadvisor.naver.com/indexnow', 'https://api.indexnow.org/indexnow']) { const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body }).catch(e => ({ status: String(e) })); if (r.status === 200 || r.status === 202) ok = true; console.log(`[indexnow] ${ep} ${r.status} (${urls.length} urls)`); }
+    if (ok) setSetting('indexnowSent', cur);
   } catch (e) { console.log('[indexnow] skip', e.message); }
 }
 
@@ -676,7 +681,10 @@ function serveStatic(req, res, url) {
 async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   // 상태 확인 (Railway 헬스체크·외부 감시용): 켜진 시각과 마지막 사이트 반영 결과
-  if (url.pathname === '/healthz') { let lb = null; try { lb = db ? setting('lastBuild') : null; } catch {} return json(res, 200, { ok: true, startedAt: STARTED_AT, uptimeSec: Math.round(process.uptime()), build: lb ? { at: lb.at, ok: lb.ok } : null, diskFreeMB: diskFreeMB(), rssMB: Math.round(process.memoryUsage().rss / 1048576), lastError }); }
+  // www 없는 주소(changupguide.co.kr)로 들어오면 www 주소로 영구 이동 — 같은 페이지가 두 주소로 색인되지 않게
+  const host = String(req.headers.host || '').toLowerCase().split(':')[0]; const siteHost = (() => { try { return new URL(process.env.SITE_URL || '').hostname; } catch { return ''; } })();
+  if (siteHost.startsWith('www.') && host === siteHost.slice(4)) { res.writeHead(301, { Location: `https://${siteHost}${req.url}`, 'Cache-Control': 'public, max-age=86400' }); return res.end(); }
+  if (url.pathname === '/healthz') { let lb = null; try { lb = db ? setting('lastBuild') : null; } catch {} return json(res, 200, { ok: true, commit: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null, startedAt: STARTED_AT, uptimeSec: Math.round(process.uptime()), build: lb ? { at: lb.at, ok: lb.ok } : null, diskFreeMB: diskFreeMB(), rssMB: Math.round(process.memoryUsage().rss / 1048576), lastError }); }
   const apiPath = BASE && url.pathname.startsWith(BASE + '/api') ? url.pathname.slice(BASE.length) : url.pathname;
   if (apiPath.startsWith('/api/')) {
     if (STATIC_ONLY) return json(res, 503, { error: 'static preview — API 없음' });

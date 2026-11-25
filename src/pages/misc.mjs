@@ -51,7 +51,7 @@ export function miscPages(ctx) {
           <div class="panel" style="margin-top:16px"><h2 class="h3">방문 상담 안내</h2><ul><li>주소: ${esc(SITE.address)}</li><li>방문 상담은 사전 예약제로 운영합니다. 전화나 온라인 문의로 일정을 먼저 정해 주세요.</li><li>관심 매장을 알려주시면 매출 자료와 현장 답사 일정을 함께 준비해 드립니다.</li></ul></div></div>
       </div>
       <div class="stats" style="margin-top:30px"><div class="stat"><strong>${ctx.stats.total}건</strong><span>등록 매장</span></div><div class="stat"><strong>${ctx.stats.brands}개</strong><span>프랜차이즈 브랜드</span></div>${ctx.stats.agents ? `<div class="stat"><strong>${ctx.stats.agents}명</strong><span>담당 창업전문가</span></div>` : `<div class="stat"><strong>2014년</strong><span>개업 · 양도양수 컨설팅</span></div>`}<div class="stat"><strong>24시간</strong><span>창업상담</span></div></div>
-      <div class="ftr__notice" style="background:#fff;color:var(--ink);margin-top:30px;border-color:var(--ink)"><h4 style="color:var(--red)">창업가이드에서 알려드립니다</h4>${SITE.legalNotice.map(p => `<p style="color:var(--ink-2)">${esc(p)}</p>`).join('')}</div>
+      <div class="ftr__notice" style="background:#fff;color:var(--ink);margin-top:30px;border-color:var(--ink)"><h3 style="color:var(--red)">창업가이드에서 알려드립다</h3>${SITE.legalNotice.map(p => `<p style="color:var(--ink-2)">${esc(p)}</p>`).join('')}</div>
     </section></div>${ctaBand()}` }) });
 
   // ---- FAQ ----

@@ -19,7 +19,7 @@ export function groupBy(items, fn) {
 
 /** 패널 래퍼 */
 export function vizPanel(title, body, { note = '', cls = '', wide = false } = {}) {
-  return `<section class="viz ${cls} ${wide ? 'viz--wide' : ''}"><div class="viz__head"><h3 class="viz__title">${esc(title)}</h3>${note ? `<p class="viz__note">${esc(note)}</p>` : ''}</div>${body}</section>`;
+  return `<section class="viz ${cls} ${wide ? 'viz--wide' : ''}"><div class="viz__head"><h2 class="viz__title">${esc(title)}</h2>${note ? `<p class="viz__note">${esc(note)}</p>` : ''}</div>${body}</section>`;
 }
 
 /** 가로 막대 차트: rows = [{ label, value, href?, sub? }] */

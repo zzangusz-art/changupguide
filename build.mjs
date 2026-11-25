@@ -2,6 +2,7 @@
 // env: SITE_URL (canonical 기준), SITE_BASE (하위 경로, 예 /changupguide), NOINDEX=1 (미리보기), API_URL (관리자·통화알림 API)
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { SITE, CATEGORIES, THEMES, BUDGETS, SIDO_ORDER, KEYWORD_PAGES, FAQ, PRICE_NOTICE } from './src/data.mjs';
 import { indexEntry, canon, BRAND_LIST, isoDate, makeDesc } from './src/lib/text.mjs';
 import { abs, u, FLAGS } from './src/lib/html.mjs';
@@ -120,6 +121,10 @@ fs.writeFileSync(path.join(DIST, 'suggest.json'), JSON.stringify(suggest.sort((a
 
 // ---- sitemap / robots / llms.txt / rss ----
 const lastmodDefault = ctx.today;
+// 수정일(lastmod)이 없는 페이지(허브·키워드·회사 소개 등)는 내용이 실제로 바뀐 날만 갱신 — 매일 오늘 날짜를 찍으면 구글이 사이트맵 수정일을 무시함
+{ const LM_FILE = process.env.CU_DATA_DIR ? path.join(process.env.CU_DATA_DIR, 'lastmod.json') : path.resolve('.cache/lastmod.json'); let LM = {}; try { LM = JSON.parse(fs.readFileSync(LM_FILE, 'utf-8')); } catch {}
+  for (const p of pages) if (!p.lastmod) { const h = crypto.createHash('sha1').update(p.html.replace(/\?v=[\w.-]+/g, '')).digest('hex').slice(0, 16); const prev = LM[p.path]; if (prev && prev.h === h) p.lastmod = prev.d; else { p.lastmod = ctx.today; LM[p.path] = { h, d: ctx.today }; } }
+  try { fs.mkdirSync(path.dirname(LM_FILE), { recursive: true }); fs.writeFileSync(LM_FILE, JSON.stringify(LM)); } catch (e) { console.log('[lastmod] 저장 실패', e.message); } }
 const sm = pages.filter(p => !p.noindex && !p.path.startsWith('/admin') && p.path !== '/404.html').map(p => `<url><loc>${abs(p.path)}</loc><lastmod>${(p.lastmod || lastmodDefault).slice(0, 10)}</lastmod><changefreq>${p.changefreq || 'weekly'}</changefreq><priority>${p.priority ?? 0.6}</priority></url>`);
 // 사이트맵 분할 (5만 제한 대비 + 검색엔진 친화)
 const chunks = []; for (let i = 0; i < sm.length; i += 5000) chunks.push(sm.slice(i, i + 5000));

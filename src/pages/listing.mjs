@@ -126,7 +126,7 @@ export function listingPage(l, ctx) {
 
   const ld = [{
     '@context': 'https://schema.org', '@type': 'Product', '@id': abs(`/listing/${l.id}/#product`), name: l.title, sku: l.id, description: desc,
-    image: images.map(i => (/^https?:/.test(i) ? i : abs('/' + i))), category: `${l.kind1}${l.kind2 ? ' > ' + l.kind2 : ''}`,
+    image: images.map(i => (/^https?:/.test(i) ? i : abs('/' + i))),
     brand: l.brand ? { '@type': 'Brand', name: l.brand } : undefined,
     offers: { '@type': 'Offer', url: abs(`/listing/${l.id}/`), priceCurrency: 'KRW', price: l.premium ? l.premium * 10000 : undefined, priceSpecification: l.premium ? { '@type': 'PriceSpecification', price: l.premium * 10000, priceCurrency: 'KRW', description: '창업비용 (임대보증금 별도)' } : undefined, availability: 'https://schema.org/InStock', seller: { '@id': abs('/#org') }, areaServed: loc },
     additionalProperty: [

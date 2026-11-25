@@ -473,11 +473,11 @@ dl,dd,dt{margin:0}
 .ftr__contact .btn{border-color:transparent}
 .ftr__contact .btn--white{background:transparent;color:#fff;border-color:rgba(255,255,255,.3)}
 .ftr__cols{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.ftr__cols h4{color:#fff;margin-bottom:10px;font-size:.95rem}
+.ftr__cols h4,.ftr__cols .ftr__h{color:#fff;font-weight:700;margin-bottom:10px;font-size:.95rem}
 .ftr__cols a{display:block;font-size:.86rem;color:rgba(255,255,255,.65);padding:3px 0}
 .ftr__cols a:hover{color:var(--yellow)}
 .ftr__notice{margin-top:40px;padding:22px 0;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12)}
-.ftr__notice h4{color:#fff;margin-bottom:8px;font-size:.92rem}
+.ftr__notice h4,.ftr__notice .ftr__h{color:#fff;font-weight:700;margin-bottom:8px;font-size:.92rem}
 .ftr__notice p{font-size:.8rem;color:rgba(255,255,255,.6);line-height:1.65}
 .ftr__notice p:first-of-type{color:rgba(255,255,255,.85)}
 .ftr__info{margin-top:18px;font-size:.78rem;color:rgba(255,255,255,.55)}
