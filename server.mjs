@@ -366,10 +366,13 @@ function recordVisit(req, body, me) {
   let siteHost = ''; try { siteHost = new URL(process.env.SITE_URL || 'http://' + (req.headers.host || '')).hostname.toLowerCase().replace(/^www\./, ''); } catch {}
   const src = visitSource(refHost, String(body.u || '').replace(/[^\w.\-가-힣]/g, '').slice(0, 40), siteHost);
   const device = /iPad|Tablet/i.test(ua) ? 'tablet' : /Mobi|Android|iPhone/i.test(ua) ? 'mobile' : 'desktop';
-  run('INSERT INTO visits(day,at,vid,path,ref,src,device,staff) VALUES(?,?,?,?,?,?,?,?)', day, now(), vid, pth, src ? refHost.slice(0, 80) : '', src, device, me ? 1 : 0);
+  // Claude 앱 내장 브라우저(세느루 점검용, UA "Claude/x.y")는 직원 방문과 같이 통계에서 제외
+  run('INSERT INTO visits(day,at,vid,path,ref,src,device,staff) VALUES(?,?,?,?,?,?,?,?)', day, now(), vid, pth, src ? refHost.slice(0, 80) : '', src, device, me || /\bClaude\/\d/.test(ua) ? 1 : 0);
   return 'ok';
 }
-function pruneVisits() { const n = run('DELETE FROM visits WHERE day < ?', dayAdd(kstDay(), -800)).changes; if (n) console.log(`[visits] 800일 지난 방문 기록 ${n}줄 정리`); }
+function pruneVisits() {
+  // 1회: 2026-11-25 세느루 점검 중 들어간 방문(점검용 브라우저 1대)을 직원 방문으로 표시
+  if (!setting('visitsFix1125')) { const n = run("UPDATE visits SET staff=1 WHERE vid='6e625264f65b4d8bbf388c554d41141e'").changes; setSetting('visitsFix1125', true); console.log(`[visits] 점검용 방문 ${n}줄 직원 방문으로 표시`); } const n = run('DELETE FROM visits WHERE day < ?', dayAdd(kstDay(), -800)).changes; if (n) console.log(`[visits] 800일 지난 방문 기록 ${n}줄 정리`); }
 function visitStats(sp) {
   const today = kstDay(); const unit = ['day', 'week', 'month'].includes(sp.get('unit')) ? sp.get('unit') : 'day';
   const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(Date.parse(s));
