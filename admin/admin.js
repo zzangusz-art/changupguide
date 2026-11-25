@@ -144,10 +144,10 @@ function visitChart(d) {
   const max = Math.max(4, ...S.map(s => s.views), ...S.map(s => s.visitors)); const step = Math.pow(10, Math.floor(Math.log10(max))); const top = Math.ceil(max / step) * step; const y = v => T + (H - T - B) * (1 - v / top);
   const grid = [0, .25, .5, .75, 1].map(f => `<line x1="${L}" x2="${W - R}" y1="${y(top * f)}" y2="${y(top * f)}" class="g"/><text x="${L - 6}" y="${y(top * f) + 4}" text-anchor="end">${Math.round(top * f)}</text>`).join('');
   const every = Math.ceil(n / 14); const bw = Math.max(2, Math.min(34, cw * .62));
-  const bars = S.map((s, i) => { const x = L + cw * i + cw / 2; return `<g><title>${vLabel(d.unit, s.key)} · 방문자 ${s.visitors}명 (신규 ${s.newVisitors}) · 페이지뷰 ${s.views}회</title><rect x="${x - bw / 2}" y="${y(s.visitors)}" width="${bw}" height="${Math.max(0, H - B - y(s.visitors))}" rx="3" class="b"/><rect x="${L + cw * i}" y="${T}" width="${cw}" height="${H - T - B}" fill="transparent"/>${i % every === 0 || i === n - 1 ? `<text x="${x}" y="${H - B + 16}" text-anchor="middle">${vShort(d.unit, s.key)}</text>` : ''}</g>`; }).join('');
+  const bars = S.map((s, i) => { const x = L + cw * i + cw / 2; return `<g><title>${vLabel(d.unit, s.key)}${s.ga ? ' (GA4 기록)' : ''} · 방문자 ${s.visitors}명 (신규 ${s.newVisitors}) · 페이지뷰 ${s.views}회</title><rect x="${x - bw / 2}" y="${y(s.visitors)}" width="${bw}" height="${Math.max(0, H - B - y(s.visitors))}" rx="3" class="b${s.ga ? ' ga' : ''}"/><rect x="${L + cw * i}" y="${T}" width="${cw}" height="${H - T - B}" fill="transparent"/>${i % every === 0 || i === n - 1 ? `<text x="${x}" y="${H - B + 16}" text-anchor="middle">${vShort(d.unit, s.key)}</text>` : ''}</g>`; }).join('');
   const line = S.map((s, i) => `${L + cw * i + cw / 2},${y(s.views)}`).join(' ');
   const dots = n <= 62 ? S.map((s, i) => `<circle cx="${L + cw * i + cw / 2}" cy="${y(s.views)}" r="3" class="d"/>`).join('') : '';
-  return `<svg class="vchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="기간별 방문자와 페이지뷰">${grid}${bars}<polyline points="${line}" class="l"/>${dots}</svg><div class="vlegend"><span><i class="b"></i>방문자</span><span><i class="l"></i>페이지뷰</span></div>`;
+  return `<svg class="vchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="기간별 방문자와 페이지뷰">${grid}${bars}<polyline points="${line}" class="l"/>${dots}</svg><div class="vlegend"><span><i class="b"></i>방문자</span>${S.some(s => s.ga) ? '<span><i class="b ga"></i>방문자 (GA4 기록)</span>' : ''}<span><i class="l"></i>페이지뷰</span></div>`;
 }
 async function drawVisits(view) {
   view.innerHTML = '<div class="loading">불러오는 중…</div>';
@@ -155,7 +155,7 @@ async function drawVisits(view) {
   const S = d.series; const sm = d.summary;
   const card = (t, o, cls = '') => `<div class="stat ${cls}"><span>${t}</span><b>${fmtNum(o.visitors)}<small>명</small></b><span class="muted">페이지뷰 ${fmtNum(o.views)}회</span>${o.prev ? `<span class="vs">${o.prevLabel} ${fmtNum(o.prev.visitors)}명 ${vDiff(o.visitors, o.prev.visitors)}</span>` : ''}</div>`;
   const maxSrc = Math.max(1, ...d.sources.map(s => s.n)); const devTotal = d.devices.reduce((a, x) => a + x.visitors, 0) || 1; const DEV = { mobile: '모바일', desktop: 'PC', tablet: '태블릿' };
-  const rows = [...S].reverse().map((s, i, arr) => { const prev = arr[i + 1]; return `<tr><td class="nowrap"><b>${vLabel(d.unit, s.key)}</b></td><td class="right"><b>${fmtNum(s.visitors)}</b></td><td class="right">${fmtNum(s.newVisitors)}</td><td class="right">${fmtNum(s.views)}</td><td class="right">${s.visitors ? (s.views / s.visitors).toFixed(1) : '-'}</td><td class="right">${prev ? vDiff(s.visitors, prev.visitors) : ''}</td></tr>`; }).join('');
+  const rows = [...S].reverse().map((s, i, arr) => { const prev = arr[i + 1]; return `<tr><td class="nowrap"><b>${vLabel(d.unit, s.key)}</b>${s.ga ? ` <span class="badge c" title="${s.ga === 'sum' ? 'GA4 기록이 섞인 기간 — 방문자는 일별 합' : 'GA4에서 옮긴 기록'}">GA4${s.ga === 'sum' ? ' 포함' : ''}</span>` : ''}</td><td class="right"><b>${fmtNum(s.visitors)}</b></td><td class="right">${fmtNum(s.newVisitors)}</td><td class="right">${fmtNum(s.views)}</td><td class="right">${s.visitors ? (s.views / s.visitors).toFixed(1) : '-'}</td><td class="right">${prev ? vDiff(s.visitors, prev.visitors) : ''}</td></tr>`; }).join('');
   view.innerHTML = `<div class="grid4">${card('오늘', sm.today)}${card('이번 주 (월요일부터)', sm.week, 'ink')}${card('이번 달', sm.month, 'blue')}${card('전체 누적', sm.total, 'ink')}</div>
   <div class="card" style="margin-top:14px">
     <div class="vbar">
@@ -163,7 +163,7 @@ async function drawVisits(view) {
       <div class="chips">${V_PRESETS[d.unit].map(([n, t]) => `<button class="chip" data-vpreset="${n}">${t}</button>`).join('')}</div>
       <form class="vrange" data-vrange><input type="date" name="from" value="${d.from}" max="${d.today}"><span>~</span><input type="date" name="to" value="${d.to}" max="${d.today}"><button class="btn btn--sm btn--ink" type="submit">조회</button></form>
     </div>
-    <h2 style="margin-top:12px">${vLabel('day', d.from).slice(0, 10)} ~ ${vLabel('day', d.to).slice(0, 10)} <span class="muted" style="font-size:.86rem;font-weight:700">방문자 ${fmtNum(d.totals.visitors)}명 · 페이지뷰 ${fmtNum(d.totals.views)}회</span></h2>
+    <h2 style="margin-top:12px">${vLabel('day', d.from).slice(0, 10)} ~ ${vLabel('day', d.to).slice(0, 10)} <span class="muted" style="font-size:.86rem;font-weight:700">방문자 ${fmtNum(d.totals.visitors)}명 · 페이지뷰 ${fmtNum(d.totals.views)}회${d.totals.ga ? ' (GA4 기록 포함)' : ''}</span></h2>
     ${d.totals.views ? visitChart(d) : `<p class="muted" style="padding:30px 0;text-align:center">이 기간에는 아직 방문 기록이 없습니다.${d.since ? '' : ' 방문 집계는 이번 업데이트부터 시작됩니다.'}</p>`}
     <div class="table-wrap"><table class="table vtable"><thead><tr><th>${{ day: '날짜', week: '주 (월~일)', month: '월' }[d.unit]}</th><th class="right">방문자</th><th class="right">신규 방문자</th><th class="right">페이지뷰</th><th class="right">1인당 페이지</th><th class="right">직전 대비</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>
@@ -172,7 +172,7 @@ async function drawVisits(view) {
     <div class="card"><h2>유입 경로 <span class="muted" style="font-size:.78rem;font-weight:700">사이트에 들어온 횟수</span></h2>${d.sources.length ? d.sources.map(s => `<div class="srow"><span>${esc(s.src)}</span><i style="width:${Math.round(s.n / maxSrc * 100)}%"></i><b>${fmtNum(s.n)}</b></div>`).join('') : '<p class="muted">기록 없음</p>'}
       <h2 style="margin-top:16px">기기</h2><div class="chips">${d.devices.sort((a, b) => b.visitors - a.visitors).map(x => `<span class="chip">${DEV[x.device] || x.device} ${Math.round(x.visitors / devTotal * 100)}% <span class="muted">(${fmtNum(x.visitors)}명)</span></span>`).join('') || '<span class="muted">기록 없음</span>'}</div></div>
   </div>
-  <p class="muted" style="font-size:.8rem;margin-top:12px">집계 시작 ${d.since || '—'} · 한국 시간 기준 · 같은 브라우저는 하루·한 주·한 달 안에서 1명으로 셉니다. 검색·AI 크롤러와 로그인한 직원의 방문(이 기간 ${fmtNum(d.staffViews)}회)은 빠집니다. 집계 시작 전 기록은 GA4에서 확인하세요.</p>`;
+  <p class="muted" style="font-size:.8rem;margin-top:12px">한국 시간 기준 · 자체 집계 ${d.since || '—'}부터: 같은 브라우저는 하루·한 주·한 달 안에서 1명으로 세고, 검색·AI 크롤러와 로그인한 직원의 방문(이 기간 ${fmtNum(d.staffViews)}회)은 뺍니다.${d.gaSince ? ` <b>${d.gaSince} ~ ${d.gaUntil}</b>은 GA4 기록을 날짜별로 옮겨 넣었습니다(한국 접속만, 해외 로봇성 접속 제외, 직원 방문은 GA4에서 구분되지 않아 포함). 이 날짜가 섞인 주간·월간·누적 방문자는 일별 방문자를 더한 값이라 실제 순 방문자보다 조금 클 수 있습니다. 많이 본 페이지·유입 경로·기기는 자체 집계분만 보여 줍니다.` : ''}</p>`;
   view._visits = d;
 }
 route('visits', async view => {

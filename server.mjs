@@ -373,6 +373,11 @@ function recordVisit(req, body, me) {
 function pruneVisits() {
   // 1회: 2026-11-25 세느루 점검 중 들어간 방문(점검용 브라우저 1대)을 직원 방문으로 표시
   if (!setting('visitsFix1125')) { const n = run("UPDATE visits SET staff=1 WHERE vid='6e625264f65b4d8bbf388c554d41141e'").changes; setSetting('visitsFix1125', true); console.log(`[visits] 점검용 방문 ${n}줄 직원 방문으로 표시`); } const n = run('DELETE FROM visits WHERE day < ?', dayAdd(kstDay(), -800)).changes; if (n) console.log(`[visits] 800일 지난 방문 기록 ${n}줄 정리`); }
+// 자체 집계 시작(2026-11-24) 전 기록: GA4에서 옮긴 날짜별 합계(src/data/visits-ga4.json, 한국 접속 기준). 그 날짜들은 이 값으로 채움
+let GA_HIST = null;
+function gaHist() { if (!GA_HIST) { try { GA_HIST = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/visits-ga4.json'), 'utf-8')); } catch { GA_HIST = { days: {} }; } } return GA_HIST; }
+const gaDay = d => { const h = gaHist(); const x = h.days && h.days[d]; return x && (!h.until || d <= h.until) ? x.kr : null; };
+function gaSum(a, b) { let visitors = 0, views = 0, newV = 0, n = 0; for (const [d, x] of Object.entries(gaHist().days || {})) if (d >= a && d <= b) { const g = gaDay(d); if (g) { visitors += g.visitors; views += g.views; newV += g.new; n++; } } return { visitors, views, new: newV, days: n }; }
 function visitStats(sp) {
   const today = kstDay(); const unit = ['day', 'week', 'month'].includes(sp.get('unit')) ? sp.get('unit') : 'day';
   const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(Date.parse(s));
@@ -388,8 +393,10 @@ function visitStats(sp) {
   const first = new Map(q('SELECT vid, MIN(day) d FROM visits WHERE staff=0 AND vid IN (SELECT DISTINCT vid FROM visits WHERE day>=? AND day<=? AND staff=0) GROUP BY vid', from, to).map(r => [r.vid, r.d]));
   const B = new Map(keys.map(k => [k, { vids: new Set(), fresh: new Set(), views: 0 }])); const all = new Set(); let views = 0;
   for (const r of rows) { const b = B.get(key(r.day)); if (!b) continue; b.vids.add(r.vid); b.views += r.n; if (first.get(r.vid) === r.day) b.fresh.add(r.vid); all.add(r.vid); views += r.n; }
-  const series = keys.map(k => { const b = B.get(k); return { key: k, label: label(k), start: unit === 'month' ? k + '-01' : k, visitors: b.vids.size, newVisitors: b.fresh.size, views: b.views }; });
-  const span = (a, b) => { const r = q1('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM visits WHERE day>=? AND day<=? AND staff=0', a, b); return { visitors: r.v, views: r.n }; };
+  // GA4 기록 날짜는 그 값을 더함 (주간·월간 칸에서는 일별 합)
+  let gaV = 0, gaPV = 0; for (let d = from; d <= to; d = dayAdd(d, 1)) { const g = gaDay(d); if (!g) continue; const b = B.get(key(d)); if (!b) continue; b.ga = (b.ga || 0) + 1; b.gaV = (b.gaV || 0) + g.visitors; b.gaN = (b.gaN || 0) + g.new; b.gaPV = (b.gaPV || 0) + g.views; gaV += g.visitors; gaPV += g.views; }
+  const series = keys.map(k => { const b = B.get(k); return { key: k, label: label(k), start: unit === 'month' ? k + '-01' : k, visitors: b.vids.size + (b.gaV || 0), newVisitors: b.fresh.size + (b.gaN || 0), views: b.views + (b.gaPV || 0), ga: b.ga ? (b.ga > 1 || b.vids.size ? 'sum' : 'day') : '' }; });
+  const span = (a, b) => { const r = q1('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM visits WHERE day>=? AND day<=? AND staff=0', a, b); const g = gaSum(a, b); return { visitors: r.v + g.visitors, views: r.n + g.views, ga: g.days > 0 }; };
   const ws = weekStart(today), ms = today.slice(0, 8) + '01', elapsed = Math.round((Date.parse(today) - Date.parse(ws)) / 86400e3);
   const lastMs = dayAdd(ms, -1).slice(0, 8) + '01', lastMe = dayAdd(ms, -1), lastSame = dayAdd(lastMs, Number(today.slice(8)) - 1);
   const summary = {
@@ -400,12 +407,12 @@ function visitStats(sp) {
   };
   const W = 'day>=? AND day<=? AND staff=0';
   return {
-    unit, from, to, today, series, totals: { visitors: all.size, views }, summary,
+    unit, from, to, today, series, totals: { visitors: all.size + gaV, views: views + gaPV, ga: gaV + gaPV > 0 }, summary, gaUntil: gaHist().until || null,
     pages: q(`SELECT path, COUNT(*) views, COUNT(DISTINCT vid) visitors FROM visits WHERE ${W} GROUP BY path ORDER BY views DESC LIMIT 20`, from, to),
     sources: q(`SELECT src, COUNT(*) n, COUNT(DISTINCT vid) visitors FROM visits WHERE ${W} AND src!='' GROUP BY src ORDER BY n DESC LIMIT 20`, from, to),
     devices: q(`SELECT device, COUNT(DISTINCT vid) visitors FROM visits WHERE ${W} GROUP BY device`, from, to),
     staffViews: q1('SELECT COUNT(*) c FROM visits WHERE day>=? AND day<=? AND staff=1', from, to).c,
-    since: (q1('SELECT MIN(day) d FROM visits') || {}).d || null,
+    since: (q1('SELECT MIN(day) d FROM visits') || {}).d || null, gaSince: Object.keys(gaHist().days || {}).sort()[0] || null,
   };
 }
 
@@ -643,7 +650,7 @@ async function api(req, res, url) {
   if (p === '/settings/test-sms' && m === 'POST') { if (!needAdmin()) return; const r = await sendSms(body.to || me.mobile, '[창업가이드] 문자 발송 테스트입니다.'); return json(res, 200, r); }
   if (p === '/rebuild' && m === 'POST') { if (!needAdmin()) return; scheduleRebuild(100); return json(res, 200, { ok: true }); }
   if (p === '/audit' && m === 'GET') { if (!needAdmin()) return; return json(res, 200, { items: q('SELECT * FROM audit ORDER BY id DESC LIMIT 300') }); }
-  if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild'), storage: me.isAdmin ? { persistent: PERSISTENT, lastBackup: setting('lastBackup') } : undefined, visits: me.isAdmin ? (() => { const d = kstDay(), y = dayAdd(d, -1); const c = x => q1('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM visits WHERE day=? AND staff=0', x); return { today: c(d), yesterday: c(y) }; })() : undefined }); }
+  if (p === '/stats' && m === 'GET') { if (!need()) return; const mine = me.isAdmin ? '' : ` AND agentId='${me.id.replace(/'/g, '')}'`; return json(res, 200, { listings: q1(`SELECT COUNT(*) c FROM listings WHERE status='active'${mine}`).c, held: q1(`SELECT COUNT(*) c FROM listings WHERE status='held'${mine}`).c, newInquiries: q1(`SELECT COUNT(*) c FROM inquiries WHERE status='new'${me.isAdmin ? '' : ` AND (agentId='${me.id.replace(/'/g, '')}' OR agentId='')`}`).c, callsToday: q1(`SELECT COUNT(*) c FROM calls WHERE createdAt>=?${mine}`, new Date(Date.now() - 86400000).toISOString()).c, lastBuild: setting('lastBuild'), storage: me.isAdmin ? { persistent: PERSISTENT, lastBackup: setting('lastBackup') } : undefined, visits: me.isAdmin ? (() => { const d = kstDay(), y = dayAdd(d, -1); const c = x => { const r = q1('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM visits WHERE day=? AND staff=0', x); const g = gaDay(x); return g ? { v: r.v + g.visitors, n: r.n + g.views } : r; }; return { today: c(d), yesterday: c(y) }; })() : undefined }); }
   json(res, 404, { error: 'not found' });
 }
 

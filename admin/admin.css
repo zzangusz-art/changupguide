@@ -236,3 +236,4 @@ body.is-dragging-photos .lib .it.is-on{opacity:.55}
 .vtable td,.vtable th{padding:8px 10px}
 .srow{display:grid;grid-template-columns:130px 1fr 48px;align-items:center;gap:8px;font-size:.86rem;font-weight:700;margin:6px 0}.srow i{display:block;height:10px;border-radius:5px;background:var(--yellow);min-width:3px}.srow b{text-align:right}
 @media (max-width:900px){.vrange{margin-left:0}.srow{grid-template-columns:110px 1fr 40px}}
+.vchart .b.ga{fill:#FFE99A}.vchart g:hover .b.ga{fill:#F7D66B}.vlegend i.b.ga{background:#FFE99A}

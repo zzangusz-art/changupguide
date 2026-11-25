@@ -1,0 +1,19 @@
+{
+ "note": "관리자 방문 통계에 합치는 자체 집계 시작(2026-11-24) 이전 기록. GA4 속성 563897401(보고 시간대 한국)에서 2026-11-25에 날짜별로 옮겨 적음. kr = 한국 접속만(통계에 사용), all = GA4 원본(해외 접속 포함 — 해외는 전부 참여 0초의 로봇성 접속). visitors=활성 사용자, new=새 사용자, views=조회수. GA4는 직원 방문도 포함.",
+ "source": "GA4",
+ "until": "2026-11-23",
+ "days": {
+  "2026-11-12": { "kr": { "visitors": 8, "new": 8, "views": 27 }, "all": { "visitors": 19, "new": 19, "views": 38 } },
+  "2026-11-13": { "kr": { "visitors": 6, "new": 4, "views": 75 }, "all": { "visitors": 23, "new": 21, "views": 92 } },
+  "2026-11-14": { "kr": { "visitors": 2, "new": 1, "views": 4 }, "all": { "visitors": 4, "new": 3, "views": 6 } },
+  "2026-11-15": { "kr": { "visitors": 1, "new": 1, "views": 3 }, "all": { "visitors": 2, "new": 2, "views": 4 } },
+  "2026-11-16": { "kr": { "visitors": 6, "new": 2, "views": 60 }, "all": { "visitors": 13, "new": 9, "views": 67 } },
+  "2026-11-17": { "kr": { "visitors": 3, "new": 0, "views": 10 }, "all": { "visitors": 3, "new": 0, "views": 10 } },
+  "2026-11-18": { "kr": { "visitors": 4, "new": 1, "views": 36 }, "all": { "visitors": 6, "new": 3, "views": 38 } },
+  "2026-11-19": { "kr": { "visitors": 4, "new": 0, "views": 10 }, "all": { "visitors": 7, "new": 3, "views": 13 } },
+  "2026-11-20": { "kr": { "visitors": 3, "new": 1, "views": 5 }, "all": { "visitors": 3, "new": 1, "views": 5 } },
+  "2026-11-21": { "kr": { "visitors": 2, "new": 2, "views": 2 }, "all": { "visitors": 3, "new": 2, "views": 2 } },
+  "2026-11-22": { "kr": { "visitors": 0, "new": 0, "views": 0 }, "all": { "visitors": 3, "new": 2, "views": 2 } },
+  "2026-11-23": { "kr": { "visitors": 3, "new": 3, "views": 14 }, "all": { "visitors": 3, "new": 3, "views": 14 } }
+ }
+}
